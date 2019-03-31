@@ -19,31 +19,10 @@ camy=0
 
 forbidden={}
 
-msglen=0
-msgtext=""
-function msg(text)
- if text then
-  msgtext=text
-  msglen=20
- else
-  msglen=0
- end
-end
 
 function _init()
  cls()
  init_mouse()
- 
- --[[
- test = {"a1","b2","cc","d3"}
- v=pop(test)
- print(v)
- print("-")
- for t = 1,#test do
-  print(test[t])
- end
- assert(false)
- ]]
  
 end
 
@@ -75,8 +54,23 @@ function _update()
  -- give commands
  if rmdown() then
   local tix,tiy=flr(mx/8),flr(my/8)
-  if not wallat(windex(tix,tiy)) then
+  local goal=windex(tix,tiy)
+  if not wallat(goal) then
    for i in all(selected) do
+    
+    --try a neighbor if spot is taken
+    if has(forbidden,goal) then
+     local neighbors = wneighbors(goal)
+     for n in all(neighbors) do
+      if not wallat(n) and
+         not has(forbidden,n)
+      then
+       goal = n
+       tix,tiy = wxy(goal)
+       break
+      end
+     end
+    end
     
     local newpath = pathfind( --uses world
      {flr(peeps[i].x/8),flr(peeps[i].y/8)},
@@ -87,7 +81,7 @@ function _update()
      peeps[i].ty=tiy*8
      peeps[i].path=newpath
      --add(forbidden,windex(tix,tiy))
-     forbidden[i]=windex(tix,tiy)
+     forbidden[i]=goal
     else
      msg("no path")
     end
@@ -191,10 +185,12 @@ function _draw()
  
  --draw peeps
  for i=1,#peeps do
+  circfill(peeps[i].x+3,peeps[i].y+3,2,4)
   if has(selected,i) then
- 	 circfill(peeps[i].x+3,peeps[i].y+3,2,9)
+   circ(peeps[i].x+3,peeps[i].y+3,2,9)
+ 	 --circfill(peeps[i].x+3,peeps[i].y+3,2,9)
 	 else
- 	 circfill(peeps[i].x+3,peeps[i].y+3,2,4)
+ 	 --circfill(peeps[i].x+3,peeps[i].y+3,2,4)
 	 end
 	 --circ(peeps[i].tx+3,peeps[i].ty+3,2,15)
  end
@@ -236,11 +232,6 @@ function _draw()
  --debug_print_mouse()
  print("cam "..camx..","..camy)
  
---[[
- print("p1 "..peeps[1].x..","..peeps[1].y)
- print("p1 "..flr(peeps[1].x/8)..","..flr(peeps[1].y/8))
-]]
-
  --mouse hover info
  local mi=windex(flr(mx/8),flr(my/8))
  local mtx,mty=wxy(mi)
@@ -249,12 +240,13 @@ function _draw()
  then print("wall") 
  else print("clear") end
 
- msglen-=1
- if (msglen>0) then print(msgtext) end
+ msgprint()
 
  for f in all(forbidden) do
   print(f)
  end
+ 
+ 
 end
 -->8
 --util
@@ -341,6 +333,28 @@ function pinrect(p, x0,y0, x1,y1)
  else
   return p[1]>minx and p[1]<maxx
      and p[2]>miny and p[2]<maxy
+ end
+end
+
+
+
+
+msglen=0
+msgtext=""
+--queue up a msg to display for a moment
+function msg(text)
+ if text then
+  msgtext=text
+  msglen=20
+ else
+  msglen=0
+ end
+end
+--print the queued up msg
+function msgprint() 
+ msglen-=1
+ if (msglen>0) then 
+  print(msgtext) 
  end
 end
 -->8
@@ -474,11 +488,11 @@ end
 
 --takes 1d index
 function wallat(index)
- if forbidden then
+ --[[if forbidden then
   if has(forbidden,index) then
    return true
   end
- end
+ end]]
  return wiswall(wget(index))
 end
 
@@ -520,8 +534,8 @@ function pathfind(startvec, goalvec)
  if start==goal then return {} end
  
  --if goal is wall, try using a neighbor as a goal instead
- --if wallat(goal) then return {} end --safety, shouldn't even call if this is the case
- if wallat(goal) then
+ if wallat(goal) then return {} end --safety, shouldn't even call if this is the case
+ --[[if wallat(goal) then
   local neighbors = wneighbors(goal)
   for n in all(neighbors) do
    if not wallat(n) then
@@ -529,7 +543,7 @@ function pathfind(startvec, goalvec)
     break
    end
   end
- end
+ end]]
 
  -- list of tuples of {index,priority}
  -- kept in order of priority
