@@ -17,6 +17,19 @@ peeps={{x=40,y=20,tx=40,ty=20},
 camx=0
 camy=0
 
+forbidden={}
+
+msglen=0
+msgtext=""
+function msg(text)
+ if text then
+  msgtext=text
+  msglen=20
+ else
+  msglen=0
+ end
+end
+
 function _init()
  cls()
  init_mouse()
@@ -61,12 +74,9 @@ function _update()
  
  -- give commands
  if rmdown() then
-  --occupied
   local tix,tiy=flr(mx/8),flr(my/8)
   if not wallat(windex(tix,tiy)) then
    for i in all(selected) do
-    --peeps[i].tx=tix*8
-    --peeps[i].ty=tiy*8
     
     local newpath = pathfind( --uses world
      {flr(peeps[i].x/8),flr(peeps[i].y/8)},
@@ -76,29 +86,18 @@ function _update()
      peeps[i].tx=tix*8
      peeps[i].ty=tiy*8
      peeps[i].path=newpath
+     --add(forbidden,windex(tix,tiy))
+     forbidden[i]=windex(tix,tiy)
+    else
+     msg("no path")
     end
     
-    --add(forbidden,{mx,my})
    end
-   printblocked=false
   else
-   printblocked=true
+   msg("blocked")
   end
  end
 
- --[[
- --todo: only pathfind if 
- -- we don't alraedy have a path to goal
- --create path to reach target 
- for i=1,#peeps do
-  if peeps[i] and peeps[i].x and peeps[i].tx then
-   local path=peeps[i].path
-   if path[#path].
-   peeps[i].path = pathfind( --uses world
-    {flr(peeps[i].x/8),flr(peeps[i].y/8)},
-    {flr(peeps[i].tx/8),flr(peeps[i].ty/8)})
-  end
- end]]
  
  -- box selection
  if lmdown() then
@@ -114,11 +113,17 @@ function _update()
 	 nobox = length({mx-mdx,my-mdy}) < 1
   for i=1,#peeps do
    if nobox then
-    if length({mx-peeps[i].x,my-peeps[i].y}) < 2 then --todo: use sprite collision box here?
+   --todo: use sprite collision box here?
+    if length(
+     {mx-(peeps[i].x+3),
+      my-(peeps[i].y+3)}) < 2 
+    then 
     	add(selected,i)
     end
    else
-    if pinrect(peeps[i],mdx,mdy,mx,my) then
+    if pinrect(
+     {peeps[i].x+3,peeps[i].y+3},
+     mdx,mdy,mx,my) then
      add(selected,i)
     end
    end
@@ -126,27 +131,10 @@ function _update()
  end
  
  
- --[[
- for p in all(peeps) do
-  if p.path != nil then
-   local tix,tiy=wxy(p.path[1])
-   local tx,ty = tix*8,tiy*8
-   dx = tx-p.x
-   dy = ty-p.y
-   local angle = atan2(tx-p.x,ty-p.y)
-  end
- end]]
- 
  
  -- update peep's movement
  for p in all(peeps) do
   if p.path != nil and p.path[1]!=nil then
-  --nearestp=p.path
-  --for sq in all(p.path) do
-  -- tix,tiy=wxy(sq)
-  --end
-  
-   --dy = p.ty-p.y
    local tix,tiy=wxy(p.path[1])
    local tx,ty=tix*8,tiy*8
 	  local dx,dy = tx-p.x,ty-p.y
@@ -166,7 +154,6 @@ function _update()
      p.y += dy
     end
    end
-   
   end
  end
  
@@ -209,7 +196,7 @@ function _draw()
 	 else
  	 circfill(peeps[i].x+3,peeps[i].y+3,2,4)
 	 end
-	 circ(peeps[i].tx+3,peeps[i].ty+3,2,15)
+	 --circ(peeps[i].tx+3,peeps[i].ty+3,2,15)
  end
  
  --draw paths
@@ -218,7 +205,13 @@ function _draw()
   if path != nil then
    for i=1,#path do
     tix,tiy=wxy(path[i])
-    spr(0,tix*8,tiy*8)
+    --draw goal differently
+    if i==#path then
+     circ(tix*8+3,tiy*8+3,2,15)
+    else
+     circ(tix*8+3,tiy*8+3,1,15)
+     --spr(1,tix*8,tiy*8)
+    end
    end
   end
  end
@@ -237,6 +230,8 @@ function _draw()
  
  
 	--debug
+ color(15)
+ 
  print(#selected)
  --debug_print_mouse()
  print("cam "..camx..","..camy)
@@ -254,8 +249,12 @@ function _draw()
  then print("wall") 
  else print("clear") end
 
- if (printblocked) then print("blocked") end
- 
+ msglen-=1
+ if (msglen>0) then print(msgtext) end
+
+ for f in all(forbidden) do
+  print(f)
+ end
 end
 -->8
 --util
@@ -336,8 +335,13 @@ function pinrect(p, x0,y0, x1,y1)
  miny=min(y0,y1)
  maxx=max(x0,x1)
  maxy=max(y0,y1)
- return p.x>minx and p.x<maxx
-    and p.y>miny and p.y<maxy
+ if p.x and p.y then
+  return p.x>minx and p.x<maxx
+     and p.y>miny and p.y<maxy
+ else
+  return p[1]>minx and p[1]<maxx
+     and p[2]>miny and p[2]<maxy
+ end
 end
 -->8
 --mouse
@@ -399,12 +403,12 @@ end
 worldx = 14
 worldy = 14
 world = {
-1,0,0,0,0,0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0,0,1,0,0,
-0,0,0,1,0,0,0,0,0,0,0,1,0,1,
-0,0,0,0,0,0,0,0,0,0,0,1,0,1,
-0,0,0,0,0,0,0,0,0,0,0,1,0,1,
+1,0,0,0,0,0,0,0,0,1,1,1,1,1,
+0,0,0,0,0,0,0,0,0,1,0,0,0,1,
+0,0,0,0,0,0,0,0,0,1,0,1,0,1,
+0,0,0,1,0,0,0,0,0,1,0,1,0,1,
+0,0,0,0,0,0,0,0,0,1,0,1,0,1,
+0,0,0,0,0,0,0,0,0,1,0,1,0,1,
 0,0,0,0,0,0,0,0,0,0,0,1,1,1,
 0,0,0,0,1,1,1,1,1,0,0,0,0,0,
 0,0,0,0,1,0,0,1,0,0,0,0,0,0,
@@ -470,6 +474,11 @@ end
 
 --takes 1d index
 function wallat(index)
+ if forbidden then
+  if has(forbidden,index) then
+   return true
+  end
+ end
  return wiswall(wget(index))
 end
 
@@ -509,7 +518,18 @@ function pathfind(startvec, goalvec)
  print("pathing from "..start.." to "..goal)
  
  if start==goal then return {} end
- if wallat(goal) then return {} end --safety, shouldn't even call if this is the case
+ 
+ --if goal is wall, try using a neighbor as a goal instead
+ --if wallat(goal) then return {} end --safety, shouldn't even call if this is the case
+ if wallat(goal) then
+  local neighbors = wneighbors(goal)
+  for n in all(neighbors) do
+   if not wallat(n) then
+    goal = n
+    break
+   end
+  end
+ end
 
  -- list of tuples of {index,priority}
  -- kept in order of priority
@@ -610,8 +630,8 @@ __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00077000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00077000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
