@@ -1,0 +1,143 @@
+
+transposing
+
+shift 2  +1 semitone
+shift m  -1 semitone
+(all relative to C which is Q)
+(so shift w is +2 semitones, etc)
+
+
+//-----------------------
+
+
+3/4 time
+
+take speed *3/4 
+set new blank channel with that speed
+it will end when that channel reaches end
+
+//-----------------------
+
+check if point in rect
+
+function pinrect(p,r)
+ return p.x>r.x and p.x<r.x+r.w
+    and p.y>r.y and p.y<r.y+r.h
+end
+
+
+function pinrect(p, x0,y0, x1,y1)
+ minx=min(x0,x1)
+ miny=min(y0,y1)
+ maxx=max(x0,x1)
+ maxy=max(y0,y1)
+ return p.x>minx and p.x<maxx
+    and p.y>miny and p.y<maxy
+end
+
+
+//-----------------------
+
+https://pico-8.fandom.com/wiki/Centering_Text
+
+textlabel="this is some cool text!!!"
+ 
+function hcenter(s)
+  -- screen center minus the
+  -- string length times the 
+  -- pixels in a char's width,
+  -- cut in half
+  return 64-#s*2
+end
+ 
+function vcenter(s)
+  -- screen center minus the
+  -- string height in pixels,
+  -- cut in half
+  return 61
+end
+ 
+function _draw()
+  cls()
+  print(textlabel,hcenter(textlabel),vcenter(textlabel),8)
+end
+
+
+//--------------------
+
+
+--draws 4x4 tile
+--takes id with .x
+--where x is the quadrant to draw
+--0:tl 1:tr 2:bl 3:br
+--eg: subspr(54.3,..) will
+--draw br quad of sprite 54
+function subspr2(id,x,y)
+ clip(x,y,4,4)
+ if id-flr(id)== 0 then spr(id,x  ,y  ) end
+ if id-flr(id)==.1 then spr(id,x-4,y  ) end
+ if id-flr(id)==.2 then spr(id,x  ,y-4) end
+ if id-flr(id)==.3 then spr(id,x-4,y-4) end 
+ clip()
+end
+
+
+//--------------------
+
+
+--inclusive (low<=result<=high)
+--remove +1 for low<=result<high
+function rnd_between(low,high)
+ return flr(rnd(high-low+1))+low
+end
+
+
+//--------------------
+
+
+--mirror x value across screen
+--optional w for mirroring sprites of width w
+--w is same as like mir(x+w/2)-w/2
+function mir(x,w)
+ if w!=nil then x+=w/2 end
+ x-=64
+ x*=-1
+ x+=64
+ if w!=nil then x-=w/2 end
+ return x
+end
+
+//-------------------
+
+
+--recursive deep copy
+--works on non-tables too
+function copy(o)
+ local c
+ if type(o) == 'table' then
+  c = {}
+  for k, v in pairs(o) do
+   c[k] = copy(v)
+  end
+  else
+   c = o
+ end
+ return c
+end
+
+//-------------------
+
+check if array contains
+
+function has(array, value)
+ if type(array) == 'table' then 
+  for i=1,#array do
+   if array[i]==value then return true end
+  end
+ end
+ return false
+end
+
+
+
+
