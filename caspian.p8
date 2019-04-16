@@ -57,7 +57,8 @@ function _update()
  rec={px,py,px+16,py+16}
  if not eq(rec,lastrec) then
   curves=curves_in_rect(rec)
-  tmap=gen_map(rec,curves)
+--  tmap=gen_map(curves)
+  --tmap=rough_polygons(rec,curves)
  end
  lastrec=rec
 
@@ -69,7 +70,16 @@ function _draw()
  
  camera(cx,cy)
  
+ tmap={}
+ flipintri(tmap,{
+  {30,30},
+  {80,64},
+  {64,100}
+  })
+  
  draw_map(tmap)
+ 
+ print(#tmap)
  
  rect(rec[1],rec[2],rec[3],rec[4])
  
@@ -99,10 +109,6 @@ function _draw()
  print("ram "..flr(kbs).."k "..bts.."b (of 2048k)")
 -- print("ram b  "..bts)
  
- countk = 0
- for k,v in pairs(tilemap) do
-  countk+=1
- end
  if (curves) print(#curves)
  print(cx.." "..cy)
  
@@ -306,6 +312,7 @@ end
 tile_land=1
 tile_water=0
 
+gmap={}
 
 function inrect(r, p)
  return p[1]>=r[1] and
@@ -334,10 +341,112 @@ function curves_in_rect(r)
 end
 
 
-tilemapw=16
-tilemaph=16
-function gen_map(r,curves)
- local posx,posy=r[1],r[2]
+function flipintri(resmap,t)
+ 
+ local p0=t[1]
+ local p1=t[2]
+ local p2=t[3]
+ 
+ line(p0[1],p0[2],p1[1],p1[2])
+ line(p0[1],p0[2],p2[1],p2[2])
+ line(p1[1],p1[2],p2[1],p2[2])
+ 
+ --order verts from top to bottom
+ local topv = 0
+ local miny = p0[2]
+ if (p1[2]<miny) topv = 1 miny = p1[2]
+ if (p2[2]<miny) topv = 2 miny = p2[2]
+
+ local botv = 0
+ local maxy = p0[2]
+ if (p1[2]>maxy) botv = 1 maxy = p1[2]
+ if (p2[2]>maxy) botv = 2 maxy = p2[2]
+
+ local midv = 0;
+ if (topv != 2 and botv != 2) midv = 2 midy=p2[1]
+ if (topv != 1 and botv != 1) midv = 1 midy=p1[1]
+ if (topv != 0 and botv != 0) midv = 0 midy=p0[1]
+
+ topv+=1 --convert to 1-based
+ botv+=1 
+ midv+=1
+
+ local hyp={t[topv], t[botv]}
+ local top={t[topv], t[midv]}
+ local bot={t[midv], t[botv]}
+
+	--each line in the form
+	--x=ax+b
+ local ha=(hyp[2][1]-hyp[1][1])/(hyp[2][2]-hyp[1][2])
+ local hb=hyp[1][1] - ha*hyp[1][2]
+ 
+ local ta=(top[2][1]-top[1][1])/(top[2][2]-top[1][2])
+ local tb=top[1][1] - ta*top[1][2]
+ 
+ local ba=(bot[2][1]-bot[1][1])/(bot[2][2]-bot[1][2])
+ local bb=bot[1][1] - ba*bot[1][2]
+
+ local hypleft = true
+ if (t[midv][1] > t[botv][1]) hypleft=false
+
+ local starty=ceil(t[topv][2])
+ local endy=ceil(t[botv][2])
+ 
+ for y=starty,endy do
+  local minx=0
+  local maxx=0
+  if y<t[midv][2] then
+   local hypx=ceil(ha*y+hb)
+   local topx=ceil(ta*y+tb)
+   if (hypx<topx) minx=hypx maxx=topx
+   if (hypx>=topx) minx=topx maxx=hypx
+  else
+   local hypx=ceil(ha*y+hb)
+   local botx=ceil(ba*y+bb)
+   if (hypx<botx) minx=hypx maxx=botx
+   if (hypx>=botx) minx=botx maxx=hypx
+  end
+  
+  
+  -- limit to size of map/chunk
+  if (minx<0) minx=0
+  if (maxx<0) maxx=0
+  if (minx>128) minx=128
+  if (maxx>128) maxx=128
+  
+  
+  for x=minx,maxx do
+   --if resmap[{x,y}] then
+    resmap[{x,y}]=tile_land
+   --else
+   -- resmap[{x,y}]=tile_water
+   --end
+  end
+  
+ end
+ 
+ --return resmap
+
+end
+
+function rough_polygons(r,curves)
+
+ commonp={r[1]+8,r[2]+8} --approx center
+ 
+	res = {}
+	if (not curves) return result
+	num_curves = #curves
+	for i=1,num_curves do
+	 p1=curves[i][1]
+	 p2=curves[i][2]
+	 p3=curves[i][3]
+	 flipintri(res,{p1,p2,p3})
+	end
+ return res
+end
+
+
+function gen_map(curves)
 	result = {}
 	if (not curves) return result
 	num_curves = #curves
@@ -366,43 +475,6 @@ end
 
 ----
 
-tilemap={}
-
-
-function draw_tilemap()
- for p,v in pairs(tilemap) do
-  if (v==tile_land) then
-   --spr(1,k[1],k[2])
-   pset(p[1],p[2])
-  end
- end
-end
-
-function create_tilemap()
-
-	x0,y0 = 10,10
-	x1,y1 = gx1,gy1
-	x2,y2 = 64,64
-	--line(x0,y0,x2,y2)
-	--line(x0,y0,x1,y1)
-	--line(x1,y1,x2,y2)
-	--plotbez(x0,y0,x1,y1,x2,y2)
-	local temp={}
-	num_curves = (#pts-1)/2
-	num_curves = 40
-	for i=0,num_curves do
-	 p1=pts[i*2+1]
-	 p2=pts[i*2+2]
-	 p3=pts[i*2+3]
-	 plotbez(
-	  tilemap,
-	  p1[1],p1[2],
-	  p2[1],p2[2],
-	  p3[1],p3[2])
-	end
-
-end
-
 --t from 0 to 1
 --(de casteljua's algo)
 function p_at_t(t, x0,y0,x1,y1,x2,y2)
@@ -427,82 +499,18 @@ function plotbez(
 
 end
 
-
---(incomplete, need to split curve into segments where gradient sign doesn't change)
---http://members.chello.at/~easyfilter/bresenham.html
-function plotbez_old(x0,y0,x1,y1,x2,y2)
-                            
-  local sx,sy = x2-x1, y2-y1
-  local xx,yy = x0-x1, y0-y1
-  local dx,dy,err
-  local cur = xx*sy-yy*sx
-
-  assert(xx*sx<=0 and yy*sy<=0)
-
- 	--start with longer
-  if (sx*flr(sx)+sy*flr(sy) > xx*xx+yy*yy) then
-    --swap end points
-    x2,y2=x0,y0
-    x0,y0=sx+x1,sy+y1
-    cur=-cur
-  end
-  if (cur != 0) then
-    xx += sx
-    if x0<x2 then sx=1 else sx=-1 end
-    xx *= sx
-  
-    yy += sy
-    if y0<y2 then sy=1 else sy=-1 end
-    yy *= sy
-    
-    xy = 2*xx*yy
-    xx *= xx
-    yy *= yy
-    
-    if (cur*sx*sy < 0) then      xx = -xx
-      yy = -yy
-      xy = -xy
-      cur = -cur
-    end
-    
-    dx = 4.0*sy*cur*(x1-x0)+xx-xy;
-    dy = 4.0*sx*cur*(y0-y1)+yy-xy;
-    xx += xx
-    yy += yy
-    err = dx+dy+xy
-    
-    local first = true
-    while dy < dx or first do
-      first = false
-      pset(x0,y0)
-      if x0==x2 and y0==y2 then return end
-      y1 = 2*err < dx
-      if 2*err > dy then 
-        x0 += sx
-        dx -= xy
-        dy += yy
-        err += dy
-      end --x step
-      if     y1     then 
-        y0 += sy
-        dy -= xy
-        dx += xx
-        err += dx
-      end --y step
-    end
-  end
-  line(x0,y0, x2,y2)
-end
+-->8
+--raw world data
 
 
 
---to iterate over every curve:
 --[[
-	num_curves = (#pts-1)/2
-	for i=0,num_curves-1 do
-	 p1=pts[i*2+1]
-	 p2=pts[i*2+2]
-	 p3=pts[i*2+3]
+ -- to iterate over all curves
+	num_curves = #curves
+	for i=1,num_curves do
+	 p1=curves[i][1]
+	 p2=curves[i][2]
+	 p3=curves[i][3]
 ]]
 
 pts = {
