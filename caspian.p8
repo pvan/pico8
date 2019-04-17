@@ -54,14 +54,20 @@ function _update()
  if (cx+128>256) cx=256-128
  if (cy+128>256) cy=256-128
  
+
  rec={px,py,px+16,py+16}
  if not eq(rec,lastrec) then
   curves=curves_in_rect(rec)
---  tmap=gen_map(curves)
+  
+  tmap=gen_map(curves,rec)
+  fill_map(tmap)
+  
   --tmap=rough_polygons(rec,curves)
+  
  end
  lastrec=rec
-
+ 
+ 
 end
 
 function _draw()
@@ -70,16 +76,21 @@ function _draw()
  
  camera(cx,cy)
  
+ 
+ 
+ 
+ --[[
  tmap={}
  flipintri(tmap,{
   {30,30},
   {80,64},
   {64,100}
   })
+  ]]
   
- draw_map(tmap)
+  
+ draw_map(tmap,{px,py})
  
- print(#tmap)
  
  rect(rec[1],rec[2],rec[3],rec[4])
  
@@ -103,16 +114,17 @@ function _draw()
  print("tile"..tostr(flr(player.x/8))..","..tostr(flr(player.y/8)))
 ]]
  camera()
+ 
+
+ 
  print("fps "..stat(7).."/"..stat(8))
  kbs=stat(0)
  bts=(kbs-flr(kbs))*1024
  print("ram "..flr(kbs).."k "..bts.."b (of 2048k)")
--- print("ram b  "..bts)
- 
- if (curves) print(#curves)
- print(cx.." "..cy)
+
  
 end
+
 -->8
 --world
 
@@ -283,6 +295,35 @@ end
 -->8
 --util
 
+
+function xy2s(x,y) 
+ return x.." "..y
+end
+function p2s(p)
+ return xy2s(p[1],p[2])
+end
+
+function s2xy(s)
+ for i=1,#s do
+  if sub(s,i,i)==" " then
+   return sub(s,1,i-1), sub(s,i+1)
+  end
+ end
+end
+
+
+function round(f)
+ return flr(f+0.5)
+end
+
+function pinrect(p,r)
+ return p[1]>=r[1] and
+        p[2]>=r[2] and
+        p[1]<r[3] and
+        p[2]<r[4]
+end
+
+
 --round to nearest int
 function round(num)
 
@@ -309,8 +350,10 @@ end
 -->8
 --bezier
 
-tile_land=1
 tile_water=0
+tile_land=1
+tile_fill_water=2
+tile_fill_land=3
 
 gmap={}
 
@@ -341,112 +384,131 @@ function curves_in_rect(r)
 end
 
 
-function flipintri(resmap,t)
- 
- local p0=t[1]
- local p1=t[2]
- local p2=t[3]
- 
- line(p0[1],p0[2],p1[1],p1[2])
- line(p0[1],p0[2],p2[1],p2[2])
- line(p1[1],p1[2],p2[1],p2[2])
- 
- --order verts from top to bottom
- local topv = 0
- local miny = p0[2]
- if (p1[2]<miny) topv = 1 miny = p1[2]
- if (p2[2]<miny) topv = 2 miny = p2[2]
+-- these all kind of assume
+-- that a "map" is 0,0 to w,h
+--need these since we can't use
+--{x,y} as an index
+--(it's a table and therefore a reference type)
+mapw=16
+maph=16
+--[[
+-- return tile x and y for world index i
+function i2xy(i) 
+ local y = ceil(i/mapw)
+ local x = i - (y-1)*mapw
+ return x,y
+end
+function i2p(i)
+ local x,y=i2xy(i)
+ return {x,y}
+end
+--return 1d index for tile index x,y
+function xy2i(x,y)
+ return x+((y-1)*mapw)
+end
+function p2i(p)
+ return xy2i(p[1],p[2])
+end]]
 
- local botv = 0
- local maxy = p0[2]
- if (p1[2]>maxy) botv = 1 maxy = p1[2]
- if (p2[2]>maxy) botv = 2 maxy = p2[2]
+function mapset(m,x,y,t)
+ --if x>0 and y>0 and x<=mapw and y<=maph then
+  m[xy2s(x,y)]=t
+ --end
+end
+--[[
+function mapget(m,x,y)
+ return m[xy2s(x,y)]
+end]]
 
- local midv = 0;
- if (topv != 2 and botv != 2) midv = 2 midy=p2[1]
- if (topv != 1 and botv != 1) midv = 1 midy=p1[1]
- if (topv != 0 and botv != 0) midv = 0 midy=p0[1]
 
- topv+=1 --convert to 1-based
- botv+=1 
- midv+=1
-
- local hyp={t[topv], t[botv]}
- local top={t[topv], t[midv]}
- local bot={t[midv], t[botv]}
-
-	--each line in the form
-	--x=ax+b
- local ha=(hyp[2][1]-hyp[1][1])/(hyp[2][2]-hyp[1][2])
- local hb=hyp[1][1] - ha*hyp[1][2]
- 
- local ta=(top[2][1]-top[1][1])/(top[2][2]-top[1][2])
- local tb=top[1][1] - ta*top[1][2]
- 
- local ba=(bot[2][1]-bot[1][1])/(bot[2][2]-bot[1][2])
- local bb=bot[1][1] - ba*bot[1][2]
-
- local hypleft = true
- if (t[midv][1] > t[botv][1]) hypleft=false
-
- local starty=ceil(t[topv][2])
- local endy=ceil(t[botv][2])
- 
- for y=starty,endy do
-  local minx=0
-  local maxx=0
-  if y<t[midv][2] then
-   local hypx=ceil(ha*y+hb)
-   local topx=ceil(ta*y+tb)
-   if (hypx<topx) minx=hypx maxx=topx
-   if (hypx>=topx) minx=topx maxx=hypx
-  else
-   local hypx=ceil(ha*y+hb)
-   local botx=ceil(ba*y+bb)
-   if (hypx<botx) minx=hypx maxx=botx
-   if (hypx>=botx) minx=botx maxx=hypx
+--map at 0,0,mapw,maph
+function flood_fill(m,p,t,nt)
+ local x,y = p[1],p[2]
+ if x>0 and y>0 and 
+    x<=mapw and y<=maph 
+ then
+  if m[p2s(p)]==nil
+  or m[p2s(p)]==t
+  then
+   m[p2s(p)]=nt
+   flood_fill(m,{x-1,y},t,nt)
+   flood_fill(m,{x+1,y},t,nt)
+   flood_fill(m,{x,y-1},t,nt)
+   flood_fill(m,{x,y+1},t,nt)
   end
-  
-  
-  -- limit to size of map/chunk
-  if (minx<0) minx=0
-  if (maxx<0) maxx=0
-  if (minx>128) minx=128
-  if (maxx>128) maxx=128
-  
-  
-  for x=minx,maxx do
-   --if resmap[{x,y}] then
-    resmap[{x,y}]=tile_land
-   --else
-   -- resmap[{x,y}]=tile_water
-   --end
+ end
+end
+
+function fill_map(m) 
+--[[
+ for i,t in pairs(m) do
+  if t==tile_fill_land then
+   flood_fill(m,i2p(i),tile_fill_land,tile_land)
   end
-  
+  if t==tile_fill_water then
+   --flood_fill(m,i2p(i),file_fill_water,tile_water)
+  end
+ end]]
+
+ for x=1,16 do
+  for y=1,16 do
+   if m[xy2s(x,y)]==tile_fill_land then
+    --flood_fill(m,{x,y},tile_fill_land,tile_land)
+   end
+   if m[xy2s(x,y)]==file_fill_water then
+    --flood_fill(m,{x,y},file_fill_water,tile_water)
+   end
+  end
  end
  
- --return resmap
-
 end
 
-function rough_polygons(r,curves)
+--[[
+function mark_fills(m,c)
 
- commonp={r[1]+8,r[2]+8} --approx center
- 
-	res = {}
-	if (not curves) return result
-	num_curves = #curves
-	for i=1,num_curves do
-	 p1=curves[i][1]
-	 p2=curves[i][2]
-	 p3=curves[i][3]
-	 flipintri(res,{p1,p2,p3})
+	if (not c) return
+	for i=1,#c do
+	 p1=c[i][1]
+	 p2=c[i][2]
+	 p3=c[i][3]
+	 
+	 local peak=
+	  p_at_t(
+	   0.5, 
+	   p1[1],p1[2],
+	   p2[1],p2[2],
+	   p3[1],p3[2])
+	   
+	 dx=p3[1]-p1[1]
+	 dy=p3[2]-p1[2]
+	 
+	 -- just need single pixel steps
+	 if (dx>0) dx=1  --if zero,
+	 if (dx<0) dx=-1 --leave zero
+	 if (dy>0) dy=1 
+	 if (dy<0) dy=-1
+	 
+	 dx,dy = -dy,dx --rotate 90 (funky since +y is down)
+	   
+	 peak={peak[1]+dx,peak[2]+dy}
+	 m[p2i(peak)]=tile_fill_land
+	 
+	 --or should we at every point??
+	 --[[
+	 pset(peak[1]+dx,peak[2]+dy,11)
+	 pset(p1[1]+dx,p1[2]+dy,11)
+	 pset(p3[1]+dx,p3[2]+dy,11)
+	 color(6)
+	 ]]
+	 
 	end
- return res
+
 end
+]]
 
 
-function gen_map(curves)
+
+function gen_map(curves,r)
 	result = {}
 	if (not curves) return result
 	num_curves = #curves
@@ -456,6 +518,7 @@ function gen_map(curves)
 	 p3=curves[i][3]
 	 plotbez(
 	  result,
+	  r,
 	  p1[1],p1[2],
 	  p2[1],p2[2],
 	  p3[1],p3[2])
@@ -463,12 +526,30 @@ function gen_map(curves)
 	return result
 end
 
-function draw_map(tmap)
- if (not tmap) return
- for p,v in pairs(tmap) do
-  if (v==tile_land) then
+function draw_map(m,r)
+ if (not m) return
+ for s,t in pairs(m) do
+  local x,y = s2xy(s)
+  x+=r[1]
+  y+=r[2]
+  if t==tile_land then
    --spr(1,p[1]*8,p[2]*8)
-   pset(p[1],p[2])
+   pset(x,y)
+  end
+  if t==tile_fill_land then
+   --spr(1,p[1]*8,p[2]*8)
+   pset(x,y,11)
+   color(6)
+  end
+  if t==tile_water then
+   --spr(1,p[1]*8,p[2]*8)
+   pset(x,y,12)
+   color(6)
+  end
+  if t==tile_fill_water then
+   --spr(1,p[1]*8,p[2]*8)
+   pset(x,y,12)
+   color(6)
   end
  end
 end
@@ -484,17 +565,53 @@ function p_at_t(t, x0,y0,x1,y1,x2,y2)
 end
 
 function plotbez(
-  tilemap,
+  tilemap, rec,
   x0,y0,x1,y1,x2,y2)
 
- local lastp = {x0,y0}
+
+ dx=x2-x0
+ dy=y2-y0
+ assert(dx<130) --sanity overflow check
+ assert(dy<130)
+ mag=sqrt(dx*dx+dy*dy)
+ nx=dx/mag
+ ny=dy/mag
+ nx,ny=-ny,nx --rot 90 right
+ 
+ --gp={nx,ny}
+ 
+ --[[
+ -- just need single pixel steps
+ if (dx>0) dx=1  --if zero,
+ if (dx<0) dx=-1 --leave zero
+ if (dy>0) dy=1 
+ if (dy<0) dy=-1
+ dx,dy = -dy,dx --rotate 90 (funky since +y is down)
+	]]   
+	   
  steps=50
  for t = 0,1,(1/steps) do
   local p = p_at_t(t, x0,y0,x1,y1,x2,y2)
   --line(p[1],p[2],lastp[1],lastp[2])
   --lastp = p
-  tilemap[p]=tile_land
+  
+  --if (#gp<10) add(gp,p)
+  
+  local lx = round(p[1]-rec[1])
+  local ly = round(p[2]-rec[2])
+  mapset(tilemap,lx,ly,tile_land)
+  --[[
+    ]]
+  local x = round(lx+nx)
+  local y = round(ly+ny)
+  mapset(tilemap,x,y,tile_fill_land)
+
+  local x = round(lx-nx)
+  local y = round(ly-ny)
+  mapset(tilemap,x,y,tile_fill_water)
+
   --pset(p[1],p[2])
+  
  end 
 
 end
@@ -774,6 +891,119 @@ pts = {
 {253, 61},
 {255, 60},
 }
+-->8
+--tri method
+
+
+
+function flipintri(resmap,t)
+ 
+ local p0=t[1]
+ local p1=t[2]
+ local p2=t[3]
+ 
+ line(p0[1],p0[2],p1[1],p1[2])
+ line(p0[1],p0[2],p2[1],p2[2])
+ line(p1[1],p1[2],p2[1],p2[2])
+ 
+ --order verts from top to bottom
+ local topv = 0
+ local miny = p0[2]
+ if (p1[2]<miny) topv = 1 miny = p1[2]
+ if (p2[2]<miny) topv = 2 miny = p2[2]
+
+ local botv = 0
+ local maxy = p0[2]
+ if (p1[2]>maxy) botv = 1 maxy = p1[2]
+ if (p2[2]>maxy) botv = 2 maxy = p2[2]
+
+ local midv = 0;
+ if (topv != 2 and botv != 2) midv = 2 midy=p2[1]
+ if (topv != 1 and botv != 1) midv = 1 midy=p1[1]
+ if (topv != 0 and botv != 0) midv = 0 midy=p0[1]
+
+ topv+=1 --convert to 1-based
+ botv+=1 
+ midv+=1
+
+ local hyp={t[topv], t[botv]}
+ local top={t[topv], t[midv]}
+ local bot={t[midv], t[botv]}
+
+	--each line in the form
+	--x=ax+b
+ local ha=(hyp[2][1]-hyp[1][1])/(hyp[2][2]-hyp[1][2])
+ local hb=hyp[1][1] - ha*hyp[1][2]
+ 
+ local ta=(top[2][1]-top[1][1])/(top[2][2]-top[1][2])
+ local tb=top[1][1] - ta*top[1][2]
+ 
+ local ba=(bot[2][1]-bot[1][1])/(bot[2][2]-bot[1][2])
+ local bb=bot[1][1] - ba*bot[1][2]
+
+ local hypleft = true
+ if (t[midv][1] > t[botv][1]) hypleft=false
+
+ local starty=ceil(t[topv][2])
+ local endy=ceil(t[botv][2])
+ 
+ for y=starty,endy do
+  local minx=0
+  local maxx=0
+  if y<t[midv][2] then
+   local hypx=ceil(ha*y+hb)
+   local topx=ceil(ta*y+tb)
+   if (hypx<topx) minx=hypx maxx=topx
+   if (hypx>=topx) minx=topx maxx=hypx
+  else
+   local hypx=ceil(ha*y+hb)
+   local botx=ceil(ba*y+bb)
+   if (hypx<botx) minx=hypx maxx=botx
+   if (hypx>=botx) minx=botx maxx=hypx
+  end
+  
+  
+  -- limit to size of map/chunk
+  if (minx<0) minx=0
+  if (maxx<0) maxx=0
+  if (minx>128) minx=128
+  if (maxx>128) maxx=128
+  
+  
+  for x=minx,maxx do
+   if resmap[{x,y}] then
+    if resmap[{x,y}]==tile_water then
+     resmap[{x,y}]=tile_land
+    else
+     resmap[{x,y}]=tile_water
+    end
+   else
+    resmap[{x,y}]=tile_land
+   end
+  end
+  
+ end
+ 
+ --return resmap
+
+end
+
+function rough_polygons(r,curves)
+
+ commonp={r[1]+8,r[2]+8} --approx center
+ 
+	res = {}
+	if (not curves) return result
+	num_curves = #curves
+	for i=1,num_curves do
+	 p1=curves[i][1]
+	 p2=commonp
+	 p3=curves[i][3]
+	 flipintri(res,{p1,p2,p3})
+	end
+ return res
+end
+
 __gfx__
 0000000033333333dddddddd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000033333333dddddd6600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
