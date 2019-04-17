@@ -33,16 +33,18 @@ function _update()
  if btnp(⬆️) then gy1-=2 end
  if btnp(⬇️) then gy1+=2 end
  ]]
+ if (btnp(❎)) gtoggle=(gtoggle+1)%maxtog
+ 
  if btn(🅾️) then
   if btn(⬅️) then cx-=2 end
   if btn(➡️) then cx+=2 end
   if btn(⬆️) then cy-=2 end
   if btn(⬇️) then cy+=2 end
  else
-  if btn(⬅️) then px-=2 end
-  if btn(➡️) then px+=2 end
-  if btn(⬆️) then py-=2 end
-  if btn(⬇️) then py+=2 end
+  if btn(⬅️) then px-=1 end
+  if btn(➡️) then px+=1 end
+  if btn(⬆️) then py-=1 end
+  if btn(⬇️) then py+=1 end
  end
  if (px<cx) cx=px
  if (py<cy) cy=py
@@ -56,15 +58,16 @@ function _update()
  
 
  rec={px,py,px+16,py+16}
- if not eq(rec,lastrec) then
-  curves=curves_in_rect(rec)
+ bigrec={rec[1]-5,rec[2]-5,rec[3]+5,rec[4]+5}
+ --if not eq(rec,lastrec) then
+  curves=curves_in_rect(bigrec)
   
   tmap=gen_map(curves,rec)
   fill_map(tmap)
   
   --tmap=rough_polygons(rec,curves)
   
- end
+ --end
  lastrec=rec
  
  
@@ -121,10 +124,17 @@ function _draw()
  kbs=stat(0)
  bts=(kbs-flr(kbs))*1024
  print("ram "..flr(kbs).."k "..bts.."b (of 2048k)")
+ print("cpu "..stat(1))
+ print("sys "..stat(2))
 
+ --for stp in all(gsteps) do
+ -- print(stp)
+ --end
  
 end
 
+gtoggle=0
+maxtog=2
 -->8
 --world
 
@@ -354,8 +364,10 @@ tile_water=0
 tile_land=1
 tile_fill_water=2
 tile_fill_land=3
+tile_test=37
 
 gmap={}
+
 
 function inrect(r, p)
  return p[1]>=r[1] and
@@ -364,20 +376,41 @@ function inrect(r, p)
         p[2]<r[4]
 end
 
+
+function aabb_col(r1,r2)
+ return
+  r1[1]<r2[3] and r1[3]>r2[1] and
+  r1[2]<r2[4] and r1[4]>r2[2]
+end
+function tri_bb(t)
+ lt=min(min(t[1][1],t[2][1]),t[3][1])
+ rt=max(max(t[1][1],t[2][1]),t[3][1])
+ tp=min(min(t[1][2],t[2][2]),t[3][2])
+ bt=max(max(t[1][2],t[2][2]),t[3][2])
+ return {lt,tp,rt,bt} 
+end
+function tri_cuts_rect(r,t)
+ --just check the tri bounding box lol
+ return aabb_col(r,tri_bb(t))
+end
+
+
 function curves_in_rect(r)
  result={} 
 	num_curves = (#pts-1)/2
-	first =true
 	for i=0,num_curves-1 do
 	 p1=pts[i*2+1]
 	 p2=pts[i*2+2]
 	 p3=pts[i*2+3]
-	 if (first) ppp=p1 first=false inrecres=inrect(r,p1)
+	 t={p1,p2,p3}
+--[[
 	 if inrect(r,p1) 
 	 or inrect(r,p2) 
-	 or inrect(r,p3) 
+	 or inrect(r,p3)
+	 ]]
+	 if tri_cuts_rect(r,t)
  	then
- 	 add(result,{p1,p2,p3})
+ 	 add(result,t)
 	 end
 	end
 	return result
@@ -415,6 +448,11 @@ function mapset(m,x,y,t)
   m[xy2s(x,y)]=t
  --end
 end
+function mapsetifnil(m,x,y,t)
+ if m[xy2s(x,y)]==nil then
+  mapset(m,x,y,t)
+ end
+end
 --[[
 function mapget(m,x,y)
  return m[xy2s(x,y)]
@@ -440,71 +478,42 @@ function flood_fill(m,p,t,nt)
 end
 
 function fill_map(m) 
---[[
- for i,t in pairs(m) do
-  if t==tile_fill_land then
-   flood_fill(m,i2p(i),tile_fill_land,tile_land)
-  end
-  if t==tile_fill_water then
-   --flood_fill(m,i2p(i),file_fill_water,tile_water)
-  end
- end]]
-
+if gtoggle==1 then
  for x=1,16 do
   for y=1,16 do
-   if m[xy2s(x,y)]==tile_fill_land then
-    --flood_fill(m,{x,y},tile_fill_land,tile_land)
+   if m[xy2s(x,y)]!=nil then
+    --if m[xy2s(x,y)]==tile_fill_land then
+     --flood_fill(m,{x,y},tile_fill_land,tile_land)
+    --end
+    if m[xy2s(x,y)]==tile_fill_water then
+     flood_fill(m,{x,y},tile_fill_water,tile_water)
+    end
    end
-   if m[xy2s(x,y)]==file_fill_water then
-    --flood_fill(m,{x,y},file_fill_water,tile_water)
+  end
+ end
+ 
+ for x=1,16 do
+  for y=1,16 do
+   if m[xy2s(x,y)]==nil 
+   or m[xy2s(x,y)]==tile_fill_land
+   then
+    m[xy2s(x,y)]=tile_land
    end
   end
  end
  
 end
-
---[[
-function mark_fills(m,c)
-
-	if (not c) return
-	for i=1,#c do
-	 p1=c[i][1]
-	 p2=c[i][2]
-	 p3=c[i][3]
-	 
-	 local peak=
-	  p_at_t(
-	   0.5, 
-	   p1[1],p1[2],
-	   p2[1],p2[2],
-	   p3[1],p3[2])
-	   
-	 dx=p3[1]-p1[1]
-	 dy=p3[2]-p1[2]
-	 
-	 -- just need single pixel steps
-	 if (dx>0) dx=1  --if zero,
-	 if (dx<0) dx=-1 --leave zero
-	 if (dy>0) dy=1 
-	 if (dy<0) dy=-1
-	 
-	 dx,dy = -dy,dx --rotate 90 (funky since +y is down)
-	   
-	 peak={peak[1]+dx,peak[2]+dy}
-	 m[p2i(peak)]=tile_fill_land
-	 
-	 --or should we at every point??
-	 --[[
-	 pset(peak[1]+dx,peak[2]+dy,11)
-	 pset(p1[1]+dx,p1[2]+dy,11)
-	 pset(p3[1]+dx,p3[2]+dy,11)
-	 color(6)
-	 ]]
-	 
-	end
-
+ --[[
+ --leftover become land
+ for x=1,16 do
+  for y=1,16 do
+   if m[xy2s(x,y)]==nil then
+    m[xy2s(x,y)]=tile_land
+   end
+  end
+ end]]
+ 
 end
-]]
 
 
 
@@ -533,23 +542,22 @@ function draw_map(m,r)
   x+=r[1]
   y+=r[2]
   if t==tile_land then
-   --spr(1,p[1]*8,p[2]*8)
    pset(x,y)
   end
   if t==tile_fill_land then
-   --spr(1,p[1]*8,p[2]*8)
    pset(x,y,11)
    color(6)
   end
   if t==tile_water then
-   --spr(1,p[1]*8,p[2]*8)
    pset(x,y,12)
    color(6)
   end
   if t==tile_fill_water then
-   --spr(1,p[1]*8,p[2]*8)
    pset(x,y,12)
    color(6)
+  end
+  if t==tile_test then
+   pset(x,y,14)
   end
  end
 end
@@ -589,7 +597,10 @@ function plotbez(
  dx,dy = -dy,dx --rotate 90 (funky since +y is down)
 	]]   
 	   
- steps=50
+ steps=mag*1.2 -- rough approx
+ steps=min(50,mag*2)
+ --if (#gsteps<10) then add(gsteps,steps)
+ --else add(gsteps,steps) del(gsteps,gsteps[1]) end
  for t = 0,1,(1/steps) do
   local p = p_at_t(t, x0,y0,x1,y1,x2,y2)
   --line(p[1],p[2],lastp[1],lastp[2])
@@ -600,17 +611,20 @@ function plotbez(
   local lx = round(p[1]-rec[1])
   local ly = round(p[2]-rec[2])
   mapset(tilemap,lx,ly,tile_land)
-  --[[
-    ]]
+  --[[ ]]
   local x = round(lx+nx)
   local y = round(ly+ny)
-  mapset(tilemap,x,y,tile_fill_land)
+  mapsetifnil(tilemap,x,y,tile_land)
+  local x = round(lx+nx*2)
+  local y = round(ly+ny*2)
+  mapsetifnil(tilemap,x,y,tile_fill_land)
 
   local x = round(lx-nx)
   local y = round(ly-ny)
-  mapset(tilemap,x,y,tile_fill_water)
-
-  --pset(p[1],p[2])
+  mapsetifnil(tilemap,x,y,tile_water)
+  local x = round(lx-nx*2)
+  local y = round(ly-ny*2)
+  mapsetifnil(tilemap,x,y,tile_fill_water)--pset(p[1],p[2])
   
  end 
 
