@@ -10,9 +10,11 @@ function _init()
  
 end
 
-px,py=64,64
+px,py=550,160
+px,py=662,161
 
-cx,cy=0,0
+
+cx,cy=px-64,py-64
 
 lastrec={0,0,0,0}
 
@@ -48,36 +50,46 @@ function _update()
  end
  if (px<cx) cx=px
  if (py<cy) cy=py
- if (px+16>cx+128) cx=px-128+16
- if (py+16>cy+128) cy=py-128+16
+ if (px+32>cx+128) cx=px-128+32
+ if (py+32>cy+128) cy=py-128+32
  
- if (cx<0) cx=0
+ --[[if (cx<0) cx=0
  if (cy<0) cy=0
  if (cx+128>256) cx=256-128
- if (cy+128>256) cy=256-128
+ if (cy+128>256) cy=256-128]]
  
+ --for storing timing metrics
+ gtime={}
+ ltime={}
+ 
+ mapreset()
 
  rec={px,py,px+16,py+16}
  bigrec={rec[1]-5,rec[2]-5,rec[3]+5,rec[4]+5}
  --if not eq(rec,lastrec) then
+  add(gtime,{"pre",stat(1)})
   curves=curves_in_rect(bigrec)
-  
-  tmap=gen_map(curves,rec)
+  add(gtime,{"curv",stat(1)})
+  gen_map(curves,px,py)
+  add(gtime,{"gen",stat(1)})
   fill_map(tmap)
+  add(gtime,{"fil",stat(1)})
   
   --tmap=rough_polygons(rec,curves)
   
  --end
  lastrec=rec
  
- 
+ add(gtime,{"b4e",stat(1)}) 
 end
 
 function _draw()
 
+ add(gtime,{"ext",stat(1)})
  cls()
  
  camera(cx,cy)
+ add(gtime,{"cls",stat(1)})
  
  
  
@@ -90,10 +102,8 @@ function _draw()
   {64,100}
   })
   ]]
-  
-  
- draw_map(tmap,{px,py})
- 
+ draw_map({px,py})
+ add(gtime,{"drw",stat(1)})
  
  rect(rec[1],rec[2],rec[3],rec[4])
  
@@ -119,7 +129,6 @@ function _draw()
  camera()
  
 
- 
  print("fps "..stat(7).."/"..stat(8))
  kbs=stat(0)
  bts=(kbs-flr(kbs))*1024
@@ -127,11 +136,45 @@ function _draw()
  print("cpu "..stat(1))
  print("sys "..stat(2))
 
- --for stp in all(gsteps) do
- -- print(stp)
- --end
+	print("p:"..px..","..py)
+	print("c:"..cx..","..cy)
+	
+	lastt = 0
+	for i=1,#gtime do
+	 delta = gtime[i][2]-lastt
+	 print(gtime[i][1].." "..delta)
+	 lastt = gtime[i][2]
+	end
+
+	--[[
+	lastt = 0
+	for i=1,#ltime do
+	 delta = ltime[i][2]-lastt
+	 print(ltime[i][1].." "..delta)
+	 lastt = ltime[i][2]
+	end
+	]]
+	
+	
+	--[[
+	print(#gsteps)
+ for stp in all(gsteps) do
+  print(stp)
+ end
+ gsteps={}]]
+ 
+ --[[
+	print(#rolmsg)
+ for stp in all(rolmsg) do
+  print(stp)
+ end
+ rolmsg={}]]
+
  
 end
+
+gsteps={}
+rolmsg={}
 
 gtoggle=0
 maxtog=2
@@ -305,14 +348,14 @@ end
 -->8
 --util
 
-
+--to string method
+--(works outside map w/h)
 function xy2s(x,y) 
  return x.." "..y
 end
 function p2s(p)
  return xy2s(p[1],p[2])
 end
-
 function s2xy(s)
  for i=1,#s do
   if sub(s,i,i)==" " then
@@ -320,6 +363,28 @@ function s2xy(s)
   end
  end
 end
+
+
+--[[
+--(seems to only save ~.01% cpu over string method)
+--to int method
+--(only works in side map w/h)
+function s2xy(i) 
+ local y = ceil(i/mapw)
+ local x = i - (y-1)*mapw
+ return x,y
+end
+function i2p(i)
+ local x,y=s2xy(i)
+ return {x,y}
+end
+function xy2s(x,y)
+ return x+((y-1)*mapw)
+end
+function p2s(p)
+ return xy2i(p[1],p[2])
+end
+]]
 
 
 function round(f)
@@ -365,6 +430,7 @@ tile_land=1
 tile_fill_water=2
 tile_fill_land=3
 tile_test=37
+tile_nil=50
 
 gmap={}
 
@@ -403,11 +469,6 @@ function curves_in_rect(r)
 	 p2=pts[i*2+2]
 	 p3=pts[i*2+3]
 	 t={p1,p2,p3}
---[[
-	 if inrect(r,p1) 
-	 or inrect(r,p2) 
-	 or inrect(r,p3)
-	 ]]
 	 if tri_cuts_rect(r,t)
  	then
  	 add(result,t)
@@ -417,201 +478,277 @@ function curves_in_rect(r)
 end
 
 
--- these all kind of assume
--- that a "map" is 0,0 to w,h
---need these since we can't use
---{x,y} as an index
---(it's a table and therefore a reference type)
-mapw=16
-maph=16
---[[
--- return tile x and y for world index i
-function i2xy(i) 
- local y = ceil(i/mapw)
- local x = i - (y-1)*mapw
- return x,y
-end
-function i2p(i)
- local x,y=i2xy(i)
- return {x,y}
-end
---return 1d index for tile index x,y
-function xy2i(x,y)
- return x+((y-1)*mapw)
-end
-function p2i(p)
- return xy2i(p[1],p[2])
-end]]
+--not using atm tho we should
+--mapw=16
+--maph=16
 
-function mapset(m,x,y,t)
- --if x>0 and y>0 and x<=mapw and y<=maph then
-  m[xy2s(x,y)]=t
- --end
+mapaddr = 0x4300
+--poke(mapaddr+(x+y*16),t)
+--peek(mapaddr+(x+y*16))
+--replace 16 with w/h if neeed
+
+function mapreset()
+ memset(mapaddr,tile_nil,16*16)
 end
-function mapsetifnil(m,x,y,t)
- if m[xy2s(x,y)]==nil then
-  mapset(m,x,y,t)
+function mapsetsafe(x,y,t)
+	if x>=0 and x<16 and
+    y>=0 and y<16 then
+   poke(mapaddr+(x+y*16),t)
  end
 end
---[[
-function mapget(m,x,y)
- return m[xy2s(x,y)]
-end]]
+
+function mapsetsafeifnil(x,y,t)
+	if x>=0 and x<16 and
+    y>=0 and y<16 then
+  if peek(mapaddr+(x+y*16))==tile_nil then
+   poke(mapaddr+(x+y*16),t)
+  end
+ end
+end
+
+
 
 
 --map at 0,0,mapw,maph
-function flood_fill(m,p,t,nt)
- local x,y = p[1],p[2]
- if x>0 and y>0 and 
-    x<=mapw and y<=maph 
+function flood_fill(x,y,t,nt)
+ if x>=0 and y>=0 and 
+    x<16 and y<16
  then
-  if m[p2s(p)]==nil
-  or m[p2s(p)]==t
+  local tt=peek(mapaddr+(x+y*16))
+  if tt==tile_nil
+  or tt==t
   then
-   m[p2s(p)]=nt
-   flood_fill(m,{x-1,y},t,nt)
-   flood_fill(m,{x+1,y},t,nt)
-   flood_fill(m,{x,y-1},t,nt)
-   flood_fill(m,{x,y+1},t,nt)
+   poke(mapaddr+(x+y*16),nt)
+   flood_fill(x-1,y,t,nt)
+   flood_fill(x+1,y,t,nt)
+   flood_fill(x,y-1,t,nt)
+   flood_fill(x,y+1,t,nt)
   end
  end
 end
 
 function fill_map(m) 
-if gtoggle==1 then
- for x=1,16 do
-  for y=1,16 do
-   if m[xy2s(x,y)]!=nil then
-    --if m[xy2s(x,y)]==tile_fill_land then
-     --flood_fill(m,{x,y},tile_fill_land,tile_land)
-    --end
-    if m[xy2s(x,y)]==tile_fill_water then
-     flood_fill(m,{x,y},tile_fill_water,tile_water)
+
+ if gtoggle==1 then
+ 
+  for x=0,15 do
+   for y=0,15 do
+    local t=peek(mapaddr+(x+y*16))
+    if t != tile_nil then
+     --if m[xy2s(x,y)]==tile_fill_land then
+      --flood_fill(m,{x,y},tile_fill_land,tile_land)
+     --end
+     if t==tile_fill_water then
+      flood_fill(x,y,tile_fill_water,tile_water)
+     end
     end
    end
   end
- end
- 
- for x=1,16 do
-  for y=1,16 do
-   if m[xy2s(x,y)]==nil 
-   or m[xy2s(x,y)]==tile_fill_land
-   then
-    m[xy2s(x,y)]=tile_land
+  
+  for x=0,15 do
+   for y=0,15 do
+    local t=peek(mapaddr+(x+y*16))
+    if t==tile_nil
+    or t==tile_fill_land
+    then
+     poke(mapaddr+(x+y*16),tile_land)
+    end
    end
   end
+  
  end
- 
-end
- --[[
- --leftover become land
- for x=1,16 do
-  for y=1,16 do
-   if m[xy2s(x,y)]==nil then
-    m[xy2s(x,y)]=tile_land
-   end
-  end
- end]]
  
 end
 
 
 
-function gen_map(curves,r)
+function gen_map(curves,mx,my)
 	result = {}
 	if (not curves) return result
 	num_curves = #curves
 	for i=1,num_curves do
-	 p1=curves[i][1]
-	 p2=curves[i][2]
-	 p3=curves[i][3]
-	 plotbez(
-	  result,
-	  r,
-	  p1[1],p1[2],
-	  p2[1],p2[2],
-	  p3[1],p3[2])
+	 plotbez(mx,my,curves,i)
 	end
 	return result
 end
 
-function draw_map(m,r)
- if (not m) return
- for s,t in pairs(m) do
-  local x,y = s2xy(s)
-  x+=r[1]
-  y+=r[2]
-  if t==tile_land then
-   pset(x,y)
-  end
-  if t==tile_fill_land then
-   pset(x,y,11)
-   color(6)
-  end
-  if t==tile_water then
-   pset(x,y,12)
-   color(6)
-  end
-  if t==tile_fill_water then
-   pset(x,y,12)
-   color(6)
-  end
-  if t==tile_test then
-   pset(x,y,14)
+function draw_map(r)
+ for mx=1,16 do
+  for my=1,16 do
+   local t=peek(mapaddr+((mx-1)+(my-1)*16))
+   local x=mx+r[1]
+   local y=my+r[2]
+   if t==tile_land then
+    pset(x,y,6)
+   end
+   if t==tile_fill_land then
+    pset(x,y,11)
+   end
+   if t==tile_water then
+    pset(x,y,12)
+   end
+   if t==tile_fill_water then
+    pset(x,y,12)
+   end
+   if t==tile_test then
+    pset(x,y,14)
+   end
+   if t==tile_nil then
+    pset(x,y,1)
+   end
   end
  end
+ color(6)
 end
 
 ----
 
 --t from 0 to 1
 --(de casteljua's algo)
+--inline now
+--[[
 function p_at_t(t, x0,y0,x1,y1,x2,y2)
  local x=((1-t)^2)*x0 + 2*(1-t)*t*x1 + (t^2)*x2
  local y=((1-t)^2)*y0 + 2*(1-t)*t*y1 + (t^2)*y2
  return {x,y}
-end
+end]]
 
-function plotbez(
-  tilemap, rec,
-  x0,y0,x1,y1,x2,y2)
+function plotbez(mx,my,curves,i)
+
+	local x0=curves[i][1][1]
+	local y0=curves[i][1][2]
+	local x1=curves[i][2][1]
+	local y1=curves[i][2][2]
+	local x2=curves[i][3][1]
+	local y2=curves[i][3][2]
 
 
- dx=x2-x0
- dy=y2-y0
- assert(dx<130) --sanity overflow check
- assert(dy<130)
- mag=sqrt(dx*dx+dy*dy)
- nx=dx/mag
- ny=dy/mag
- nx,ny=-ny,nx --rot 90 right
+ --triangle dist
+ --should always over estimate
+ --and small for straight curves
+ --better than using start-to-end 
+ --distance and scaling up by some guess factor
+ --(which was the old method)
+ local leg1dx=abs(x1-x0)
+ local leg1dy=abs(y1-y0)
+ local leg2dx=abs(x2-x1)
+ local leg2dy=abs(y2-y1)
+ local dist=leg1dx+leg1dy+leg2dx+leg2dy
+
+ -- (-y,x) (rotate 90 r)
+ local dx=x2-x0
+ local dy=y2-y0
  
- --gp={nx,ny}
+ local mag=sqrt(dx*dx+dy*dy)
+ local nx,ny=dx/mag,dy/mag
+ 
+ local rx,ry=-dy,dx--y0-y2,x2-x0
+ if rx>0 then rx=1 else rx=-1 end
+ if ry>0 then ry=1 else ry=-1 end
+ 
+ --outer product
+ local d=(x1-x0)*(y2-y0)-(y1-y0)*(x2-x0)
+ 
+ local overland=true
+ if (d<0) overland=false
  
  --[[
- -- just need single pixel steps
- if (dx>0) dx=1  --if zero,
- if (dx<0) dx=-1 --leave zero
- if (dy>0) dy=1 
- if (dy<0) dy=-1
- dx,dy = -dy,dx --rotate 90 (funky since +y is down)
-	]]   
-	   
- steps=mag*1.2 -- rough approx
- steps=min(50,mag*2)
- --if (#gsteps<10) then add(gsteps,steps)
+ --same but more confusing imo
+ local rx=1 
+ if (y0<y2) rx=-1
+ local ry=1
+ if (x2<x0) ry=-1
+	]]
+	
+	local x,y = x0,y0
+	while x!=x2 and y!=y2 do
+ 	local ddx=x2-x
+ 	local ddy=y2-y
+ 	if abs(ddx)>abs(ddy) then
+ 	 if (ddx>0) x+=1
+ 	 if (ddx<0) x-=1
+ 	else
+ 	 if (ddy>0) y+=1
+ 	 if (ddy<0) y-=1
+ 	end
+	 local lx=x-mx
+	 local ly=y-my
+ 	if lx>=0 and lx<16 and
+     ly>=0 and ly<16 then  
+	  if overland then
+    poke(mapaddr+(lx+ly*16),tile_fill_land)
+   else
+    poke(mapaddr+(lx+ly*16),tile_fill_water)
+   end
+	 end
+	end
+	
+ local steps=dist
+ --if (true) then add(gsteps,steps)
  --else add(gsteps,steps) del(gsteps,gsteps[1]) end
  for t = 0,1,(1/steps) do
-  local p = p_at_t(t, x0,y0,x1,y1,x2,y2)
+  --local p = p_at_t(t, x0,y0,x1,y1,x2,y2)
   --line(p[1],p[2],lastp[1],lastp[2])
   --lastp = p
   
+  local x=((1-t)^2)*x0 + 2*(1-t)*t*x1 + (t^2)*x2
+	 local y=((1-t)^2)*y0 + 2*(1-t)*t*y1 + (t^2)*y2
+  
   --if (#gp<10) add(gp,p)
   
-  local lx = round(p[1]-rec[1])
-  local ly = round(p[2]-rec[2])
-  mapset(tilemap,lx,ly,tile_land)
-  --[[ ]]
+  local lx = round(x-mx)
+  local ly = round(y-my)
+  --mapset(lx,ly,tile_land)
+  
+  
+  --mapsetsafe(lx,ly,tile_land)
+  
+  
+ 	if lx>=0 and lx<16 and
+     ly>=0 and ly<16 then
+    poke(mapaddr+(lx+ly*16),tile_land)
+  end
+ 
+ 
+  --[[
+  local x = round(lx+rx)
+  local y = round(ly+ry)
+ 	if x>=0 and x<16 and
+     y>=0 and y<16 
+  then 
+   if peek(mapaddr+(x+y*16))==tile_nil 
+   then
+    poke(mapaddr+(x+y*16),tile_fill_land)
+   end
+  end
+  
+  local x = round(lx-rx)
+  local y = round(ly-ry)
+ 	if x>=0 and x<16 and
+     y>=0 and y<16 
+  then 
+   local tile=peek(mapaddr+(x+y*16))
+   if tile==tile_nil 
+   or tile==tile_fill_land
+   then
+    poke(mapaddr+(x+y*16),tile_fill_water)
+   end
+  end
+  local x = round(lx-rx*2)
+  local y = round(ly-ry*2)
+ 	if x>=0 and x<16 and
+     y>=0 and y<16 
+  then 
+   local tile=peek(mapaddr+(x+y*16))
+   if tile==tile_nil 
+   or tile==tile_fill_land
+   then
+    poke(mapaddr+(x+y*16),tile_fill_water)
+   end
+  end
+  ]]
+ 
+  --[[ 
   local x = round(lx+nx)
   local y = round(ly+ny)
   mapsetifnil(tilemap,x,y,tile_land)
@@ -625,7 +762,7 @@ function plotbez(
   local x = round(lx-nx*2)
   local y = round(ly-ny*2)
   mapsetifnil(tilemap,x,y,tile_fill_water)--pset(p[1],p[2])
-  
+  ]]
  end 
 
 end
@@ -645,265 +782,549 @@ end
 ]]
 
 pts = {
-{36, 255},
-{36, 247},
-{32, 240},
-{35, 236},
-{36, 230},
-{42, 229},
-{42, 222},
-{46, 221},
-{47, 216},
-{55, 214},
-{58, 208},
-{59, 195},
-{66, 193},
-{71, 192},
-{72, 185},
-{75, 189},
-{84, 189},
-{87, 184},
-{92, 185},
-{93, 181},
-{99, 182},
-{112, 181},
-{122, 180},
-{125, 183},
-{126, 187},
-{116, 193},
-{139, 199},
-{141, 205},
-{147, 203},
-{152, 209},
-{155, 205},
-{155, 201},
-{155, 198},
-{164, 195},
-{167, 200},
-{190, 208},
-{191, 201},
-{198, 206},
-{203, 202},
-{208, 189},
-{206, 180},
-{201, 180},
-{200, 183},
-{194, 184},
-{192, 180},
-{187, 179},
-{187, 183},
-{176, 178},
-{176, 168},
-{187, 166},
-{198, 161},
-{211, 167},
-{220, 165},
-{226, 159},
-{217, 155},
-{213, 151},
-{207, 149},
-{215, 144},
-{209, 141},
-{199, 141},
-{198, 147},
-{206, 145},
-{203, 150},
-{198, 151},
-{194, 146},
-{191, 144},
-{188, 142},
-{176, 150},
-{179, 163},
-{174, 166},
-{166, 164},
-{169, 168},
-{164, 167},
-{159, 165},
-{162, 169},
-{166, 171},
-{164, 171},
-{160, 172},
-{162, 174},
-{168, 175},
-{167, 179},
-{161, 178},
-{164, 178},
-{167, 182},
-{164, 181},
-{159, 182},
-{158, 179},
-{159, 178},
-{161, 175},
-{155, 172},
-{153, 167},
-{157, 159},
-{147, 157},
-{141, 155},
-{139, 149},
-{132, 151},
-{134, 147},
-{128, 143},
-{130, 153},
-{136, 156},
-{134, 159},
-{138, 161},
-{141, 162},
-{142, 165},
-{146, 164},
-{149, 168},
-{145, 166},
-{141, 169},
-{144, 172},
-{144, 177},
-{142, 173},
-{144, 168},
-{135, 164},
-{130, 162},
-{126, 158},
-{123, 149},
-{115, 153},
-{111, 158},
-{108, 154},
-{100, 154},
-{100, 161},
-{96, 164},
-{93, 165},
-{90, 167},
-{89, 174},
-{89, 178},
-{84, 178},
-{85, 181},
-{81, 181},
-{76, 180},
-{73, 182},
-{70, 177},
-{63, 179},
-{65, 169},
-{62, 171},
-{67, 171},
-{64, 157},
-{70, 154},
-{76, 156},
-{93, 161},
-{89, 144},
-{85, 144},
-{86, 140},
-{84, 137},
-{81, 138},
-{79, 138},
-{81, 135},
-{89, 139},
-{89, 133},
-{98, 134},
-{98, 127},
-{100, 126},
-{107, 127},
-{106, 124},
-{108, 122},
-{112, 123},
-{110, 118},
-{116, 118},
-{120, 117},
-{120, 111},
-{119, 107},
-{122, 104},
-{124, 102},
-{126, 106},
-{122, 109},
-{123, 118},
-{132, 115},
-{136, 119},
-{138, 116},
-{142, 115},
-{146, 112},
-{151, 117},
-{153, 112},
-{157, 114},
-{155, 104},
-{158, 105},
-{156, 102},
-{160, 102},
-{161, 105},
-{168, 104},
-{163, 98},
-{159, 95},
-{171, 96},
-{173, 94},
-{177, 95},
-{181, 88},
-{163, 92},
-{154, 93},
-{155, 83},
-{170, 74},
-{161, 72},
-{150, 71},
-{153, 79},
-{140, 83},
-{143, 93},
-{146, 91},
-{146, 95},
-{141, 95},
-{139, 98},
-{144, 103},
-{141, 105},
-{137, 105},
-{133, 111},
-{133, 104},
-{129, 101},
-{126, 90},
-{119, 99},
-{111, 100},
-{114, 91},
-{117, 92},
-{118, 90},
-{116, 88},
-{113, 87},
-{115, 84},
-{120, 82},
-{126, 85},
-{125, 79},
-{131, 80},
-{133, 70},
-{144, 66},
-{144, 62},
-{149, 63},
-{156, 58},
-{173, 56},
-{179, 62},
-{195, 63},
-{202, 69},
-{199, 73},
-{180, 68},
-{181, 73},
-{186, 72},
-{188, 80},
-{195, 80},
-{197, 78},
-{193, 76},
-{195, 75},
-{201, 79},
-{206, 79},
-{201, 74},
-{204, 72},
-{208, 71},
-{214, 74},
-{210, 66},
-{211, 63},
-{214, 65},
-{211, 67},
-{213, 69},
-{221, 72},
-{221, 68},
-{227, 65},
-{231, 63},
-{233, 68},
-{236, 64},
-{242, 66},
-{244, 63},
-{251, 66},
-{249, 60},
-{253, 61},
-{255, 60},
+{538, 255},
+{537, 248},
+{534, 240},
+{537, 236},
+{538, 230},
+{544, 229},
+{544, 222},
+{548, 221},
+{549, 216},
+{557, 214},
+{560, 208},
+{561, 195},
+{568, 193},
+{573, 192},
+{574, 185},
+{577, 189},
+{586, 189},
+{589, 184},
+{594, 185},
+{595, 181},
+{601, 182},
+{614, 181},
+{624, 180},
+{627, 183},
+{628, 187},
+{618, 193},
+{641, 199},
+{643, 205},
+{649, 203},
+{654, 209},
+{657, 205},
+{659, 205},
+{657, 198},
+{665, 195},
+{673, 202},
+{689, 205},
+{693, 201},
+{700, 206},
+{705, 202},
+{710, 189},
+{708, 180},
+{703, 180},
+{702, 183},
+{696, 184},
+{694, 180},
+{689, 179},
+{689, 183},
+{678, 178},
+{678, 168},
+{689, 166},
+{700, 161},
+{713, 167},
+{722, 165},
+{728, 159},
+{719, 155},
+{715, 151},
+{709, 149},
+{717, 144},
+{711, 141},
+{701, 141},
+{700, 147},
+{708, 145},
+{705, 150},
+{700, 151},
+{696, 146},
+{693, 144},
+{690, 142},
+{678, 150},
+{681, 163},
+{676, 166},
+{668, 164},
+{672, 170},
+{663, 165},
+{665, 171},
+{668, 172},
+{664, 173},
+{667, 175},
+{672, 178},
+{671, 179},
+{669, 177},
+{665, 178},
+{667, 180},
+{668, 183},
+{662, 183},
+{660, 179},
+{662, 178},
+{665, 176},
+{659, 174},
+{655, 167},
+{659, 159},
+{649, 157},
+{643, 155},
+{641, 149},
+{634, 151},
+{636, 147},
+{630, 143},
+{632, 153},
+{638, 156},
+{636, 159},
+{640, 161},
+{643, 162},
+{644, 165},
+{648, 164},
+{653, 169},
+{647, 166},
+{645, 168},
+{646, 172},
+{640, 179},
+{644, 171},
+{642, 167},
+{638, 165},
+{632, 162},
+{628, 158},
+{625, 149},
+{617, 153},
+{613, 158},
+{610, 154},
+{602, 154},
+{602, 161},
+{598, 164},
+{595, 165},
+{592, 167},
+{591, 174},
+{591, 178},
+{586, 178},
+{587, 181},
+{583, 181},
+{578, 180},
+{575, 182},
+{572, 177},
+{565, 179},
+{567, 169},
+{564, 171},
+{569, 171},
+{566, 157},
+{572, 154},
+{578, 156},
+{595, 161},
+{591, 144},
+{587, 144},
+{588, 140},
+{588, 138},
+{585, 139},
+{580, 139},
+{583, 135},
+{591, 139},
+{591, 132},
+{600, 134},
+{600, 127},
+{605, 127},
+{609, 127},
+{608, 124},
+{610, 122},
+{614, 123},
+{612, 118},
+{618, 118},
+{623, 116},
+{622, 111},
+{621, 107},
+{624, 104},
+{626, 102},
+{628, 106},
+{624, 109},
+{625, 118},
+{634, 115},
+{638, 119},
+{640, 116},
+{644, 115},
+{648, 112},
+{653, 117},
+{655, 112},
+{659, 114},
+{657, 104},
+{660, 101},
+{666, 106},
+{667, 100},
+{664, 98},
+{661, 95},
+{673, 96},
+{675, 94},
+{681, 94},
+{680, 89},
+{665, 92},
+{656, 93},
+{657, 83},
+{672, 74},
+{663, 72},
+{652, 71},
+{655, 79},
+{642, 83},
+{645, 93},
+{648, 91},
+{648, 95},
+{643, 95},
+{641, 98},
+{646, 103},
+{643, 105},
+{639, 105},
+{635, 111},
+{635, 104},
+{631, 101},
+{628, 90},
+{621, 99},
+{613, 100},
+{616, 91},
+{619, 92},
+{620, 90},
+{618, 88},
+{615, 87},
+{617, 84},
+{622, 82},
+{628, 85},
+{627, 79},
+{633, 80},
+{635, 70},
+{646, 66},
+{646, 62},
+{651, 63},
+{658, 58},
+{675, 56},
+{681, 62},
+{697, 63},
+{704, 69},
+{701, 73},
+{682, 68},
+{683, 73},
+{688, 72},
+{690, 80},
+{697, 80},
+{699, 78},
+{695, 76},
+{697, 75},
+{703, 79},
+{708, 79},
+{703, 74},
+{706, 72},
+{710, 71},
+{716, 74},
+{712, 66},
+{713, 63},
+{716, 65},
+{713, 67},
+{715, 69},
+{723, 72},
+{723, 68},
+{729, 65},
+{733, 63},
+{735, 68},
+{738, 64},
+{744, 66},
+{746, 63},
+{753, 66},
+{751, 60},
+{755, 61},
+{757, 60},
+{784, 70},
+{764, 56},
+{770, 41},
+{785, 66},
+{778, 77},
+{788, 68},
+{790, 66},
+{787, 64},
+{807, 65},
+{785, 60},
+{784, 59},
+{779, 54},
+{782, 49},
+{783, 54},
+{790, 56},
+{789, 51},
+{820, 67},
+{792, 48},
+{807, 49},
+{806, 43},
+{831, 43},
+{833, 36},
+{839, 38},
+{863, 41},
+{838, 57},
+{863, 47},
+{894, 51},
+{893, 47},
+{906, 47},
+{919, 57},
+{922, 58},
+{921, 54},
+{942, 57},
+{934, 51},
+{960, 52},
+{973, 56},
+{994, 54},
+{994, 60},
+{1039, 65},
+{1021, 58},
+{1055, 62},
+{1074, 69},
+{1099, 73},
+{1084, 74},
+{1097, 81},
+{1077, 74},
+{1056, 68},
+{1069, 75},
+{1057, 77},
+{1077, 83},
+{1067, 84},
+{1064, 93},
+{1058, 89},
+{1055, 94},
+{1045, 89},
+{1050, 101},
+{1062, 105},
+{1059, 125},
+{1030, 105},
+{1041, 99},
+{1045, 81},
+{1036, 84},
+{1041, 94},
+{1031, 87},
+{1019, 83},
+{1022, 97},
+{1014, 94},
+{1008, 95},
+{986, 94},
+{990, 102},
+{982, 115},
+{988, 113},
+{997, 120},
+{998, 114},
+{1013, 120},
+{1011, 126},
+{1019, 138},
+{1013, 154},
+{1009, 160},
+{1004, 156},
+{999, 159},
+{1002, 167},
+{990, 166},
+{1009, 182},
+{1010, 188},
+{1000, 189},
+{999, 178},
+{990, 175},
+{989, 165},
+{978, 172},
+{978, 159},
+{970, 171},
+{963, 173},
+{968, 176},
+{974, 175},
+{972, 180},
+{977, 181},
+{977, 176},
+{987, 179},
+{981, 181},
+{975, 188},
+{980, 190},
+{996, 204},
+{986, 206},
+{993, 207},
+{991, 211},
+{988, 235},
+{972, 238},
+{962, 237},
+{962, 244},
+{959, 245},
+{960, 240},
+{949, 237},
+{947, 250},
+{971, 272},
+{958, 282},
+{953, 282},
+{951, 288},
+{948, 292},
+{948, 283},
+{939, 275},
+{935, 273},
+{931, 263},
+{929, 286},
+{933, 289},
+{934, 295},
+{945, 301},
+{945, 312},
+{952, 323},
+{940, 314},
+{934, 307},
+{933, 297},
+{930, 291},
+{926, 290},
+{927, 273},
+{922, 261},
+{920, 252},
+{915, 262},
+{909, 264},
+{910, 250},
+{897, 241},
+{902, 241},
+{898, 239},
+{899, 236},
+{895, 231},
+{892, 239},
+{880, 238},
+{883, 244},
+{877, 247},
+{875, 252},
+{870, 254},
+{869, 261},
+{862, 259},
+{862, 268},
+{864, 273},
+{863, 277},
+{863, 284},
+{860, 283},
+{861, 289},
+{857, 287},
+{856, 296},
+{852, 287},
+{835, 251},
+{835, 241},
+{834, 233},
+{833, 242},
+{826, 244},
+{823, 237},
+{830, 235},
+{822, 233},
+{815, 231},
+{813, 225},
+{783, 227},
+{780, 219},
+{780, 216},
+{772, 220},
+{766, 215},
+{761, 215},
+{757, 202},
+{749, 209},
+{751, 217},
+{756, 219},
+{765, 240},
+{778, 222},
+{779, 234},
+{788, 233},
+{795, 237},
+{786, 243},
+{787, 246},
+{786, 249},
+{781, 248},
+{782, 253},
+{776, 252},
+{776, 257},
+{769, 257},
+{767, 262},
+{754, 269},
+{743, 273},
+{736, 275},
+{739, 270},
+{735, 267},
+{735, 261},
+{731, 250},
+{722, 242},
+{723, 232},
+{714, 227},
+{713, 218},
+{707, 215},
+{708, 200},
+{705, 216},
+{694, 199},
+{702, 218},
+{711, 230},
+{710, 234},
+{717, 238},
+{717, 250},
+{724, 254},
+{723, 261},
+{726, 267},
+{730, 267},
+{739, 275},
+{737, 279},
+{739, 285},
+{751, 281},
+{758, 281},
+{764, 277},
+{765, 290},
+{761, 292},
+{754, 310},
+{742, 318},
+{718, 343},
+{723, 349},
+{725, 359},
+{728, 364},
+{732, 389},
+{718, 390},
+{714, 396},
+{707, 399},
+{711, 420},
+{706, 420},
+{698, 422},
+{700, 429},
+{700, 435},
+{693, 439},
+{684, 457},
+{664, 456},
+{660, 457},
+{656, 458},
+{651, 457},
+{651, 453},
+{653, 445},
+{649, 441},
+{649, 433},
+{643, 431},
+{640, 428},
+{640, 411},
+{636, 407},
+{636, 403},
+{633, 396},
+{630, 392},
+{633, 380},
+{633, 375},
+{639, 371},
+{635, 361},
+{637, 352},
+{633, 349},
+{632, 340},
+{622, 331},
+{620, 323},
+{624, 322},
+{626, 305},
+{622, 308},
+{617, 304},
+{610, 306},
+{606, 293},
+{583, 305},
+{576, 301},
+{562, 306},
+{554, 297},
+{547, 294},
+{546, 285},
+{540, 282},
+{539, 278},
+{534, 276},
+{534, 270},
+{532, 267},
+{535, 260},
+{536, 255},
 }
 -->8
 --tri method
