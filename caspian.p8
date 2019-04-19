@@ -4,6 +4,7 @@ __lua__
 --game
 
 function _init()
+ cls()
  --music(1)
  
  --create_tilemap()
@@ -27,6 +28,8 @@ end
 
 function _update()
 
+ cls()
+ 
 --[[
  player_update(player)
  
@@ -62,7 +65,7 @@ function _update()
  gtime={}
  ltime={}
  
- mapreset()
+ --mapreset()
 
  rec={px,py,px+16,py+16}
  bigrec={rec[1]-5,rec[2]-5,rec[3]+5,rec[4]+5}
@@ -72,8 +75,10 @@ function _update()
   add(gtime,{"curv",stat(1)})
   gen_map(curves,px,py)
   add(gtime,{"gen",stat(1)})
-  fill_map(tmap)
+  fill_map()
   add(gtime,{"fil",stat(1)})
+  fill_islands(px,py)
+  add(gtime,{"isl",stat(1)})
   
   --tmap=rough_polygons(rec,curves)
   
@@ -83,14 +88,21 @@ function _update()
  add(gtime,{"b4e",stat(1)}) 
 end
 
+
 function _draw()
 
+--[[
  add(gtime,{"ext",stat(1)})
  cls()
  
+ clip() 
+ camera() 
+ pal() 
+ color(6)
+ ]]
+ 
  camera(cx,cy)
  add(gtime,{"cls",stat(1)})
- 
  
  
  
@@ -102,10 +114,11 @@ function _draw()
   {64,100}
   })
   ]]
- draw_map({px,py})
+ draw_map(px,py)
  add(gtime,{"drw",stat(1)})
  
  rect(rec[1],rec[2],rec[3],rec[4])
+ 
  
  --[[
  for c in all(curves) do
@@ -128,7 +141,7 @@ function _draw()
 ]]
  camera()
  
-
+ cursor(0,0)
  print("fps "..stat(7).."/"..stat(8))
  kbs=stat(0)
  bts=(kbs-flr(kbs))*1024
@@ -173,10 +186,11 @@ function _draw()
  
 end
 
+
 gsteps={}
 rolmsg={}
 
-gtoggle=0
+gtoggle=1
 maxtog=2
 -->8
 --world
@@ -425,12 +439,12 @@ end
 -->8
 --bezier
 
-tile_water=0
-tile_land=1
-tile_fill_water=2
+tile_water=12
+tile_land=11
+tile_fill_water=1
 tile_fill_land=3
-tile_test=37
-tile_nil=50
+tile_test=14
+tile_nil=0
 
 gmap={}
 
@@ -479,29 +493,34 @@ end
 
 
 --not using atm tho we should
---mapw=16
---maph=16
+mapw=16
+maph=16
 
-mapaddr = 0x4300
---poke(mapaddr+(x+y*16),t)
---peek(mapaddr+(x+y*16))
+--mapaddr = 0x4300
+mapaddr = 0x6000 --screen
+--poke(mapaddr+(x+y*mapw),t)
+--peek(mapaddr+(x+y*mapw))
 --replace 16 with w/h if neeed
 
 function mapreset()
- memset(mapaddr,tile_nil,16*16)
+ cls()
+ --memset(mapaddr,tile_nil,mapw*maph)
 end
 function mapsetsafe(x,y,t)
-	if x>=0 and x<16 and
-    y>=0 and y<16 then
-   poke(mapaddr+(x+y*16),t)
+	if x>=0 and x<mapw and
+    y>=0 and y<maph then
+   --poke(mapaddr+(x+y*mapw),t)
+   pset(x,y,t)
  end
 end
 
 function mapsetsafeifnil(x,y,t)
-	if x>=0 and x<16 and
-    y>=0 and y<16 then
-  if peek(mapaddr+(x+y*16))==tile_nil then
-   poke(mapaddr+(x+y*16),t)
+	if x>=0 and x<mapw and
+    y>=0 and y<maph then
+  --if peek(mapaddr+(x+y*mapw))==tile_nil then
+  if pget(x,y)==tile_nil then
+   --poke(mapaddr+(x+y*mapw),t)
+   pset(x,y,t)
   end
  end
 end
@@ -512,13 +531,15 @@ end
 --map at 0,0,mapw,maph
 function flood_fill(x,y,t,nt)
  if x>=0 and y>=0 and 
-    x<16 and y<16
+    x<mapw and y<maph
  then
-  local tt=peek(mapaddr+(x+y*16))
+  --local tt=peek(mapaddr+(x+y*mapw))
+  local tt=pget(x,y)
   if tt==tile_nil
   or tt==t
   then
-   poke(mapaddr+(x+y*16),nt)
+   --poke(mapaddr+(x+y*mapw),nt)
+   pset(x,y,nt)
    flood_fill(x-1,y,t,nt)
    flood_fill(x+1,y,t,nt)
    flood_fill(x,y-1,t,nt)
@@ -527,13 +548,46 @@ function flood_fill(x,y,t,nt)
  end
 end
 
-function fill_map(m) 
+function fill_map() 
 
  if gtoggle==1 then
  
+ --fill land, rest default to water
+ 
+  for x=0,mapw-1 do
+   for y=0,maph-1 do
+    --local t=peek(mapaddr+(x+y*mapw))
+    local t=pget(x,y)
+    if t != tile_nil then
+     --if m[xy2s(x,y)]==tile_fill_land then
+      --flood_fill(m,{x,y},tile_fill_land,tile_land)
+     --end
+     if t==tile_fill_land then
+      flood_fill(x,y,tile_fill_land,tile_land)
+     end
+    end
+   end
+  end
+  
+  for x=0,mapw-1 do
+   for y=0,maph-1 do
+    --local t=peek(mapaddr+(x+y*mapw))
+    local t=pget(x,y)
+    if t==tile_nil
+    or t==tile_fill_water
+    then
+     --poke(mapaddr+(x+y*mapw),tile_water)
+     pset(x,y,tile_water)
+    end
+   end
+  end
+  
+  
+ --[[
+ -- fill water, rest default to land
   for x=0,15 do
    for y=0,15 do
-    local t=peek(mapaddr+(x+y*16))
+    local t=peek(mapaddr+(x+y*mapw))
     if t != tile_nil then
      --if m[xy2s(x,y)]==tile_fill_land then
       --flood_fill(m,{x,y},tile_fill_land,tile_land)
@@ -547,17 +601,30 @@ function fill_map(m)
   
   for x=0,15 do
    for y=0,15 do
-    local t=peek(mapaddr+(x+y*16))
+    local t=peek(mapaddr+(x+y*mapw))
     if t==tile_nil
     or t==tile_fill_land
     then
-     poke(mapaddr+(x+y*16),tile_land)
+     poke(mapaddr+(x+y*mapw),tile_land)
     end
    end
   end
-  
+  ]]
  end
  
+end
+
+
+function fill_islands(mx,my)
+ for i=1,#islands do
+  local lx=islands[i][1]-mx
+  local ly=islands[i][2]-my
+  if lx>=-16 and ly>=-16 and
+     lx<mapw and ly<maph then
+   --poke(mapaddr+(lx+ly*mapw),tile_test)
+   spr(islands[i][3],lx,ly,2,2)
+  end
+ end
 end
 
 
@@ -572,46 +639,19 @@ function gen_map(curves,mx,my)
 	return result
 end
 
-function draw_map(r)
- for mx=1,16 do
-  for my=1,16 do
-   local t=peek(mapaddr+((mx-1)+(my-1)*16))
-   local x=mx+r[1]
-   local y=my+r[2]
-   if t==tile_land then
-    pset(x,y,6)
-   end
-   if t==tile_fill_land then
-    pset(x,y,11)
-   end
-   if t==tile_water then
-    pset(x,y,12)
-   end
-   if t==tile_fill_water then
-    pset(x,y,12)
-   end
-   if t==tile_test then
-    pset(x,y,14)
-   end
-   if t==tile_nil then
-    pset(x,y,1)
-   end
+function draw_map(px,py)
+ for mx=1,mapw do
+  for my=1,maph do
+   camera()
+			local t=pget(mx,my)
+   camera(cx,cy)
+   pset(mx+px,my+py,t)
   end
  end
  color(6)
 end
 
-----
 
---t from 0 to 1
---(de casteljua's algo)
---inline now
---[[
-function p_at_t(t, x0,y0,x1,y1,x2,y2)
- local x=((1-t)^2)*x0 + 2*(1-t)*t*x1 + (t^2)*x2
- local y=((1-t)^2)*y0 + 2*(1-t)*t*y1 + (t^2)*y2
- return {x,y}
-end]]
 
 function plotbez(mx,my,curves,i)
 
@@ -652,36 +692,6 @@ function plotbez(mx,my,curves,i)
  local overland=true
  if (d<0) overland=false
  
- --[[
- --same but more confusing imo
- local rx=1 
- if (y0<y2) rx=-1
- local ry=1
- if (x2<x0) ry=-1
-	]]
-	
-	local x,y = x0,y0
-	while x!=x2 and y!=y2 do
- 	local ddx=x2-x
- 	local ddy=y2-y
- 	if abs(ddx)>abs(ddy) then
- 	 if (ddx>0) x+=1
- 	 if (ddx<0) x-=1
- 	else
- 	 if (ddy>0) y+=1
- 	 if (ddy<0) y-=1
- 	end
-	 local lx=x-mx
-	 local ly=y-my
- 	if lx>=0 and lx<16 and
-     ly>=0 and ly<16 then  
-	  if overland then
-    poke(mapaddr+(lx+ly*16),tile_fill_land)
-   else
-    poke(mapaddr+(lx+ly*16),tile_fill_water)
-   end
-	 end
-	end
 	
  local steps=dist
  --if (true) then add(gsteps,steps)
@@ -704,65 +714,56 @@ function plotbez(mx,my,curves,i)
   --mapsetsafe(lx,ly,tile_land)
   
   
- 	if lx>=0 and lx<16 and
-     ly>=0 and ly<16 then
-    poke(mapaddr+(lx+ly*16),tile_land)
+ 	if lx>=0 and lx<mapw and
+     ly>=0 and ly<maph then
+    --poke(mapaddr+(lx+ly*mapw),tile_land)
+    pset(lx,ly,tile_land)
   end
  
  
-  --[[
   local x = round(lx+rx)
   local y = round(ly+ry)
- 	if x>=0 and x<16 and
-     y>=0 and y<16 
+ 	if x>=0 and x<mapw and
+     y>=0 and y<maph
   then 
-   if peek(mapaddr+(x+y*16))==tile_nil 
+   --if peek(mapaddr+(x+y*mapw))==tile_nil 
+   if pget(x,y)==tile_nil 
    then
-    poke(mapaddr+(x+y*16),tile_fill_land)
+    --poke(mapaddr+(x+y*mapw),tile_fill_land)
+    pset(x,y,tile_fill_land)
    end
   end
   
   local x = round(lx-rx)
   local y = round(ly-ry)
- 	if x>=0 and x<16 and
-     y>=0 and y<16 
+ 	if x>=0 and x<mapw and
+     y>=0 and y<maph
   then 
-   local tile=peek(mapaddr+(x+y*16))
+   --local tile=peek(mapaddr+(x+y*mapw))
+   local tile=pget(x,y)
    if tile==tile_nil 
    or tile==tile_fill_land
    then
-    poke(mapaddr+(x+y*16),tile_fill_water)
+    --poke(mapaddr+(x+y*mapw),tile_fill_water)
+    pset(x,y,tile_fill_water)
    end
   end
+  
+  --[[
   local x = round(lx-rx*2)
   local y = round(ly-ry*2)
- 	if x>=0 and x<16 and
-     y>=0 and y<16 
+ 	if x>=0 and x<mapw and
+     y>=0 and y<maph 
   then 
-   local tile=peek(mapaddr+(x+y*16))
+   local tile=peek(mapaddr+(x+y*mapw))
    if tile==tile_nil 
    or tile==tile_fill_land
    then
-    poke(mapaddr+(x+y*16),tile_fill_water)
+    poke(mapaddr+(x+y*mapw),tile_fill_water)
    end
   end
   ]]
  
-  --[[ 
-  local x = round(lx+nx)
-  local y = round(ly+ny)
-  mapsetifnil(tilemap,x,y,tile_land)
-  local x = round(lx+nx*2)
-  local y = round(ly+ny*2)
-  mapsetifnil(tilemap,x,y,tile_fill_land)
-
-  local x = round(lx-nx)
-  local y = round(ly-ny)
-  mapsetifnil(tilemap,x,y,tile_water)
-  local x = round(lx-nx*2)
-  local y = round(ly-ny*2)
-  mapsetifnil(tilemap,x,y,tile_fill_water)--pset(p[1],p[2])
-  ]]
  end 
 
 end
@@ -780,6 +781,10 @@ end
 	 p2=curves[i][2]
 	 p3=curves[i][3]
 ]]
+
+islands={
+{657,172,16}
+}
 
 pts = {
 {538, 255},
@@ -851,25 +856,15 @@ pts = {
 {690, 142},
 {678, 150},
 {681, 163},
-{676, 166},
-{668, 164},
-{672, 170},
-{663, 165},
-{665, 171},
-{668, 172},
-{664, 173},
-{667, 175},
-{672, 178},
-{671, 179},
-{669, 177},
-{665, 178},
-{667, 180},
-{668, 183},
-{662, 183},
-{660, 179},
-{662, 178},
-{665, 176},
-{659, 174},
+{678, 167},
+{673, 164},
+{667, 163},
+{664, 166},
+{663, 169},
+{666, 172},
+{664, 175},
+{661, 174},
+{658, 170},
 {655, 167},
 {659, 159},
 {649, 157},
@@ -883,15 +878,9 @@ pts = {
 {636, 159},
 {640, 161},
 {643, 162},
-{644, 165},
-{648, 164},
-{653, 169},
-{647, 166},
-{645, 168},
-{646, 172},
-{640, 179},
-{644, 171},
-{642, 167},
+{648, 165},
+{646, 168},
+{643, 170},
 {638, 165},
 {632, 162},
 {628, 158},
@@ -910,16 +899,16 @@ pts = {
 {587, 181},
 {583, 181},
 {578, 180},
-{575, 182},
+{574, 184},
 {572, 177},
-{565, 179},
+{564, 180},
 {567, 169},
-{564, 171},
+{563, 171},
 {569, 171},
 {566, 157},
 {572, 154},
-{578, 156},
-{595, 161},
+{579, 155},
+{593, 161},
 {591, 144},
 {587, 144},
 {588, 140},
@@ -1019,13 +1008,9 @@ pts = {
 {703, 74},
 {706, 72},
 {710, 71},
-{716, 74},
-{712, 66},
-{713, 63},
-{716, 65},
-{713, 67},
-{715, 69},
-{723, 72},
+{716, 75},
+{714, 69},
+{721, 71},
 {723, 68},
 {729, 65},
 {733, 63},
@@ -1324,7 +1309,6 @@ pts = {
 {534, 270},
 {532, 267},
 {535, 260},
-{536, 255},
 }
 -->8
 --tri method
@@ -1448,20 +1432,20 @@ __gfx__
 0070070033bb3333ddd66ddd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000033333333d66dd66d00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000033333333dddddddd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000b0000000bb0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0b000bbbbb000bb00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+bb00000bbbbb00b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+b00000000bbbb0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000bb000bb00b0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0bbbbbbbb00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+bbbbbbbbbb0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+bbbbbbbb0bb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0bbbbbbb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00bbbbbbb00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00bbbb0bb00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00bb0b00bb0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000b0b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000b0b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
