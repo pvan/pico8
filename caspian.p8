@@ -5,9 +5,12 @@ __lua__
 
 function _init()
  cls()
+ 
  --music(1)
  
  --create_tilemap()
+ 
+ init_mouse()
  
 end
 
@@ -18,7 +21,7 @@ subpx=0
 subpy=0
 
 
-cx,cy=px-64,py-64
+--cx,cy=px-64,py-64
 
 lastrec={0,0,0,0}
 
@@ -31,127 +34,75 @@ end
 
 function _update()
 
- cls()
- 
---[[
- player_update(player)
- 
- if btnp(⬅️) then gx1-=2 end
- if btnp(➡️) then gx1+=2 end
- if btnp(⬆️) then gy1-=2 end
- if btnp(⬇️) then gy1+=2 end
- ]]
- if btn(⬅️) and btn(➡️) then
-  debugmsgs = not debugmsgs
- end
- 
- if btn(⬆️) and btn(⬇️) then
-  debugmap = not debugmap
- end
- 
- if (btnp(❎)) gtoggle=(gtoggle+1)%maxtog
- 
- if btn(🅾️) then
-  if btn(⬅️) then px-=1 end
-  if btn(➡️) then px+=1 end
-  if btn(⬆️) then py-=1 end
-  if btn(⬇️) then py+=1 end
- end
- 
- if not btn(🅾️) then
-  if btn(⬅️) then subpx-=1 end
-  if btn(➡️) then subpx+=1 end
-  if btn(⬆️) then subpy-=1 end
-  if btn(⬇️) then subpy+=1 end
-  if subpx>=8 then
-   px+=1
-   subpx=0
-  end
-  if subpx<0 then
-   px-=1
-   subpx+=8
-  end
-  if subpy>=8 then
-   py+=1
-   subpy=0
-  end
-  if subpy<0 then
-   py-=1
-   subpy+=8
-  end
- end
- if (px<cx) cx=px
- if (py<cy) cy=py
- if (px+32>cx+128) cx=px-128+32
- if (py+32>cy+128) cy=py-128+32
- 
- --[[if (cx<0) cx=0
- if (cy<0) cy=0
- if (cx+128>256) cx=256-128
- if (cy+128>256) cy=256-128]]
- 
  --for storing timing metrics
  gtime={}
- ltime={}
+ 
+ cls() -- clear here since we use screen memory for building our tilemap
+ 
+ 
+ add(gtime,{"cls(",stat(1)})
+ 
+ 
+ -- debug options
+ if btnp(⬅️) and btnp(➡️) then
+  debugmsgs = not debugmsgs
+ end
+ if btnp(⬆️) and btnp(⬇️) then
+  debugmap = not debugmap
+ end
+ if (btnp(❎)) gtoggle=(gtoggle+1)%maxtog
+ 
+ 
+ 
+ --using map mem from last frame
+ player_update(player)
+ 
+ ptx=flr(player.x/8)
+ pty=flr(player.y/8)
+ subpx=player.x%8
+ subpy=player.y%8
+ 
+ add(gtime,{"plyr",stat(1)})
+ 
+ 
  
  --mapreset()
 
- rec={px,py,px+mapw,py+maph}
+ rec={ptx,pty,ptx+mapw,pty+maph}
  bigrec={rec[1]-5,rec[2]-5,rec[3]+5,rec[4]+5}
  --if not eq(rec,lastrec) then
-  add(gtime,{"pre",stat(1)})
   curves=curves_in_rect(bigrec)
   add(gtime,{"curv",stat(1)})
-  gen_map(curves,px,py)
-  add(gtime,{"gen",stat(1)})
+  gen_map(curves,ptx,pty)
+  add(gtime,{"genm",stat(1)})
   fill_map()
-  add(gtime,{"fil",stat(1)})
-  fill_islands(px,py)
-  add(gtime,{"isl",stat(1)})
-  
-  --tmap=rough_polygons(rec,curves)
+  add(gtime,{"fill",stat(1)})
+  fill_islands(ptx,pty)
+  add(gtime,{"isld",stat(1)})
+  copy_screen_map_to_mem()
+  add(gtime,{"2mem",stat(1)})
   
  --end
  lastrec=rec
+ 
+ 
  
 end
 
 
 function _draw()
---[[
- cls()
  
- clip() 
- camera() 
- pal() 
- color(6)
- ]]
- 
- 
- 
- --[[
- tmap={}
- flipintri(tmap,{
-  {30,30},
-  {80,64},
-  {64,100}
-  })
-  ]]
- 
-  --draw_map(px,py) 
-  --rect(rec[1],rec[2],rec[3],rec[4])  
-  --add(gtime,{"drw",stat(1)})
- camera()
- copy_screen_map_to_mem()
- add(gtime,{"bak",stat(1)})
- draw_map_at_tiles(subpx,subpy)  
+
+
+ draw_map_as_tiles(subpx,subpy)  
  if debugmap then
   draw_map_from_mem()
  end
- add(gtime,{"drw",stat(1)})
+ add(gtime,{"dmap",stat(1)})
  
    
-   
+ 
+ player_draw(player)
  
  
  --[[
@@ -184,45 +135,38 @@ function _draw()
   print("cpu "..stat(1))
   print("sys "..stat(2))
  
- 	print("p:"..px..","..py)
- 	print("c:"..cx..","..cy)
+ 	print("p:"..ptx..","..pty)
+ 	--print("c:"..cx..","..cy)
  	
  	print(" ")
  	lastt = 0
  	for i=1,#gtime do
  	 delta = gtime[i][2]-lastt
+ 	 --delta=flr(delta*100)
  	 print(gtime[i][1].." "..delta)
  	 lastt = gtime[i][2]
  	end
+ 	
+ 	print(" ")
+ 	print(player.x.." "..player.y)
  
- 	--[[
- 	lastt = 0
- 	for i=1,#ltime do
- 	 delta = ltime[i][2]-lastt
- 	 print(ltime[i][1].." "..delta)
- 	 lastt = ltime[i][2]
- 	end
- 	]]
+ 	print(" ")
  	
- 	
- 	--[[
- 	print(#gsteps)
-  for stp in all(gsteps) do
-   print(stp)
-  end
-  gsteps={}]]
-  
-  --[[
- 	print(#rolmsg)
-  for stp in all(rolmsg) do
-   print(stp)
-  end
-  rolmsg={}]]
  end
+ 
+ local mx,my = get_mouse()
+ local tx,ty=screen_to_tlocal(mx,my,player.x,player.y)
+ local t=mapget(tx,ty)
+ print(tx.." "..ty.." "..t)
+ 
+ spr(207,mx,my)
+
+ 
  
 end
 
-
+gptx=0
+gpty=0
 gsteps={}
 rolmsg={}
 
@@ -232,18 +176,181 @@ maxtog=2
 debugmap=false
 debugmsgs=true
 -->8
---world
+--tile world (using memory map)
 
 
-function get_world_tile(x,y)
- if x<0 or y<0 then return 0 end
- if x>10 and x<40 and y>20 and y<25 then
-  return 1
- else
-  return 2
+--we index into this with
+--0,0 being top left (first tile)
+--but note first and last rows
+--are never drawn
+--so if you want the top left
+--(aka first) tile visible on 
+--screen, then it's 1,1
+
+mapw=19 //+1 for subpixel sliding
+maph=19 //+2 so visible tiles have accurate neighbors
+
+mapaddr = 0x4300
+
+function copy_screen_map_to_mem()
+ for x=0,mapw-1 do
+  for y=0,maph-1 do
+   poke(mapaddr+(x+y*mapw),pget(x,y))
+   --screen 0x6000
+  end
  end
 end
 
+
+--not used at the moment
+function mapmemreset()
+ --memset(mapaddr,tile_nil,mapw*maph)
+end
+
+
+--in tight loops, should
+--just call peek/poke directly
+function mapget(x,y)
+ return peek(mapaddr+(x+y*mapw))
+end
+
+function mapset(x,y,t)
+ poke(mapaddr+(x+y*mapw),t)
+end
+
+
+
+--world x,y to world tile x,y
+function w2wt(wx,wy)
+ return flr(wx/8),flr(wy/8)
+end
+
+--world tile x,y to local map x,y
+--note local map starts at 0,0
+--but first visible tile is 1,1
+function wt2lt(wtx,wty,camtx,camty)
+ return wtx-camtx+1,wty-camty+1
+end
+
+--screen x,y to tile local x,y
+function screen_to_tlocal(sx,sy,camx,camy)
+ local wx,wy=sx+camx,sy+camy
+ local wtx,wty=w2wt(wx,wy)
+ local camtx,camty=w2wt(camx,camy)
+ --local ltx,lty=wtx-camtx,wty-camty
+ local ltx,lty=wt2lt(wtx,wty,camtx,camty)
+ return ltx,lty
+end
+
+
+--old
+function draw_map_from_screen(px,py)
+ for mx=0,mapw-1 do
+  for my=0,maph-1 do
+   camera()
+			local t=pget(mx,my)
+   camera(cx,cy)
+   pset(mx+px,my+py,t)
+  end
+ end
+ color(6)
+end
+
+function draw_map_from_mem()
+ for mx=0,mapw-1 do
+  for my=0,maph-1 do
+			local t=peek(mapaddr+(mx+my*mapw))
+   pset(64+mx,64+my,t)
+  end
+ end
+ color(6)
+end
+
+function draw_map_as_tiles(scx,scy)
+ --the full camera position
+ --doesn't matter to this function,
+ --only the sub-tile shift
+ --
+ --the memory tilemap is created
+ --based on the camera
+ --here, we only draw it
+ --and assume the tilemap 1,1
+ --is the first tile we draw
+ --
+ --iterate over all visible tiles
+ --starting in tl to br
+ --note we draw 17x17 tiles
+ --since the screen might not 
+ --line up exactly with the tiles
+ --(sub-tile x,y -- passed in)
+ for stx=0,16 do
+  for sty=0,16 do
+  
+   --the first screen tile (st=0)
+   --is actually the second
+   --local map tile (lt=1)
+   local ltx,lty=stx+1,sty+1
+   
+   --actual screen draw location 
+   --is shifted by our sub-tile values
+			local sx,sy=stx*8-scx,sty*8-scy
+   
+			local t=peek(mapaddr+(ltx+lty*mapw))
+			
+			if t!=tile_land then
+			 spr(2,sx,sy)
+			else
+			
+ 			local n=peek(mapaddr+(ltx+(lty-1)*mapw))
+ 			local s=peek(mapaddr+(ltx+(lty+1)*mapw))
+ 			local e=peek(mapaddr+((ltx-1)+lty*mapw))
+ 			local w=peek(mapaddr+((ltx+1)+lty*mapw))
+ 			
+    if n==tile_land and
+  			  s==tile_land and
+  			  e==tile_land and
+  			  w==tile_land 
+  		then spr(1,sx,sy)	end
+    if n!=tile_land and
+  			  s==tile_land and
+  			  e==tile_land and
+  			  w==tile_land 
+  		then spr(3,sx,sy,1,1,false,true) end
+    if n==tile_land and
+  			  s!=tile_land and
+  			  e==tile_land and
+  			  w==tile_land 
+  		then spr(3,sx,sy) end
+    if n==tile_land and
+  			  s==tile_land and
+  			  e!=tile_land and
+  			  w==tile_land 
+  		then spr(5,sx,sy,1,1,true,false) end
+    if n==tile_land and
+  			  s==tile_land and
+  			  e==tile_land and
+  			  w!=tile_land 
+  		then spr(5,sx,sy) end
+			end
+			--[[
+   if t==tile_land then
+    spr(1,mx*8-px,my*8-py)
+   else
+    spr(2,mx*8-px,my*8-py)
+   end]]
+  end
+ end
+ color(6)
+end
+
+
+
+function get_local_tile(lx,ly)
+ return peek(mapaddr+(lx+ly*mapw))
+end
+
+
+--[[
 function world_draw()
  ptx=flr((player.x-64)/8)
  pty=flr((player.y-64)/8)
@@ -256,11 +363,11 @@ function world_draw()
   end
  end 
 end
-
+]]
 -->8
 --player
 
-player={x=64,y=64,d=0}
+player={x=662*8,y=161*8,d=0}
 
 u_frames_released = 0
 d_frames_released = 0
@@ -273,7 +380,7 @@ function player_update(p)
 
  frames_of_forgiveness = 2
  
- u = btn(⬆️)
+ local u = btn(⬆️)
  d = btn(⬇️)
  l = btn(⬅️)
  r = btn(➡️)
@@ -349,7 +456,38 @@ function player_update(p)
   end
   
   
-  -- collisiton detection here  
+  -- collisiton detection here 
+  local allowx=true
+  local allowy=true
+  local hotspotsx={0,7}
+  local hotspotsy={0,7}
+  for j=1,#hotspotsy do
+   local hy=hotspotsy[j]
+   for i=1,#hotspotsx do
+    local hx = hotspotsx[i]
+    
+    local sx,sy=64+hx,64+hy
+    local ptx,pty=
+     screen_to_tlocal(sx,sy,player.x,player.y)
+    local ntx,nty=
+     screen_to_tlocal(sx+xstep,sy+ystep,player.x,player.y)
+    
+    --[[
+    -- 64 for tl of sprite
+    -- +8 for tile buffer on left
+    ptx = flr((64+8+hx)/8)
+    pty = flr((64+8+hy)/8)
+    ntx = flr((64+8+hx+xstep)/8)
+    nty = flr((64+8+hy+ystep)/8)
+    ]]
+    --recall we test 1 dir at a time so we can slide against walls
+    testtilex = peek(mapaddr+(ntx+pty*mapw))
+    if testtilex == tile_land then allowx = false end
+    testtiley = peek(mapaddr+(ptx+nty*mapw))
+    if testtiley == tile_land then allowy = false end
+   end
+	 end
+  --[[ 
   allowx=true
   allowy=true
   hotspotsx={0,7}
@@ -363,12 +501,13 @@ function player_update(p)
     ntx = flr((p.x+hx+xstep)/8)
     nty = flr((p.y+hy+ystep)/8)
     --recall we test 1 dir at a time so we can slide against walls
-    testtilex = get_world_tile(ntx,pty)
+    testtilex = get_world_tile(ntx,pty,flr(p.x/8),flr(p.y/8))
     if testtilex == 1 then allowx = false end
-    testtiley = get_world_tile(ptx,nty)
+    testtiley = get_world_tile(ptx,nty,flr(p.x/8),flr(p.y/8))
     if testtiley == 1 then allowy = false end
    end
   end
+  ]]
      
   if not btn(❎) then
    if allowx then p.x += xstep end
@@ -396,6 +535,17 @@ function player_draw(p)
  sail = 80
  --spr(sail+p.d,p.x-cam.x,p.y-3-cam.y)
  spr(sail+p.d,64,64-3)
+
+
+  hotspotsx={0,7}
+  hotspotsy={0,7}
+  for j=1,#hotspotsy do
+   hy=hotspotsy[j]
+   for i=1,#hotspotsx do
+    hx = hotspotsx[i]
+    pset(64+hx,64+hy,14)
+   end
+  end
 
 end
 -->8
@@ -476,6 +626,7 @@ end
 
 
 -->8
+--generating map on screen buffer
 --bezier
 
 tile_water=12
@@ -524,29 +675,6 @@ function curves_in_rect(r)
 	return result
 end
 
-
-mapw=19 --+1 for subpixel
-maph=19 --+2 so visible tiles have accurate neighbors
-
-mapaddr = 0x4300
-
-function copy_screen_map_to_mem()
- for x=0,mapw-1 do
-  for y=0,maph-1 do
-   poke(mapaddr+(x+y*mapw),pget(x,y))
-  end
- end
-end
-
---mapaddr = 0x6000 --screen
---poke(mapaddr+(x+y*mapw),t)
---peek(mapaddr+(x+y*mapw))
---replace 16 with w/h if neeed
-
-function mapreset()
- cls()
- --memset(mapaddr,tile_nil,mapw*maph)
-end
 
 
 --map at 0,0,mapw,maph
@@ -622,89 +750,16 @@ end
 
 
 
-function gen_map(curves,px,py)
+function gen_map(curves,tx,ty)
 	result = {}
 	if (not curves) return result
 	num_curves = #curves
 	for i=1,num_curves do
-	 plotbez(px,py,curves,i)
+	 plotbez(tx,ty,curves,i)
 	end
 	return result
 end
 
-
-
-function draw_map_from_screen(px,py)
- for mx=0,mapw-1 do
-  for my=0,maph-1 do
-   camera()
-			local t=pget(mx,my)
-   camera(cx,cy)
-   pset(mx+px,my+py,t)
-  end
- end
- color(6)
-end
-
-function draw_map_from_mem()
- for mx=0,mapw-1 do
-  for my=0,maph-1 do
-			local t=peek(mapaddr+(mx+my*mapw))
-   pset(64+mx,64+my,t)
-  end
- end
- color(6)
-end
-
-function draw_map_at_tiles(px,py)
- for x=1,mapw-1 do
-  for y=1,maph-1 do
-			--local t=pget(mx,my)
-			local mx,my=x-1,y-1
-			local t=peek(mapaddr+(mx+my*mapw))
-			local n=peek(mapaddr+(mx+(my-1)*mapw))
-			local s=peek(mapaddr+(mx+(my+1)*mapw))
-			local e=peek(mapaddr+((mx-1)+my*mapw))
-			local w=peek(mapaddr+((mx+1)+my*mapw))
-			if t!=tile_land then
-			 spr(2,mx*8-px-8,my*8-py-8)
-			else
-    if n==tile_land and
-  			  s==tile_land and
-  			  e==tile_land and
-  			  w==tile_land 
-  		then spr(1,mx*8-px-8,my*8-py-8)	end
-    if n!=tile_land and
-  			  s==tile_land and
-  			  e==tile_land and
-  			  w==tile_land 
-  		then spr(3,mx*8-px-8,my*8-py-8,1,1,false,true) end
-    if n==tile_land and
-  			  s!=tile_land and
-  			  e==tile_land and
-  			  w==tile_land 
-  		then spr(3,mx*8-px-8,my*8-py-8) end
-    if n==tile_land and
-  			  s==tile_land and
-  			  e!=tile_land and
-  			  w==tile_land 
-  		then spr(5,mx*8-px-8,my*8-py-8,1,1,true,false) end
-    if n==tile_land and
-  			  s==tile_land and
-  			  e==tile_land and
-  			  w!=tile_land 
-  		then spr(5,mx*8-px-8,my*8-py-8) end
-			end
-			--[[
-   if t==tile_land then
-    spr(1,mx*8-px,my*8-py)
-   else
-    spr(2,mx*8-px,my*8-py)
-   end]]
-  end
- end
- color(6)
-end
 
 
 
@@ -1366,117 +1421,56 @@ pts = {
 {535, 260},
 }
 -->8
---tri method
+--mouse
 
+--mouse down coords
+mdx=0
+mdy=0
+mdrag = false
 
+-- middle or even right mouse
+-- clicks might be iffy on web?
+lmwasdown=false
+rmwasdown=false
+mmwasdown=false
 
-function flipintri(resmap,t)
- 
- local p0=t[1]
- local p1=t[2]
- local p2=t[3]
- 
- line(p0[1],p0[2],p1[1],p1[2])
- line(p0[1],p0[2],p2[1],p2[2])
- line(p1[1],p1[2],p2[1],p2[2])
- 
- --order verts from top to bottom
- local topv = 0
- local miny = p0[2]
- if (p1[2]<miny) topv = 1 miny = p1[2]
- if (p2[2]<miny) topv = 2 miny = p2[2]
-
- local botv = 0
- local maxy = p0[2]
- if (p1[2]>maxy) botv = 1 maxy = p1[2]
- if (p2[2]>maxy) botv = 2 maxy = p2[2]
-
- local midv = 0;
- if (topv != 2 and botv != 2) midv = 2 midy=p2[1]
- if (topv != 1 and botv != 1) midv = 1 midy=p1[1]
- if (topv != 0 and botv != 0) midv = 0 midy=p0[1]
-
- topv+=1 --convert to 1-based
- botv+=1 
- midv+=1
-
- local hyp={t[topv], t[botv]}
- local top={t[topv], t[midv]}
- local bot={t[midv], t[botv]}
-
-	--each line in the form
-	--x=ax+b
- local ha=(hyp[2][1]-hyp[1][1])/(hyp[2][2]-hyp[1][2])
- local hb=hyp[1][1] - ha*hyp[1][2]
- 
- local ta=(top[2][1]-top[1][1])/(top[2][2]-top[1][2])
- local tb=top[1][1] - ta*top[1][2]
- 
- local ba=(bot[2][1]-bot[1][1])/(bot[2][2]-bot[1][2])
- local bb=bot[1][1] - ba*bot[1][2]
-
- local hypleft = true
- if (t[midv][1] > t[botv][1]) hypleft=false
-
- local starty=ceil(t[topv][2])
- local endy=ceil(t[botv][2])
- 
- for y=starty,endy do
-  local minx=0
-  local maxx=0
-  if y<t[midv][2] then
-   local hypx=ceil(ha*y+hb)
-   local topx=ceil(ta*y+tb)
-   if (hypx<topx) minx=hypx maxx=topx
-   if (hypx>=topx) minx=topx maxx=hypx
-  else
-   local hypx=ceil(ha*y+hb)
-   local botx=ceil(ba*y+bb)
-   if (hypx<botx) minx=hypx maxx=botx
-   if (hypx>=botx) minx=botx maxx=hypx
-  end
-  
-  
-  -- limit to size of map/chunk
-  if (minx<0) minx=0
-  if (maxx<0) maxx=0
-  if (minx>128) minx=128
-  if (maxx>128) maxx=128
-  
-  
-  for x=minx,maxx do
-   if resmap[{x,y}] then
-    if resmap[{x,y}]==tile_water then
-     resmap[{x,y}]=tile_land
-    else
-     resmap[{x,y}]=tile_water
-    end
-   else
-    resmap[{x,y}]=tile_land
-   end
-  end
-  
- end
- 
- --return resmap
-
+function init_mouse()
+ poke(0x5f2d, 1) --enable mouse
 end
 
-function rough_polygons(r,curves)
-
- commonp={r[1]+8,r[2]+8} --approx center
- 
-	res = {}
-	if (not curves) return result
-	num_curves = #curves
-	for i=1,num_curves do
-	 p1=curves[i][1]
-	 p2=commonp
-	 p3=curves[i][3]
-	 flipintri(res,{p1,p2,p3})
-	end
- return res
+function get_mouse()
+ return stat(32)-1, stat(33)-1
 end
+
+function cache_mouse_state()
+ --for mouse edge triggers
+ lmwasdown=lmouse()
+	rmwasdown=rmouse()
+	mmwasdown=mmouse()
+end
+
+function nmouse() return stat(34)==0 end
+function lmouse() return stat(34)==1 end
+function rmouse() return stat(34)==2 end
+function mmouse() return stat(34)==4 end
+
+function lmup() return not lmouse() and lmwasdown end
+function rmup() return not rmouse() and rmwasdown end
+function mmup() return not mmouse() and mmwasdown end
+
+function lmdown() return lmouse() and not lmwasdown end
+function rmdown() return rmouse() and not rmwasdown end
+function mmdown() return mmouse() and not mmwasdown end
+
+--can delete
+function debug_print_mouse()
+ print(mx)
+ print(my)
+ print("lmup"..tostr(lmup()))
+ print("lmdown"..tostr(lmdown()))
+ print("lmouse"..tostr(lmouse()))
+end
+
 
 __gfx__
 0000000033bbbbbbddddddddbbbbbbbbbbb3956dbbb3956d00000000b666666d0000000000000000000000000000000000000000000000000000000000000000
@@ -1575,13 +1569,13 @@ cccccc7ccccccccccc77cccccc77cccc000000000000000000000000000000000000000000000000
 cccccc7ccccccccccc7cccccccc777cc000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 ccccc77ccccccccccc777ccccccc7777000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 7cccc7ccccccccccccc777cccc777ccc000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-ccc7777cccccccccccc777777777cccc11d1111111111111dddddddddddddddd22222222222222222222222222222222d653bbbbbbbbbbbb0555550000000000
-cccc7777ccc777777ccc77777c7cccccdd1dd111111d1111dddddddddddddddd22222222222222222222222222222442d653bbbbbbbbbb3b55a5955000000000
-ccccc777777777c77ccc77cccccccccc111111111dd1dd11dddddddddddd666d224422222222222222222222222222226633bb3bbb33bbbb5aa5995000000000
-ccccccc7777ccccc77777ccccccccccc1111111111111111dddd666ddddddddd22222222224442222224442222222222653bbbbbbb33bbbb5aa5995000000000
-ccccccc77cccccccc77777cccccccccc1111d11111111111dddddddddddddddd22222222222222222222222222222222653bbbbbbbbbbbbb5a55595000000000
-cccccccc7ccccccccc7777cccccccccc111d1dd111111d11d666ddddd666dddd222222222222222222222222222222226533bbbbbbbbb3bb5555555000000000
-ccccccc77ccccccccccc77cccccccccc111111111111d1dddddddddddddd666d222222222222222222222222222222226553bbbbb3bbbbbb5544455000000000
+ccc7777cccccccccccc777777777cccc11d1111111111111dddddddddddddddd22222222222222222222222222222222d653bbbbbbbbbbbb0555550077000000
+cccc7777ccc777777ccc77777c7cccccdd1dd111111d1111dddddddddddddddd22222222222222222222222222222442d653bbbbbbbbbb3b55a5955071700000
+ccccc777777777c77ccc77cccccccccc111111111dd1dd11dddddddddddd666d224422222222222222222222222222226633bb3bbb33bbbb5aa5995071170000
+ccccccc7777ccccc77777ccccccccccc1111111111111111dddd666ddddddddd22222222224442222224442222222222653bbbbbbb33bbbb5aa5995071117000
+ccccccc77cccccccc77777cccccccccc1111d11111111111dddddddddddddddd22222222222222222222222222222222653bbbbbbbbbbbbb5a55595071111700
+cccccccc7ccccccccc7777cccccccccc111d1dd111111d11d666ddddd666dddd222222222222222222222222222222226533bbbbbbbbb3bb5555555071177700
+ccccccc77ccccccccccc77cccccccccc111111111111d1dddddddddddddd666d222222222222222222222222222222226553bbbbb3bbbbbb5544455077770000
 ccccccc77ccccccccccc77cccccccccc1111111111111111dddddddddddddddd222222222222222222222222222444226653bbbbbbbbbbbb5441445000000000
 ccccccc777cccccccccc777ccccccccc11d1111111111111dddddddddddddddd44222444422222442222222222222222d653b3bbbbbbbbbb0000000000000000
 ccccccccc77ccccccccc77777ccccccc1d1dd11111d11111dd66dddddddddddd55444555544444552222222222222222d633bbbbbbbb3bbb0000000000000000
