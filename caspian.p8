@@ -14,6 +14,9 @@ end
 px,py=550,160
 px,py=662,161
 
+subpx=0
+subpy=0
+
 
 cx,cy=px-64,py-64
 
@@ -38,18 +41,44 @@ function _update()
  if btnp(⬆️) then gy1-=2 end
  if btnp(⬇️) then gy1+=2 end
  ]]
+ if btnp(⬅️) and btnp(➡️) then
+  debugmsgs = not debugmsgs
+ end
+ 
+ if btnp(⬆️) and btnp(⬇️) then
+  debugmap = not debugmap
+ end
+ 
  if (btnp(❎)) gtoggle=(gtoggle+1)%maxtog
  
  if btn(🅾️) then
-  if btn(⬅️) then cx-=2 end
-  if btn(➡️) then cx+=2 end
-  if btn(⬆️) then cy-=2 end
-  if btn(⬇️) then cy+=2 end
- else
   if btn(⬅️) then px-=1 end
   if btn(➡️) then px+=1 end
   if btn(⬆️) then py-=1 end
   if btn(⬇️) then py+=1 end
+ end
+ 
+ if not btn(🅾️) then
+  if btn(⬅️) then subpx-=1 end
+  if btn(➡️) then subpx+=1 end
+  if btn(⬆️) then subpy-=1 end
+  if btn(⬇️) then subpy+=1 end
+  if subpx>=8 then
+   px+=1
+   subpx=0
+  end
+  if subpx<0 then
+   px-=1
+   subpx+=8
+  end
+  if subpy>=8 then
+   py+=1
+   subpy=0
+  end
+  if subpy<0 then
+   py-=1
+   subpy+=8
+  end
  end
  if (px<cx) cx=px
  if (py<cy) cy=py
@@ -67,7 +96,7 @@ function _update()
  
  --mapreset()
 
- rec={px,py,px+16,py+16}
+ rec={px,py,px+mapw,py+maph}
  bigrec={rec[1]-5,rec[2]-5,rec[3]+5,rec[4]+5}
  --if not eq(rec,lastrec) then
   add(gtime,{"pre",stat(1)})
@@ -114,10 +143,21 @@ function _draw()
   {64,100}
   })
   ]]
- draw_map(px,py)
+ 
+  --draw_map(px,py) 
+  --rect(rec[1],rec[2],rec[3],rec[4])  
+  --add(gtime,{"drw",stat(1)})
+ camera()
+ copy_screen_map_to_mem()
+ add(gtime,{"bak",stat(1)})
+ draw_map_at_tiles(subpx,subpy)  
+ if debugmap then
+  draw_map_from_mem()
+ end
  add(gtime,{"drw",stat(1)})
  
- rect(rec[1],rec[2],rec[3],rec[4])
+   
+   
  
  
  --[[
@@ -141,48 +181,49 @@ function _draw()
 ]]
  camera()
  
- cursor(0,0)
- print("fps "..stat(7).."/"..stat(8))
- kbs=stat(0)
- bts=(kbs-flr(kbs))*1024
- print("ram "..flr(kbs).."k "..bts.."b (of 2048k)")
- print("cpu "..stat(1))
- print("sys "..stat(2))
-
-	print("p:"..px..","..py)
-	print("c:"..cx..","..cy)
-	
-	lastt = 0
-	for i=1,#gtime do
-	 delta = gtime[i][2]-lastt
-	 print(gtime[i][1].." "..delta)
-	 lastt = gtime[i][2]
-	end
-
-	--[[
-	lastt = 0
-	for i=1,#ltime do
-	 delta = ltime[i][2]-lastt
-	 print(ltime[i][1].." "..delta)
-	 lastt = ltime[i][2]
-	end
-	]]
-	
-	
-	--[[
-	print(#gsteps)
- for stp in all(gsteps) do
-  print(stp)
- end
- gsteps={}]]
+ if debugmsgs then
+  cursor(0,0)
+  print("fps "..stat(7).."/"..stat(8))
+  kbs=stat(0)
+  bts=(kbs-flr(kbs))*1024
+  print("ram "..flr(kbs).."k "..bts.."b (of 2048k)")
+  print("cpu "..stat(1))
+  print("sys "..stat(2))
  
- --[[
-	print(#rolmsg)
- for stp in all(rolmsg) do
-  print(stp)
+ 	print("p:"..px..","..py)
+ 	print("c:"..cx..","..cy)
+ 	
+ 	lastt = 0
+ 	for i=1,#gtime do
+ 	 delta = gtime[i][2]-lastt
+ 	 print(gtime[i][1].." "..delta)
+ 	 lastt = gtime[i][2]
+ 	end
+ 
+ 	--[[
+ 	lastt = 0
+ 	for i=1,#ltime do
+ 	 delta = ltime[i][2]-lastt
+ 	 print(ltime[i][1].." "..delta)
+ 	 lastt = ltime[i][2]
+ 	end
+ 	]]
+ 	
+ 	
+ 	--[[
+ 	print(#gsteps)
+  for stp in all(gsteps) do
+   print(stp)
+  end
+  gsteps={}]]
+  
+  --[[
+ 	print(#rolmsg)
+  for stp in all(rolmsg) do
+   print(stp)
+  end
+  rolmsg={}]]
  end
- rolmsg={}]]
-
  
 end
 
@@ -192,6 +233,9 @@ rolmsg={}
 
 gtoggle=1
 maxtog=2
+
+debugmap=false
+debugmsgs=true
 -->8
 --world
 
@@ -446,16 +490,6 @@ tile_fill_land=3
 tile_test=14
 tile_nil=0
 
-gmap={}
-
-
-function inrect(r, p)
- return p[1]>=r[1] and
-        p[2]>=r[2] and
-        p[1]<r[3] and
-        p[2]<r[4]
-end
-
 
 function aabb_col(r1,r2)
  return
@@ -492,12 +526,20 @@ function curves_in_rect(r)
 end
 
 
---not using atm tho we should
-mapw=16
-maph=16
+mapw=19
+maph=19
 
---mapaddr = 0x4300
-mapaddr = 0x6000 --screen
+mapaddr = 0x4300
+
+function copy_screen_map_to_mem()
+ for x=0,mapw-1 do
+  for y=0,maph-1 do
+   poke(mapaddr+(x+y*mapw),pget(x,y))
+  end
+ end
+end
+
+--mapaddr = 0x6000 --screen
 --poke(mapaddr+(x+y*mapw),t)
 --peek(mapaddr+(x+y*mapw))
 --replace 16 with w/h if neeed
@@ -506,26 +548,6 @@ function mapreset()
  cls()
  --memset(mapaddr,tile_nil,mapw*maph)
 end
-function mapsetsafe(x,y,t)
-	if x>=0 and x<mapw and
-    y>=0 and y<maph then
-   --poke(mapaddr+(x+y*mapw),t)
-   pset(x,y,t)
- end
-end
-
-function mapsetsafeifnil(x,y,t)
-	if x>=0 and x<mapw and
-    y>=0 and y<maph then
-  --if peek(mapaddr+(x+y*mapw))==tile_nil then
-  if pget(x,y)==tile_nil then
-   --poke(mapaddr+(x+y*mapw),t)
-   pset(x,y,t)
-  end
- end
-end
-
-
 
 
 --map at 0,0,mapw,maph
@@ -582,34 +604,6 @@ function fill_map()
    end
   end
   
-  
- --[[
- -- fill water, rest default to land
-  for x=0,15 do
-   for y=0,15 do
-    local t=peek(mapaddr+(x+y*mapw))
-    if t != tile_nil then
-     --if m[xy2s(x,y)]==tile_fill_land then
-      --flood_fill(m,{x,y},tile_fill_land,tile_land)
-     --end
-     if t==tile_fill_water then
-      flood_fill(x,y,tile_fill_water,tile_water)
-     end
-    end
-   end
-  end
-  
-  for x=0,15 do
-   for y=0,15 do
-    local t=peek(mapaddr+(x+y*mapw))
-    if t==tile_nil
-    or t==tile_fill_land
-    then
-     poke(mapaddr+(x+y*mapw),tile_land)
-    end
-   end
-  end
-  ]]
  end
  
 end
@@ -629,23 +623,85 @@ end
 
 
 
-function gen_map(curves,mx,my)
+function gen_map(curves,px,py)
 	result = {}
 	if (not curves) return result
 	num_curves = #curves
 	for i=1,num_curves do
-	 plotbez(mx,my,curves,i)
+	 plotbez(px,py,curves,i)
 	end
 	return result
 end
 
-function draw_map(px,py)
- for mx=1,mapw do
-  for my=1,maph do
+
+
+function draw_map_from_screen(px,py)
+ for mx=0,mapw-1 do
+  for my=0,maph-1 do
    camera()
 			local t=pget(mx,my)
    camera(cx,cy)
    pset(mx+px,my+py,t)
+  end
+ end
+ color(6)
+end
+
+function draw_map_from_mem()
+ for mx=0,mapw-1 do
+  for my=0,maph-1 do
+			local t=peek(mapaddr+(mx+my*mapw))
+   pset(64+mx,64+my,t)
+  end
+ end
+ color(6)
+end
+
+function draw_map_at_tiles(px,py)
+ for x=1,mapw-2 do
+  for y=1,maph-2 do
+			--local t=pget(mx,my)
+			local mx,my=x-1,y-1
+			local t=peek(mapaddr+(mx+my*mapw))
+			local n=peek(mapaddr+(mx+(my-1)*mapw))
+			local s=peek(mapaddr+(mx+(my+1)*mapw))
+			local e=peek(mapaddr+((mx-1)+my*mapw))
+			local w=peek(mapaddr+((mx+1)+my*mapw))
+			if t!=tile_land then
+			 spr(2,mx*8-px,my*8-py)
+			else
+    if n==tile_land and
+  			  s==tile_land and
+  			  e==tile_land and
+  			  w==tile_land 
+  		then spr(1,mx*8-px,my*8-py)	end
+    if n!=tile_land and
+  			  s==tile_land and
+  			  e==tile_land and
+  			  w==tile_land 
+  		then spr(3,mx*8-px,my*8-py,1,1,false,true) end
+    if n==tile_land and
+  			  s!=tile_land and
+  			  e==tile_land and
+  			  w==tile_land 
+  		then spr(3,mx*8-px,my*8-py) end
+    if n==tile_land and
+  			  s==tile_land and
+  			  e!=tile_land and
+  			  w==tile_land 
+  		then spr(5,mx*8-px,my*8-py,1,1,true,false) end
+    if n==tile_land and
+  			  s==tile_land and
+  			  e==tile_land and
+  			  w!=tile_land 
+  		then spr(5,mx*8-px,my*8-py) end
+			end
+			--[[
+   if t==tile_land then
+    spr(1,mx*8-px,my*8-py)
+   else
+    spr(2,mx*8-px,my*8-py)
+   end]]
   end
  end
  color(6)
@@ -1424,14 +1480,14 @@ function rough_polygons(r,curves)
 end
 
 __gfx__
-0000000033333333dddddddd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000033333333dddddd6600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0070070033333bb366dd66dd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0007700033333333dddddddd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0007700033333333dddddddd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0070070033bb3333ddd66ddd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000033333333d66dd66d00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000033333333dddddddd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000033bbbbbbddddddddbbbbbbbbbbb3956dbbb3956d00000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000b333bbbbddddddddbbbbbbbbbbb39566bbb3956600000000000000000000000000000000000000000000000000000000000000000000000000000000
+00700700bbbbb33bddddd66dbbbbbbbbbbb39556bbb3955600000000000000000000000000000000000000000000000000000000000000000000000000000000
+0007700033bbbbb3dddddddd3333333333339956bbb3995600000000000000000000000000000000000000000000000000000000000000000000000000000000
+00077000bb33bbbbdddddddd9999999999999956bbb3995600000000000000000000000000000000000000000000000000000000000000000000000000000000
+007007003bbb33bbdd66dddd5559955555599556bbb3955600000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000b33bbbbbdddddddd6655556666555566bbb3956600000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000bbbb333bddddddddd666666dd666666dbbb3956d00000000000000000000000000000000000000000000000000000000000000000000000000000000
 000b0000000bb0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0b000bbbbb000bb00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 bb00000bbbbb00b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -1448,14 +1504,14 @@ bbbbbbbb0bb000000000000000000000000000000000000000000000000000000000000000000000
 000000b0b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000bbbbb36d0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000bbbbb3660000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000bbbb33560000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000333339560000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000999999560000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000555995560000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000665555660000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000d666666d0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 11111100111111000011110000011100001111110011111100111100111111000011111100111110000111110011100000111000001111110011110000111111
 17112100177721000111210001112111001217710012177100127110177121000012117100121710001111711112110000121110001217710012711000127771
 17712100177721000117710001177771011777710011777100121710177121000012177100121710011121711177710001177710001177710012171000127771
