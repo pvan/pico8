@@ -7,9 +7,96 @@ __lua__
 tilesz=16 
 
  
+function test_world_consistency(stx)
+ local minx=9999
+ for pi=1,#pts do
+  if pts[pi][1]<minx then
+   minx=pts[pi][1]
+  end
+ end
+ minx=max(minx,stx)
+ lastvalid = false
+ local lastx,lasty=-100,-100
+ for camtx=minx,1260 do
+  for camty=0,648 do
+  
+   camtrec={
+    camtx - (mapw/2),
+    camty - (maph/2),
+    camtx + (mapw/2),
+    camty + (maph/2)}
+   bigrec={
+    camtrec[1]-5,
+    camtrec[2]-5,
+    camtrec[3]+5,
+    camtrec[4]+5}
+   
+   curves=curves_in_rect(bigrec)
+   
+   if #curves>0 then
+    gen_map(curves,camtrec[1],camtrec[2])
+    fill_map()
+    fill_islands(camtrec[1],camtrec[2])
+    copy_screen_map_to_mem()
+   
+    if camty>1 and lastvalid then
+     dx,dy=camtx-lastx,camty-lasty
+     
+     if not mem_is_all_tile(cacheaddr,tile_land) 
+     and not mem_is_all_tile(cacheaddr,tile_water)
+     then
+      if not compare_mem_maps(dx,dy) then
+       
+			    dset(0,camtx)
+		  			dset(1,camty)
+		  			
+		  			--cls()
+       stop("mismatch at "..camtx..","..camty)
+     
+      end
+     end
+     
+    end
+    copy_mem_map_to_cache()
+    lastvalid=true
+    
+    cls()
+    color(6)
+    print(camtx.."/"..tostr(1260),0,64)
+    print(camty.."/"..tostr(648),0,70)
+   
+   else
+    lastvalid=false
+   end
+  
+   lastx,lasty=camtx,camty
+
+  end
+  cls()
+  color(6)
+  print(camtx.."/"..tostr(1260),0,64)
+ end
+
+end
+ 
 function _init()
+ cartdata("pv_caspian")
  cls()
  
+ --[[
+ test_world_consistency(566)
+ stop("end test") 
+ ]]
+ 
+ --local ptx=peek4(0x5e00)
+ --local pty=peek4(0x5e04)
+ local ptx,pty=dget(0),dget(1)
+ player.x=(ptx)*tilesz
+ player.y=(pty)*tilesz
+ 
+-- player.x=(585)*tilesz
+-- player.y=(187)*tilesz
+  
  --music(1)
  
  --create_tilemap()
@@ -53,11 +140,19 @@ function _update()
   playing_music=false
   music(-1)
   
-  pm=0
-  if (btn(⬆️)) pm=1
-  if (btn(⬅️)) pm=2
-  if (btn(⬇️)) pm=3
-  if (btn(➡️)) pm=4
+  --pm=0
+  if (btnp(⬆️)) then
+   if (pm==3) pm=0 else pm=1
+  end
+  if (btnp(⬅️)) then
+   if (pm==4) pm=0 else pm=2
+  end
+  if (btnp(⬇️)) then
+   if (pm==1) pm=0 else pm=3
+  end
+  if (btnp(➡️)) then
+   if (pm==2) pm=0 else pm=4
+  end
   return --dont update the rest
  else
   pause_menu=false
@@ -131,11 +226,12 @@ function _draw()
    
    
  if debugmap then
-  draw_map_from_mem()
+  draw_map_from_mem(64,64,mapaddr)
   local wdtx,wdty=w2lt(player.x,player.y,player.x,player.y)
   pset(64+wdtx,64+wdty,7)
  end
  
+
  
  if pause_menu then
   spr(223,64-4,64-4)
@@ -181,15 +277,18 @@ function _draw()
  	
  end
  
- if debugmouse then
-  camx,camy=player.x,player.y
-  local ctx,cty=w2wt(camx,camy)
+ camx,camy=player.x,player.y
+ local ctx,cty=w2wt(camx,camy)
+  
   local mx,my=get_mouse()
   local wx,wy=screen2world(mx,my,camx,camy)
   local wtx,wty=w2wt(wx,wy)
   local ltx,lty=wt2lt(wtx,wty,ctx,cty)
   local tx,ty=screen_to_tlocal(mx,my,player.x,player.y)
   local t=mapget(tx,ty)
+  mltx,mlty=ltx,lty
+  
+ if debugmouse then
   print("c "..camx.." "..camy)
   print("ct "..ctx.." "..cty)
   print("m "..mx.." "..my)
@@ -204,6 +303,7 @@ function _draw()
   pset(64+ltx,64+lty,0)
  end
 
+ render_curve_pts(curves,ctx,cty)
  
 end
 
@@ -216,6 +316,7 @@ debugfill=true
 debugmap=false
 debugmsgs=false
 debugcol=true
+debugmouse=false
 -->8
 --tile world (using memory map)
 
@@ -242,6 +343,66 @@ function copy_screen_map_to_mem()
  end
 end
 
+--note 19x19 < 0x200
+cacheaddr=0x4300+0x200
+
+function copy_mem_map_to_cache()
+ memcpy(cacheaddr,mapaddr,mapw*maph)
+end
+
+function compare_mem_maps(dx,dy)
+ --specially designed
+ --for our particular loop
+ --(check vertical strips 1 at a time)
+ -- ignore horizontal changes (resets at top))
+ --
+ --ok ignore borders for now
+ local bld=4--border to egore
+ if dy==1 and dx==0 then
+  for x=bld,mapw-1-bld do
+   for y=bld+1,maph-1-bld do
+    local m=peek(mapaddr+(x+(y-1)*mapw))
+    local c=peek(cacheaddr+(x+y*mapw))
+    if m!=c then
+     cls()
+     print(m.."!="..c)
+     print(x..","..y)
+     
+     draw_map_from_mem(64,64,mapaddr)
+     draw_map_from_mem(64+20,64,cacheaddr)
+     
+     return false
+    end
+   end
+  end
+ end
+ return true
+end
+
+
+function mem_is_all_tile(addr,t)
+
+ local bld=4--border to egore
+ for x=bld,mapw-1-bld do
+  for y=bld,maph-1-bld do
+   if peek(addr+(x+y*mapw))!=t then
+    return false
+   end
+  end
+ end
+ return true
+ 
+--[[
+ for i=0,(mapw*maph)-1,4 do
+  if peek4(addr+i)!=3084.0471 then
+   --3084.0471 is all 4 bytes are land
+   return false
+  end
+ end
+ return true
+ ]]
+end
+
 
 --not used at the moment
 function mapmemreset()
@@ -260,6 +421,22 @@ function mapset(x,y,t)
 end
 
 
+function lt2s(tx,ty)
+
+   --the first screen tile (st=0)
+   --is actually the second
+   --local map tile (lt=1)
+   --
+   --but now we only need 8x8
+   --out of a 16x16 map,
+   --so skip 4 on each end
+   --(start 4 more in from 0,0)
+  local stx,sty=tx+1+4,ty+1+4
+  
+		local sx,sy=stx*16-8,sty*16-8
+		
+		return sx,sy
+end
 
 function screen2world(sx,sy,cx,cy)
  return cx+sx-64,cy+sy-64
@@ -308,11 +485,11 @@ function draw_map_from_screen(px,py)
  color(6)
 end
 
-function draw_map_from_mem()
+function draw_map_from_mem(sx,sy,addr)
  for mx=0,mapw-1 do
   for my=0,maph-1 do
-			local t=peek(mapaddr+(mx+my*mapw))
-   pset(64+mx,64+my,t)
+			local t=peek(addr+(mx+my*mapw))
+   pset(sx+mx,sy+my,t)
   end
  end
  color(6)
@@ -590,11 +767,11 @@ function player_update(p)
 
 
 
- --if u or d or l or r then
- if true then --always move for now
+ if u or d or l or r then
+ --if true then --always move for now
  
  	if not playing_music then 
- 	  music(1)
+ 	  music(4)
  	  playing_music=true
  	end
   --music(1)
@@ -641,14 +818,6 @@ function player_update(p)
     local ntx,nty=
      screen_to_tlocal(sx+xstep,sy+ystep,player.x,player.y)
     
-    --[[
-    -- 64 for tl of sprite
-    -- +8 for tile buffer on left
-    ptx = flr((64+8+hx)/8)
-    pty = flr((64+8+hy)/8)
-    ntx = flr((64+8+hx+xstep)/8)
-    nty = flr((64+8+hy+ystep)/8)
-    ]]
     --recall we test 1 dir at a time so we can slide against walls
     testtilex = peek(mapaddr+(ntx+pty*mapw))
     if testtilex == tile_land then allowx = false end
@@ -657,32 +826,16 @@ function player_update(p)
    end
 	 end
 	 end
-  --[[ 
-  allowx=true
-  allowy=true
-  hotspotsx={0,7}
-  hotspotsy={0,7}
-  for j=1,#hotspotsy do
-   hy=hotspotsy[j]
-   for i=1,#hotspotsx do
-    hx = hotspotsx[i]
-    ptx = flr((p.x+hx)/8)
-    pty = flr((p.y+hy)/8)
-    ntx = flr((p.x+hx+xstep)/8)
-    nty = flr((p.y+hy+ystep)/8)
-    --recall we test 1 dir at a time so we can slide against walls
-    testtilex = get_world_tile(ntx,pty,flr(p.x/8),flr(p.y/8))
-    if testtilex == 1 then allowx = false end
-    testtiley = get_world_tile(ptx,nty,flr(p.x/8),flr(p.y/8))
-    if testtiley == 1 then allowy = false end
-   end
-  end
-  ]]
      
   if not btn(❎) then
    if allowx then p.x += xstep end
    if allowy then p.y += ystep end    
   end
+  local ptx,pty=w2wt(p.x,p.y)
+  dset(0,ptx)
+  dset(1,pty)
+  --poke4(0x5e00,ptx)
+  --poke4(0x5e04,pty)
  else
   -- not moving
   playing_music=false
@@ -845,7 +998,33 @@ function curves_in_rect(r)
 	return result
 end
 
-
+function render_curve_pts(crvs,ctx,cty)
+ 
+	if (not crvs) return
+	num_curves = #crvs
+	for i=1,num_curves do
+	 for t=1,3 do
+	  stx=crvs[i][t][1]
+	  sty=crvs[i][t][2]
+	  lx,ly=wt2lt(stx,sty,ctx,cty)
+	  
+	  sx,sy=lt2s(lx,ly)
+	  			
+	  --world
+ 	 pset(sx,sy,9)
+ 	 
+ 	 --minimap
+ 	 pset(64+lx,64+ly,1)
+ 	 
+ 	 if mltx==lx and mlty==ly then
+ 	  pset(64+lx,64+ly,1)
+ 	  print(stx..","..sty)
+ 	 end
+ 	 
+	 end
+	end
+	
+end
 
 --map at 0,0,mapw,maph
 function flood_fill(x,y,t,nt)
@@ -869,6 +1048,25 @@ end
 
 function fill_map() 
 
+ local wdtx,wdty=w2lt(player.x,player.y,player.x,player.y)
+ flood_fill(wdtx,wdty,tile_nil,tile_water)
+
+ --fill lakes here
+ 
+ --rest default to land
+ for x=0,mapw-1 do
+  for y=0,maph-1 do
+   local t=pget(x,y)
+   if t==tile_nil
+   or t==tile_fill_land
+   then
+    pset(x,y,tile_land)
+   end
+  end
+ end
+  
+--[[
+ 
  if debugfill then
  
  --fill land, rest default to water
@@ -902,7 +1100,7 @@ function fill_map()
   end
   
  end
- 
+ ]]
 end
 
 
@@ -955,6 +1153,7 @@ function plotbez(mx,my,curves,i)
  local leg2dy=abs(y2-y1)
  local dist=leg1dx+leg1dy+leg2dx+leg2dy
 
+--[[
  -- (-y,x) (rotate 90 r)
  local dx=x2-x0
  local dy=y2-y0
@@ -965,43 +1164,103 @@ function plotbez(mx,my,curves,i)
  local rx,ry=-dy,dx--y0-y2,x2-x0
  if rx>0 then rx=1 else rx=-1 end
  if ry>0 then ry=1 else ry=-1 end
- 
+]]
+
+ --[[
  --outer product
  local d=(x1-x0)*(y2-y0)-(y1-y0)*(x2-x0)
  
  local overland=true
  if (d<0) overland=false
- 
+ ]]
 	
  local steps=dist
+ local lastp={x0,y0}
  --if (true) then add(gsteps,steps)
  --else add(gsteps,steps) del(gsteps,gsteps[1]) end
  for t = 0,1,(1/steps) do
-  --local p = p_at_t(t, x0,y0,x1,y1,x2,y2)
-  --line(p[1],p[2],lastp[1],lastp[2])
-  --lastp = p
   
   local x=((1-t)^2)*x0 + 2*(1-t)*t*x1 + (t^2)*x2
 	 local y=((1-t)^2)*y0 + 2*(1-t)*t*y1 + (t^2)*y2
+    
+  --[[
+  local dx=x-lastp[1]
+  local dy=y-lastp[2]
+  local rx,ry=-dy,dx--y0-y2,x2-x0
+  ]]
+  --[[
+  if rx>0 then rx=1 else rx=-1 end
+  if ry>0 then ry=1 else ry=-1 end
+]]
+
+  local lx = x-mx
+  local ly = y-my
+  local llx=lastp[1]-mx
+  local lly=lastp[2]-my
+  line(round(lx),round(ly),
+       round(llx),round(lly),
+       tile_land)
   
-  --if (#gp<10) add(gp,p)
+--[[
+  local rhx = lx+rx*2
+  local rhy = ly+ry*2
+  if pget(rhx,rhy)!=nil then
+   pset(rhx,rhy,tile_fill_land)
+  end
+  --local llx=(lastp[1]+rx*2)-mx
+  --local lly=(lastp[2]+ry*2)-my
+  --line(round(lx),round(ly),
+  --     round(llx),round(lly),
+  --     tile_fill_land)
+       
+  --local llx=lastp[1]-mx
+  --local lly=lastp[2]-my
+  --line(round(lx),round(ly),
+  --     round(llx),round(lly),
+  --     tile_land)
+       
+  rectfill(ceil(lx),
+           ceil(ly),
+           flr(lx),
+           flr(ly),
+           tile_land)
+       
+  local rhx = lx-rx*2
+  local rhy = ly-ry*2
+  local llx=(lastp[1]-rx*2)-mx
+  local lly=(lastp[2]-ry*2)-my
+  line(round(lx),round(ly),
+       round(llx),round(lly),
+       tile_fill_water)
+   ]]    
   
-  local lx = round(x-mx)
-  local ly = round(y-my)
-  --mapset(lx,ly,tile_land)
   
+  --[[
+  if (btn(❎)) then
+   lx = x-mx
+   ly = y-my
+  end
   
-  --mapsetsafe(lx,ly,tile_land)
+  rectfill(ceil(lx),
+           ceil(ly),
+           flr(lx),
+           flr(ly),
+           tile_land)
+    
+  pset(round(lx),round(ly),tile_test)
+  ]]
+
+  lastp = {x,y}
   
-  
+  --[[
  	if lx>=0 and lx<mapw and
      ly>=0 and ly<maph then
     --poke(mapaddr+(lx+ly*mapw),tile_land)
     pset(lx,ly,tile_land)
-  end
+  end]]
  
  
-  local x = round(lx+rx)
+--[[  local x = round(lx+rx)
   local y = round(ly+ry)
  	if x>=0 and x<mapw and
      y>=0 and y<maph
@@ -1014,35 +1273,20 @@ function plotbez(mx,my,curves,i)
    end
   end
   
-  local x = round(lx-rx)
-  local y = round(ly-ry)
+  --local x = round(lx-rx)
+  --local y = round(ly-ry)
  	if x>=0 and x<mapw and
      y>=0 and y<maph
   then 
-   --local tile=peek(mapaddr+(x+y*mapw))
-   local tile=pget(x,y)
-   if tile==tile_nil 
-   or tile==tile_fill_land
-   then
-    --poke(mapaddr+(x+y*mapw),tile_fill_water)
-    pset(x,y,tile_fill_water)
-   end
-  end
+    --pset(x,y,tile_fill_water)
+    line(round(lx-rx),
+    	    round(ly-ry),
+    	    round(lx-rx*2),
+    	    round(ly-ry*2),
+    	    tile_fill_water)
+  end]]
   
-  --[[
-  local x = round(lx-rx*2)
-  local y = round(ly-ry*2)
- 	if x>=0 and x<mapw and
-     y>=0 and y<maph 
-  then 
-   local tile=peek(mapaddr+(x+y*mapw))
-   if tile==tile_nil 
-   or tile==tile_fill_land
-   then
-    poke(mapaddr+(x+y*mapw),tile_fill_water)
-   end
-  end
-  ]]
+  
  
  end 
 
@@ -1179,7 +1423,7 @@ pts = {
 {587, 181},
 {583, 181},
 {578, 180},
-{574, 184},
+{574, 182},
 {572, 177},
 {564, 180},
 {567, 169},
@@ -1800,7 +2044,7 @@ c7c7c7c7c7c7c7c7c7c7c7c70000d0d1d2d3d0d1d2d3000000000002020202020202020202020202
 0000000000000000000000000000000000000000000000000000000202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020000000000000000000000000000000000000000
 __sfx__
 000100001405014050140501405015050170501a0501e0502204025030290302d0200300001000070000100001000010000100002000020000300003000030000200002000030000300002000010000100000000
-001300180161401611016110161101611016110161101615000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+01130010016140161102611026150361404611056110561105615056140461103611016110161501610016100d0000d0000d0000d0000d0000460005600056000560005600046000361101611016150000000000
 00130018026140361104611086110c6110e6110f6110f6110c6110861104615006000060000600006000060000600006000060000600006000060000600006000060000600006000060000600006000060000600
 001300200d6510e6511165114651186511a6511d6511f651246512665127651286512865129651296512965129651276512665125651226511f6511c6511a65118651166511465112651106510f6510e6510d651
 011000101f70016641166311662116611166111661516600166001660016600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -1826,4 +2070,5 @@ __music__
 03 04054344
 03 0a0b4344
 03 0f101113
+00 01424344
 
