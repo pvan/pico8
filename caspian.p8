@@ -6,113 +6,23 @@ __lua__
 
 tilesz=16 
 
- 
-function test_world_consistency(stx)
- local minx=9999
- for pi=1,#pts do
-  if pts[pi][1]<minx then
-   minx=pts[pi][1]
-  end
- end
- minx=max(minx,stx)
- lastvalid = false
- local lastx,lasty=-100,-100
- for camtx=minx,1260 do
-  for camty=0,648 do
-  
-   camtrec={
-    camtx - (mapw/2),
-    camty - (maph/2),
-    camtx + (mapw/2),
-    camty + (maph/2)}
-   bigrec={
-    camtrec[1]-5,
-    camtrec[2]-5,
-    camtrec[3]+5,
-    camtrec[4]+5}
-   
-   curves=curves_in_rect(bigrec)
-   
-   if #curves>0 then
-    gen_map(curves,camtrec[1],camtrec[2])
-    fill_map()
-    fill_islands(camtrec[1],camtrec[2])
-    copy_screen_map_to_mem()
-   
-    if camty>1 and lastvalid then
-     dx,dy=camtx-lastx,camty-lasty
-     
-     if not mem_is_all_tile(cacheaddr,tile_land) 
-     and not mem_is_all_tile(cacheaddr,tile_water)
-     then
-      if not compare_mem_maps(dx,dy) then
-       
-			    dset(0,camtx)
-		  			dset(1,camty)
-		  			
-		  			--cls()
-       stop("mismatch at "..camtx..","..camty)
-     
-      end
-     end
-     
-    end
-    copy_mem_map_to_cache()
-    lastvalid=true
-    
-    cls()
-    color(6)
-    print(camtx.."/"..tostr(1260),0,64)
-    print(camty.."/"..tostr(648),0,70)
-   
-   else
-    lastvalid=false
-   end
-  
-   lastx,lasty=camtx,camty
 
-  end
-  cls()
-  color(6)
-  print(camtx.."/"..tostr(1260),0,64)
- end
-
-end
  
 function _init()
  cartdata("pv_caspian")
  cls()
  
- --[[
- test_world_consistency(566)
- stop("end test") 
- ]]
- 
- --local ptx=peek4(0x5e00)
- --local pty=peek4(0x5e04)
  local ptx,pty=dget(0),dget(1)
  player.x=(ptx)*tilesz
  player.y=(pty)*tilesz
  
--- player.x=(585)*tilesz
--- player.y=(187)*tilesz
-  
- --music(1)
- 
- --create_tilemap()
  
  init_mouse()
  
 end
 
-px,py=550,160
-px,py=662,161
-
-subpx=0
-subpy=0
 
 
---cx,cy=px-64,py-64
 
 lastrec={0,0,0,0}
 
@@ -209,10 +119,22 @@ function _update()
  --end
  lastrec=rec
  
- 
+ --[[
+ --little assert style
+ --sanity check for where
+ --we need lake points, etc
+ local dx,dy=camtx-lctx,camty-lcty
+ if not compare_mem_maps(dx,dy) then
+  dset(0,camtx)
+		dset(1,camty)
+  stop("mismatch at "..camtx..","..camty)
+ end
+	copy_mem_map_to_cache()
+ lctx,lcty=camtx,camty]] 
  
 end
 
+--lctx,lcty=-100,-100
 
 function _draw()
  
@@ -303,7 +225,9 @@ function _draw()
   pset(64+ltx,64+lty,0)
  end
 
- render_curve_pts(curves,ctx,cty)
+ if debugpts then
+  render_curve_pts(curves,ctx,cty)
+ end
  
 end
 
@@ -351,17 +275,14 @@ function copy_mem_map_to_cache()
 end
 
 function compare_mem_maps(dx,dy)
- --specially designed
- --for our particular loop
- --(check vertical strips 1 at a time)
- -- ignore horizontal changes (resets at top))
- --
- --ok ignore borders for now
+ --designed to only work
+ --if dx and dy are 1
+ --also ignore borders for now
  local bld=4--border to egore
- if dy==1 and dx==0 then
-  for x=bld,mapw-1-bld do
-   for y=bld+1,maph-1-bld do
-    local m=peek(mapaddr+(x+(y-1)*mapw))
+ if dy==1 or dx==1 then
+  for x=bld+dx,mapw-1-bld do
+   for y=bld+dy,maph-1-bld do
+    local m=peek(mapaddr+((x-dx)+(y-dy)*mapw))
     local c=peek(cacheaddr+(x+y*mapw))
     if m!=c then
      cls()
@@ -381,7 +302,6 @@ end
 
 
 function mem_is_all_tile(addr,t)
-
  local bld=4--border to egore
  for x=bld,mapw-1-bld do
   for y=bld,maph-1-bld do
@@ -391,22 +311,6 @@ function mem_is_all_tile(addr,t)
   end
  end
  return true
- 
---[[
- for i=0,(mapw*maph)-1,4 do
-  if peek4(addr+i)!=3084.0471 then
-   --3084.0471 is all 4 bytes are land
-   return false
-  end
- end
- return true
- ]]
-end
-
-
---not used at the moment
-function mapmemreset()
- --memset(mapaddr,tile_nil,mapw*maph)
 end
 
 
@@ -422,7 +326,6 @@ end
 
 
 function lt2s(tx,ty)
-
    --the first screen tile (st=0)
    --is actually the second
    --local map tile (lt=1)
@@ -432,10 +335,7 @@ function lt2s(tx,ty)
    --so skip 4 on each end
    --(start 4 more in from 0,0)
   local stx,sty=tx+1+4,ty+1+4
-  
-		local sx,sy=stx*16-8,sty*16-8
-		
-		return sx,sy
+		return stx*16-8,sty*16-8
 end
 
 function screen2world(sx,sy,cx,cy)
@@ -472,19 +372,6 @@ function screen_to_tlocal(sx,sy,camx,camy)
 end
 
 
---old
-function draw_map_from_screen(px,py)
- for mx=0,mapw-1 do
-  for my=0,maph-1 do
-   camera()
-			local t=pget(mx,my)
-   camera(cx,cy)
-   pset(mx+px,my+py,t)
-  end
- end
- color(6)
-end
-
 function draw_map_from_mem(sx,sy,addr)
  for mx=0,mapw-1 do
   for my=0,maph-1 do
@@ -495,116 +382,6 @@ function draw_map_from_mem(sx,sy,addr)
  color(6)
 end
 
-//these are {tile,vflip,hflip}
-tilecodes={
-{0},
-{1},
-{2},
-{3},
-{1,true},
-{4},
-{3,true},
-{5},
-{2,false,true},
-{3,false,true},
-{6},
-{7},
-{3,true,true},
-{5,false,true},
-{7,true},
-{-2},
-}
-
-function draw_map_as_tiles(scx,scy)
- --the full camera position
- --doesn't matter to this function,
- --only the sub-tile shift
- --
- --the memory tilemap is created
- --based on the camera
- --here, we only draw it
- --and assume the tilemap 1,1
- --is the first tile we draw
- --
- --iterate over all visible tiles
- --starting in tl to br
- --note we draw 17x17 tiles
- --since the screen might not 
- --line up exactly with the tiles
- --(sub-tile x,y -- passed in)
- for stx=0,16 do
-  for sty=0,16 do
-  
-   --the first screen tile (st=0)
-   --is actually the second
-   --local map tile (lt=1)
-   local ltx,lty=stx+1,sty+1
-   
-   --actual screen draw location 
-   --is shifted by our sub-tile values
-			local sx,sy=stx*8-scx,sty*8-scy
-   
-			local t=peek(mapaddr+(ltx+lty*mapw))
-			
-			if t!=tile_land then
-			 spr(2,sx,sy)
-			else
-			
- 			local n=peek(mapaddr+(ltx+(lty-1)*mapw))
- 			local s=peek(mapaddr+(ltx+(lty+1)*mapw))
- 			local e=peek(mapaddr+((ltx+1)+lty*mapw))
- 			local w=peek(mapaddr+((ltx-1)+lty*mapw))
- 			
- 			--setup like this:
- 			--eswn
- 			--1010
- 			
- 			n=(n==tile_land and 1 or 0)
- 			s=(s==tile_land and 1 or 0)
- 			e=(e==tile_land and 1 or 0)
- 			w=(w==tile_land and 1 or 0)
-
- 			e=shl(e,3)
- 			s=shl(s,2)
- 			w=shl(w,1)
- 			
- 			local code=bor(n,bor(s,bor(e,w)))
- 			 			
- 			local drawcode=tilecodes[code+1]
- 			
- 			local id=drawcode[1]+3
- 			local vf=drawcode[2]
- 			local hf=drawcode[3]
- 			
- 			--todo: pickup here
- 			spr(id,sx,sy,1,1,hf,vf)
- 			
- 		end
-  end
- end
-end
-
-
-
-function get_local_tile(lx,ly)
- return peek(mapaddr+(lx+ly*mapw))
-end
-
-
---[[
-function world_draw()
- ptx=flr((player.x-64)/8)
- pty=flr((player.y-64)/8)
- for x=0,31 do
-  for y=0,31 do
-   tx=ptx+x
-   ty=pty+y
-   tile=get_world_tile(tx,ty)
-   spr(tile,x*8-player.x%8,y*8-player.y%8)
-  end
- end 
-end
-]]
 
 // {tile, flipx, flipy}
 style2codes={
@@ -628,19 +405,20 @@ style2codes={
 
 function draw_map_style2(scx,scy)
 
-  --the full camera position
+ --the full camera position
  --doesn't matter to this function,
  --only the sub-tile shift
  --
  --the memory tilemap is created
- --based on the camera
+ --based on the camera location
  --here, we only draw it
- --and assume the tilemap 1,1
+ --and assume the tilemap 5?,5?
  --is the first tile we draw
  --
  --iterate over all visible tiles
  --starting in tl to br
- --note we draw 17x17 tiles
+ --note we draw 1 more than would 
+ --fit perfectly on screen
  --since the screen might not 
  --line up exactly with the tiles
  --(sub-tile x,y -- passed in)
@@ -681,10 +459,10 @@ function draw_map_style2(scx,scy)
 			--tl tr bl br
 			--1  0  1  0
 			
-			tl=(tl==tile_land and 1 or 0)
-			tr=(tr==tile_land and 1 or 0)
-			bl=(bl==tile_land and 1 or 0)
-			br=(br==tile_land and 1 or 0)
+			tl=(tile_is_land(tl) and 1 or 0)
+			tr=(tile_is_land(tr) and 1 or 0)
+			bl=(tile_is_land(bl) and 1 or 0)
+			br=(tile_is_land(br) and 1 or 0)
 
 			tl=shl(tl,3)
 			tr=shl(tr,2)
@@ -698,7 +476,6 @@ function draw_map_style2(scx,scy)
 			local hf=drawcode[2]
 			local vf=drawcode[3]
 			
-			--todo: pickup here
 			spr(id,sx,sy,2,2,hf,vf)
  			
   end
@@ -709,8 +486,8 @@ end
 --player
 
 player={
- x=(662+8)*tilesz,
- y=(161+8)*tilesz,
+ x=(662+8)*tilesz, --overwritten
+ y=(161+8)*tilesz, --by init
  d=0
 }
 
@@ -782,7 +559,7 @@ function player_update(p)
   ystep = 0
   
   speed = 1
-  if (btn(🅾️)) then speed=2 end
+  if (btn(🅾️)) then speed=4 end
   skip_diag_every = 10
 
   angle = p.d / 8 --pico trig is percent of circle (0-1 is 0-360)
@@ -805,26 +582,26 @@ function player_update(p)
   local allowx=true
   local allowy=true
   if debugcol then
-  local hotspotsx={0,7}
-  local hotspotsy={0,7}
-  for j=1,#hotspotsy do
-   local hy=hotspotsy[j]
-   for i=1,#hotspotsx do
-    local hx = hotspotsx[i]
-    
-    local sx,sy=64+hx,64+hy
-    local ptx,pty=
-     screen_to_tlocal(sx,sy,player.x,player.y)
-    local ntx,nty=
-     screen_to_tlocal(sx+xstep,sy+ystep,player.x,player.y)
-    
-    --recall we test 1 dir at a time so we can slide against walls
-    testtilex = peek(mapaddr+(ntx+pty*mapw))
-    if testtilex == tile_land then allowx = false end
-    testtiley = peek(mapaddr+(ptx+nty*mapw))
-    if testtiley == tile_land then allowy = false end
-   end
-	 end
+   local hotspotsx={0,7}
+   local hotspotsy={0,7}
+   for j=1,#hotspotsy do
+    local hy=hotspotsy[j]
+    for i=1,#hotspotsx do
+     local hx = hotspotsx[i]
+     
+     local sx,sy=64+hx,64+hy
+     local ptx,pty=
+      screen_to_tlocal(sx,sy,player.x,player.y)
+     local ntx,nty=
+      screen_to_tlocal(sx+xstep,sy+ystep,player.x,player.y)
+     
+     --recall we test 1 dir at a time so we can slide against walls
+     testtilex = peek(mapaddr+(ntx+pty*mapw))
+     if (tile_is_land(testtilex)) allowx = false
+     testtiley = peek(mapaddr+(ptx+nty*mapw))
+     if (tile_is_land(testtiley)) allowy = false
+    end
+ 	 end
 	 end
      
   if not btn(❎) then
@@ -834,27 +611,23 @@ function player_update(p)
   local ptx,pty=w2wt(p.x,p.y)
   dset(0,ptx)
   dset(1,pty)
-  --poke4(0x5e00,ptx)
-  --poke4(0x5e04,pty)
  else
   -- not moving
   playing_music=false
   music(-1)
  end
 
-      
 end
 
-toggle = false
+
+
 
 function player_draw(p)
-
  
  hull = 160-64
  --spr(hull+p.d,p.x-cam.x,p.y-cam.y)
  spr(hull+p.d,64,64)
  
-
  sail = 80
  --spr(sail+p.d,p.x-cam.x,p.y-3-cam.y)
  spr(sail+p.d,64,64-3)
@@ -874,48 +647,7 @@ end
 -->8
 --util
 
---to string method
---(works outside map w/h)
-function xy2s(x,y) 
- return x.." "..y
-end
-function p2s(p)
- return xy2s(p[1],p[2])
-end
-function s2xy(s)
- for i=1,#s do
-  if sub(s,i,i)==" " then
-   return sub(s,1,i-1), sub(s,i+1)
-  end
- end
-end
 
-
---[[
---(seems to only save ~.01% cpu over string method)
---to int method
---(only works in side map w/h)
-function s2xy(i) 
- local y = ceil(i/mapw)
- local x = i - (y-1)*mapw
- return x,y
-end
-function i2p(i)
- local x,y=s2xy(i)
- return {x,y}
-end
-function xy2s(x,y)
- return x+((y-1)*mapw)
-end
-function p2s(p)
- return xy2i(p[1],p[2])
-end
-]]
-
-
-function round(f)
- return flr(f+0.5)
-end
 
 function pinrect(p,r)
  return p[1]>=r[1] and
@@ -927,15 +659,12 @@ end
 
 --round to nearest int
 function round(num)
-
  if num>0 then return flr(num+0.5) 
  else return ceil(num-0.5) 
  end
-
 end
 
 function test_round()
-
  y = 64
  print(round(4.6),0,y,0) y+=8
  print(round(4.5),0,y,0) y+=8
@@ -943,7 +672,6 @@ function test_round()
  print(round(-1.1),0,y,0) y+=8
  print(round(-3.5),0,y,0) y+=8
  print(round(-3.6),0,y,0) y+=8
- 
 end
 
 
@@ -956,9 +684,15 @@ tile_water=12
 tile_land=11
 tile_fill_water=1
 tile_fill_land=3
+tile_border=4
 tile_test=14
 tile_nil=0
 
+function tile_is_land(t)
+ return t==tile_land
+     or t==tile_border
+     or t==tile_fill_land
+end
 
 function aabb_col(r1,r2)
  return
@@ -1048,59 +782,27 @@ end
 
 function fill_map() 
 
- local wdtx,wdty=w2lt(player.x,player.y,player.x,player.y)
- flood_fill(wdtx,wdty,tile_nil,tile_water)
-
- --fill lakes here
- 
- --rest default to land
- for x=0,mapw-1 do
-  for y=0,maph-1 do
-   local t=pget(x,y)
-   if t==tile_nil
-   or t==tile_fill_land
-   then
-    pset(x,y,tile_land)
-   end
-  end
- end
-  
---[[
- 
  if debugfill then
+
+  local wdtx,wdty=w2lt(player.x,player.y,player.x,player.y)
+  flood_fill(wdtx,wdty,tile_nil,tile_water)
  
- --fill land, rest default to water
- 
-  for x=0,mapw-1 do
-   for y=0,maph-1 do
-    --local t=peek(mapaddr+(x+y*mapw))
-    local t=pget(x,y)
-    if t != tile_nil then
-     --if m[xy2s(x,y)]==tile_fill_land then
-      --flood_fill(m,{x,y},tile_fill_land,tile_land)
-     --end
-     if t==tile_fill_land then
-      flood_fill(x,y,tile_fill_land,tile_land)
-     end
-    end
-   end
-  end
+  --fill lakes here
   
+  --rest default to land
   for x=0,mapw-1 do
    for y=0,maph-1 do
-    --local t=peek(mapaddr+(x+y*mapw))
     local t=pget(x,y)
     if t==tile_nil
-    or t==tile_fill_water
+    or t==tile_fill_land
     then
-     --poke(mapaddr+(x+y*mapw),tile_water)
-     pset(x,y,tile_water)
+     pset(x,y,tile_land)
     end
    end
   end
   
  end
- ]]
+ 
 end
 
 
@@ -1140,7 +842,6 @@ function plotbez(mx,my,curves,i)
 	local x2=curves[i][3][1]
 	local y2=curves[i][3][2]
 
-
  --triangle dist
  --should always over estimate
  --and small for straight curves
@@ -1153,141 +854,23 @@ function plotbez(mx,my,curves,i)
  local leg2dy=abs(y2-y1)
  local dist=leg1dx+leg1dy+leg2dx+leg2dy
 
---[[
- -- (-y,x) (rotate 90 r)
- local dx=x2-x0
- local dy=y2-y0
- 
- local mag=sqrt(dx*dx+dy*dy)
- local nx,ny=dx/mag,dy/mag
- 
- local rx,ry=-dy,dx--y0-y2,x2-x0
- if rx>0 then rx=1 else rx=-1 end
- if ry>0 then ry=1 else ry=-1 end
-]]
-
- --[[
- --outer product
- local d=(x1-x0)*(y2-y0)-(y1-y0)*(x2-x0)
- 
- local overland=true
- if (d<0) overland=false
- ]]
-	
  local steps=dist
  local lastp={x0,y0}
- --if (true) then add(gsteps,steps)
- --else add(gsteps,steps) del(gsteps,gsteps[1]) end
  for t = 0,1,(1/steps) do
   
   local x=((1-t)^2)*x0 + 2*(1-t)*t*x1 + (t^2)*x2
 	 local y=((1-t)^2)*y0 + 2*(1-t)*t*y1 + (t^2)*y2
     
-  --[[
-  local dx=x-lastp[1]
-  local dy=y-lastp[2]
-  local rx,ry=-dy,dx--y0-y2,x2-x0
-  ]]
-  --[[
-  if rx>0 then rx=1 else rx=-1 end
-  if ry>0 then ry=1 else ry=-1 end
-]]
-
   local lx = x-mx
   local ly = y-my
   local llx=lastp[1]-mx
   local lly=lastp[2]-my
   line(round(lx),round(ly),
        round(llx),round(lly),
-       tile_land)
+       tile_border)
   
---[[
-  local rhx = lx+rx*2
-  local rhy = ly+ry*2
-  if pget(rhx,rhy)!=nil then
-   pset(rhx,rhy,tile_fill_land)
-  end
-  --local llx=(lastp[1]+rx*2)-mx
-  --local lly=(lastp[2]+ry*2)-my
-  --line(round(lx),round(ly),
-  --     round(llx),round(lly),
-  --     tile_fill_land)
-       
-  --local llx=lastp[1]-mx
-  --local lly=lastp[2]-my
-  --line(round(lx),round(ly),
-  --     round(llx),round(lly),
-  --     tile_land)
-       
-  rectfill(ceil(lx),
-           ceil(ly),
-           flr(lx),
-           flr(ly),
-           tile_land)
-       
-  local rhx = lx-rx*2
-  local rhy = ly-ry*2
-  local llx=(lastp[1]-rx*2)-mx
-  local lly=(lastp[2]-ry*2)-my
-  line(round(lx),round(ly),
-       round(llx),round(lly),
-       tile_fill_water)
-   ]]    
-  
-  
-  --[[
-  if (btn(❎)) then
-   lx = x-mx
-   ly = y-my
-  end
-  
-  rectfill(ceil(lx),
-           ceil(ly),
-           flr(lx),
-           flr(ly),
-           tile_land)
-    
-  pset(round(lx),round(ly),tile_test)
-  ]]
-
   lastp = {x,y}
   
-  --[[
- 	if lx>=0 and lx<mapw and
-     ly>=0 and ly<maph then
-    --poke(mapaddr+(lx+ly*mapw),tile_land)
-    pset(lx,ly,tile_land)
-  end]]
- 
- 
---[[  local x = round(lx+rx)
-  local y = round(ly+ry)
- 	if x>=0 and x<mapw and
-     y>=0 and y<maph
-  then 
-   --if peek(mapaddr+(x+y*mapw))==tile_nil 
-   if pget(x,y)==tile_nil 
-   then
-    --poke(mapaddr+(x+y*mapw),tile_fill_land)
-    pset(x,y,tile_fill_land)
-   end
-  end
-  
-  --local x = round(lx-rx)
-  --local y = round(ly-ry)
- 	if x>=0 and x<mapw and
-     y>=0 and y<maph
-  then 
-    --pset(x,y,tile_fill_water)
-    line(round(lx-rx),
-    	    round(ly-ry),
-    	    round(lx-rx*2),
-    	    round(ly-ry*2),
-    	    tile_fill_water)
-  end]]
-  
-  
- 
  end 
 
 end
@@ -1833,6 +1416,7 @@ pts = {
 {534, 270},
 {532, 267},
 {535, 260},
+{538, 255},
 }
 -->8
 --mouse
