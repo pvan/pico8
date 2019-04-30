@@ -295,7 +295,7 @@ function compare_mem_maps(dx,dy)
  --designed to only work
  --if dx and dy are 1
  --also ignore borders for now
- local bld=4--border to egore
+ local bld=4--border to ignore
  if dy==1 or dx==1 then
   for x=bld+dx,mapw-1-bld do
    for y=bld+dy,maph-1-bld do
@@ -319,7 +319,7 @@ end
 
 
 function mem_is_all_tile(addr,t)
- local bld=4--border to egore
+ local bld=4--border to ignore
  for x=bld,mapw-1-bld do
   for y=bld,maph-1-bld do
    if peek(addr+(x+y*mapw))!=t then
@@ -434,7 +434,7 @@ function draw_map_style2(scx,scy)
  --the memory tilemap is created
  --based on the camera location
  --here, we only draw it
- --and assume the tilemap 5?,5?
+ --and assume the tilemap 5,5 (?)
  --is the first tile we draw
  --
  --iterate over all visible tiles
@@ -734,8 +734,8 @@ end
 --player
 
 player={
- x=(662+8)*tilesz, --overwritten
- y=(161+8)*tilesz, --by init
+-- x=(662+8)*tilesz, --overwritten
+-- y=(161+8)*tilesz, --by init
  d=0
 }
 
@@ -919,16 +919,6 @@ function round(num)
  end
 end
 
-function test_round()
- y = 64
- print(round(4.6),0,y,0) y+=8
- print(round(4.5),0,y,0) y+=8
- print(round(4.2),0,y,0) y+=8
- print(round(-1.1),0,y,0) y+=8
- print(round(-3.5),0,y,0) y+=8
- print(round(-3.6),0,y,0) y+=8
-end
-
 
 
 -->8
@@ -939,9 +929,11 @@ docked_at=0
 
 function set_sail()
  docked_at=0
+ popupmsg=""
 end
 
 function dock_at(porti)
+ popupmsg=ports[porti][3]
  docked_at = porti
  px=44
  py=91
@@ -1009,6 +1001,9 @@ end
 
 ports={
 {571,179,"seville"},
+{564,171,"lisbon"},
+{573,184,"tangier"},
+{591,172,"valencia"},
 }
 
 islands={
@@ -1595,23 +1590,24 @@ end
 -->8
 --dialog
 
-diagmsg=nil
-diagopts=nil
+popupmsg=""
+
+diaglines=nil
+diagfuncs=nil
   
 diagsel=1
 
 function diag_update()
- if diagmsg and
-    diagopts
- then
+
+ if diaglines then
  
   if (btnp(⬆️)) diagsel-=1
   if (btnp(⬇️)) diagsel+=1
-  if (diagsel<=0) diagsel=#diagopts
-  if (diagsel>#diagopts) diagsel=1
+  if (diagsel<=0) diagsel=#diagfuncs
+  if (diagsel>#diagfuncs) diagsel=1
  
   if (btnp(❎)) then
-   if (diagopts[diagsel][2]) diagopts[diagsel][2]()
+   diagfuncs[diagsel]()
    diag_close()
    return false
   end
@@ -1622,12 +1618,19 @@ function diag_update()
  end
 end
 
-function diag_draw()
- if diagmsg 
- and diagopts
- then
-  local x,y=8,75
-  local x2,y2=x+104,y+37 --112-8 and 45-8
+
+-- return start position of last
+-- line draw (in screen pos)
+function draw_box(lines,sy)
+ if (lines and #lines>0) then
+  local maxwid=#lines[1]
+  for l in all(lines) do
+   maxwid=max(maxwid,#l)
+  end
+   
+		--note chars are 4 wide so *4/2 = *2
+  local x,y=63-maxwid*2,sy
+  local x2,y2=x+maxwid*4-1,y+#lines*6+1
   local ix,iy,iw,ih=x+8,y+8,x2-x-8,y2-y-8
   
   --for 16x16 sprite box
@@ -1642,22 +1645,35 @@ function diag_draw()
   spr(184,x,y2)
   spr(185,x2,y2)
   
-  
   --reuse inner x,y for text 
   ix-=3
   iy-=3
   
-  print(diagmsg,ix,iy,1)
-  
-  iy+=6 --newline
-  for j=1,#diagopts do
-   print(diagopts[j][1],ix+8,iy+6*j,1)
-   if diagsel==j then
-    spr(222,ix,iy-1+6*j)
-   end
+  for l in all(lines) do
+   print(l,ix,iy,1)
+   iy+=6
   end
   
-  
+  return ix,iy-6
+ 
+ end
+end
+
+
+popupy=-16
+function diag_draw()
+
+ if popupmsg and #popupmsg>0 then
+  popupy+=(10-popupy)/4
+	 draw_box({popupmsg},popupy)
+ else
+  popupy=-16
+ end
+
+ if diaglines then
+  local tx,ty=draw_box(diaglines,75)
+  ty-=#diagfuncs*6 --rewind up to first option
+  spr(222,tx,ty+diagsel*6)  
   return true
  else
   return false
@@ -1665,36 +1681,50 @@ function diag_draw()
 end
 
 
-function diag_open(msg,opts)
- diagmsg=msg
- diagopts=opts
+function diag_open(msgs,funcs)
+ diaglines=msgs
+ diagfuncs=funcs
  diagsel=1
 end
 function diag_close()
- diagmsg=nil
- diagopts=nil
+ diaglines=nil
+ diagfuncs=nil
 end
 
 
 function ask_dock(porti)
  diag_open(
-  "dock at "..ports[porti][3].."?",
   {
-   {"yes",function() dock_at(porti) end},
-   {"no"}
-  })
-end
-
-function ask_leave()
- diag_open(
-  "set sail?",
+   "dock at "..ports[porti][3].."?",
+   "   yes",
+   "   no"
+  },
   {
-   {"yes",set_sail},
-   {"no"}
+   function() dock_at(porti) end,
+   nothing --can't be nil b/c we need to count our options
   }
  )
 end
 
+function ask_leave()
+ diag_open(
+  {
+   "set sail?",
+   "   yes",
+   "   no"
+  },
+  {
+   set_sail,
+   nothing --can't be nil b/c we need to count our options
+  }
+ )
+end
+
+
+--to use instead of null f ptr
+--so we don't have to check if
+--func ptr exists b4 calling it
+function nothing() end
 
 
 __gfx__
@@ -1776,7 +1806,7 @@ ccccccccc77ccccccccccc7ccccccccc0001bbb131bbbbb100000077777000000000000000000000
 cccccccccc7ccccccccccc7777cccccc0001bbb111bbbbb10000002222200000000000000000000044111115511554cc022aa200000d2aa002fddd220aa2d000
 777cccccc77cccccccccccc777c777cc110111110111111100000077777000000000000000000000c44111455115547c02aaa2f0000f2aa002ddddf20aa2f000
 7777cccc777cccccccccccc77777777c000001000000100000000000000000000000000000000000755441545114447c02999220000d222002dd55920222d000
-cc777cc777ccccccccccc777777cc777011100000000000000000000000000000000000000000000775554454445557c022299200055052202dd559222505500
+cc777cc777ccccccccccc777777cc777011100000000000000000000000000000000000000000000775554454445557c02229920005505220255559222505500
 ccc77777cccccccccccc77ccc77cc7cc000001111100000000000000000000000000000000000000c77775555457777c01111110000111100155111001111000
 ccc77777cccccccccccc77cccc77c7cc0111111111111110cc444444444444cc1111111111111100cccc77777577cccc00055000000550000005500000055000
 ccc77777ccccccccccc77ccccc7777cc1122222222222211c44dd55dd55dd4cc1eeeeeeeeeeee110cccccccc777ccccc00055000000f5000002ff2000005f000
@@ -1792,7 +1822,7 @@ cccc777cccccccccccc77ccccccccccc12292922222222210000000000000000001ffffffffffff1
 ccccc77ccccccccccc77cccccccccccc12299222922222210000000000000000001ffffffffffff10000000000000000002aa22000fd222022dddf200222df00
 cccccc7ccccccccccc77cccccc77cccc12299999222222210000000000000000111ffffffffffff100000000000000000f2aaa20000ddf202fdddd2002fdd000
 cccccc7ccccccccccc7cccccccc777cc12222222222222210000000000000000141ffffffffffff1000000000000000002299920000ddd202955dd2002ddd000
-ccccc77ccccccccccc777ccccccc7777112222222222221100000000000000001444444444444411000000000000000002992220005505222955dd2022505500
+ccccc77ccccccccccc777ccccccc7777112222222222221100000000000000001444444444444411000000000000000002992220005505222955552022505500
 7cccc7ccccccccccccc777cccc777ccc011111111111111000000000000000001111111111111110000000000000000001111110000111100111551001111000
 ccc7777cccccccccccc777777777cccc11d1111111111111dddddddddddddddd22222222222222222222222222222222d653bbbbbbbbbbbb0555550077000000
 cccc7777ccc777777ccc77777c7cccccdd1dd111111d1111dddddddddddddddd22222222222222222222222222222442d653bbbbbbbbbb3b55a5955071700000
