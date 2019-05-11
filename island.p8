@@ -47,22 +47,40 @@ function _draw()
  camera(cx,cy)
  
  
+ mix,miy=ptx,pty
+ 
  draw_terrain()
  
+ 
+ --selection
+ hlx,hly=iso2world(ntx,nty)
+ ts=tget(ntx,nty) 
+ palt(1,true)
+ palt(2,true)
+ palt(3,true)
+ pal(7,10)
+ spr(68,hlx,hly-#ts*8,4,2)
+ pal()
+ palt(1,false)
+ palt(2,false)
+	palt(3,false)
+   
 
- local pwx,pwy=pgroundpos()
- local hotspotsx={-2,2}
- local hotspotsy={-4,0}
- for j=1,#hotspotsy do
-  local hy=hotspotsy[j]
-  for i=1,#hotspotsx do
-   local hx = hotspotsx[i]
-    pset(pwx+hx,pwy+hy,0)
---    pset(px+hx,py+hy,0)
-  end
- end
- pset(pwx,pwy,7)
--- pset(px,py,7)
+-- draw_player()
+ 
+-- local pwx,pwy=pgroundpos()
+-- local hotspotsx={-2,2}
+-- local hotspotsy={-4,0}
+-- for j=1,#hotspotsy do
+--  local hy=hotspotsy[j]
+--  for i=1,#hotspotsx do
+--   local hx = hotspotsx[i]
+--    pset(pwx+hx,pwy+hy,0)
+----    pset(px+hx,py+hy,0)
+--  end
+-- end
+-- pset(pwx,pwy,7)
+---- pset(px,py,7)
  
  
  
@@ -70,27 +88,27 @@ function _draw()
  color(7)
  
 
- -- quilt debug
- --(test tile of every pixel)
- if btn(🅾️) then
-  for x=-32,32 do
-   for y=0,64 do
-    local tx,ty=world2isofloat(x+cx,y+cy)
-    tx,ty=flr(tx),flr(ty)
-    srand(tx+ty*100)
-    pset(x,y,rnd(16))
-   end
-  end
- end
- if btn(❎) then
-  for x=-32,32 do
-   for y=0,64 do
-    local tx,ty=world2iso(x+cx,y+cy)
-    srand(tx+ty*100)
-    pset(x,y,rnd(16))
-   end
-  end
- end
+-- -- quilt debug
+-- --(test tile of every pixel)
+-- if btn(🅾️) then
+--  for x=-32,32 do
+--   for y=0,64 do
+--    local tx,ty=world2isofloat(x+cx,y+cy)
+--    tx,ty=flr(tx),flr(ty)
+--    srand(tx+ty*100)
+--    pset(x,y,rnd(16))
+--   end
+--  end
+-- end
+-- if btn(❎) then
+--  for x=-32,32 do
+--   for y=0,64 do
+--    local tx,ty=world2iso(x+cx,y+cy)
+--    srand(tx+ty*100)
+--    pset(x,y,rnd(16))
+--   end
+--  end
+-- end
  
  
  print2("cpu:"..stat(1))
@@ -106,6 +124,17 @@ function _draw()
  
  print2("c:"..cx..","..cy)
 
+
+-- pwx,pwy=pgroundpos()
+-- tempx,tempy=isofloat2world(pwfx,pwfy)
+-- print2(pwx..","..pwy)
+-- print2(tempx..","..tempy)
+
+
+ if (not allowx) xstep=0
+ if (not allowy) ystep=0
+ print2(xstep)
+ print2(ystep)
  
  --check isofloat conversions 
 -- print2("morg:"..mwx..","..mwy) 
@@ -297,7 +326,7 @@ end
 
 function world2isofloat(wx,wy)
  wx-=htw
- wx+=0.01 --kind of a hack to fix edge fill conventions
+ wx+=0.001 --kind of a hack to fix edge fill conventions
  local isox=(wx/htw+wy/hth)/2
  local isoy=(wy/hth-wx/htw)/2
  return isox,isoy
@@ -306,7 +335,7 @@ function isofloat2world(fx,fy)
  local wx=(fx-fy)*htw
  local wy=(fx+fy)*hth
  --undo our edge fill hack and round near() to stick with integer coords
- return near(wx+htw-0.01),near(wy)
+ return (wx+htw-0.001),(wy)
 end
 
 
@@ -317,13 +346,14 @@ function draw_terrain()
 
  local selx,sely=iso2world(mix,miy)
  
- local ptx,pty=world2iso(px,py)
+ --local ptx,pty=world2iso(px,py)
  
  local tlx,tly=world2iso(cx,cy)
  local countx=128/tw+1 //+1 to avoid calc'ing exact row counts
  local county=(128/th+1)*2 //*2 since we zig zag down the column
+ county+=5 //need more extra y the taller our terrain gets (add max height tiles can be should work)
  local rx,ry=tlx-1,tly //start one tile to the tl
- for y=0,county+1 do //need more extra y the taller our terrain gets
+ for y=0,county do 
 	 for x=0,countx do
 	  
 	  local tx,ty=rx+x,ry-x
@@ -389,8 +419,11 @@ end
 
 
 
-px=40
-py=150
+--px=40
+--py=150
+
+truepx=10
+truepy=10
 
 
 function pgroundpos()
@@ -416,22 +449,35 @@ function update_player()
 	 local mag=sqrt(pdx*pdx+pdy*pdy)
 	 pdx/=mag
 	 pdy/=mag
+	 
 	 xstep,ystep=pdx*speed,pdy*speed
-	 local npx,npy=px+xstep,py+ystep
-	 local pwfx,pwfy=world2isofloat(px,py)
+	 spx,spy=isofloat2world(truepx,truepy)
+	 npx,npy=spx+xstep,spy+ystep
 	 local nwfx,nwfy=world2isofloat(npx,npy)
-  local wfdx,wfdy=nwfx-pwfx,nwfy-pwfy
+  local wfdx,wfdy=nwfx-truepx,nwfy-truepy
   xstep,ystep=wfdx,wfdy --converted to isofloat coords
+	 
+--  xstep,ystep=pdx*speed,pdy*speed
+--	 local npx,npy=px+xstep,py+ystep
+--	 local pwfx,pwfy=world2isofloat(px,py)
+--	 local nwfx,nwfy=world2isofloat(npx,npy)
+--  local wfdx,wfdy=nwfx-pwfx,nwfy-pwfy
+--  xstep,ystep=wfdx,wfdy --converted to isofloat coords
+
+--  xstep/=16
+--  ystep/=16
 	end
 
 
 
 
  -- collisiton detection here 
- local allowx=true
- local allowy=true
- local pwfx,pwfy=world2isofloat(px,py) 
- local ptx,pty=flr(pwfx),flr(pwfy)
+ allowx=true
+ allowy=true
+ --pwfx,pwfy=world2isofloat(px,py) 
+ pwfx,pwfy=truepx,truepy
+ ptx,pty=flr(pwfx),flr(pwfy)
+ ts=tget(ptx,pty)
  
 -- local hotspotsx={-2,2}
 -- local hotspotsy={-4,0}
@@ -443,42 +489,30 @@ function update_player()
    local hx = hotspotsx[i]
 
 		 local nwfx,nwfy=pwfx+hx+xstep,pwfy+hy+ystep
-		 local ntx,nty=flr(nwfx),flr(nwfy)
-		 local ts=tget(ptx,pty)
+		 ntx,nty=flr(nwfx),flr(nwfy)
+		 
+--		 local bts=tget(ntx,nty)
+--		 if (#bts>#ts) allowx=false allowy=false
+		 
 		 local xts=tget(ntx,pty)
 		 local yts=tget(ptx,nty)
 		 if (#xts>#ts) allowx=false 
 		 if (#yts>#ts) allowy=false
 		 
+--		 --if x,y look ok separately
+--		 --but not ok together, dont move
+--		 if allowx and allowy then
+--	 	 local bts=tget(ntx,nty)
+-- 		 if (#bts>#ts) allowx=false allowy=false
+--		 end
+		 
+		 
   end
  end
 
-	if (allowx) pwfx+=xstep
-	if (allowy) pwfy+=ystep
-	px,py=isofloat2world(pwfx,pwfy)
-	 
--- -- collisiton detection here 
--- local allowx=true
--- local allowy=true
--- local ptx,pty=world2iso(px,py) 
--- 
--- local hotspotsx={-2,2}
--- local hotspotsy={-4,0}
--- for j=1,#hotspotsy do
---  local hy = hotspotsy[j]
---  for i=1,#hotspotsx do
---   local hx = hotspotsx[i]
---
---		 local ntx,nty=world2iso(px+xstep+hx,py+ystep+hy)
---		 local ts=tget(ptx,pty)
---		 local nts=tget(ntx,nty)
---		 if (#nts>#ts) allowx=false allowy=false
---		 
---  end
--- end
--- 
---	if (allowx) px+=xstep
---	if (allowy) py+=ystep
+	if (allowx) truepx+=xstep
+	if (allowy) truepy+=ystep
+-- px,py=isofloat2world(pwfx,pwfy)
 	 
 	 
 end
@@ -487,10 +521,10 @@ end
 
 function draw_player(tx,ty)
 
- --local tx,ty=world2iso(px,py)
- local ts=tget(tx,ty)
- 
- local pwx,pwy=pgroundpos()
+ local psx,psy=isofloat2world(truepx,truepy)
+ ts=tget(flr(truepx),flr(truepy))
+ pwx,pwy=psx,psy-#ts*8
+ pset(pwx,pwy,0)
  --keeping the px,py point
  --near the bottom so we don't
  --overdraw the player with the next tile
@@ -500,6 +534,27 @@ function draw_player(tx,ty)
  ofx+=5  --offset from shadow
  ofy+=12 --to body
  spr(1,pwx-ofx,pwy-ofy,2,2)
+
+
+-- local pwx,pwy=pgroundpos()
+-- pset(pwx,pwy,0)
+-- 
+-- tempx,tempy=isofloat2world(pwfx,pwfy)
+-- pset(tempx,tempy,1)
+
+-- --local tx,ty=world2iso(px,py)
+-- local ts=tget(tx,ty)
+-- 
+-- local pwx,pwy=pgroundpos()
+-- --keeping the px,py point
+-- --near the bottom so we don't
+-- --overdraw the player with the next tile
+-- local ofx,ofy=3,4
+-- spr(32,pwx-ofx,pwy-ofy,1,1)
+-- 
+-- ofx+=5  --offset from shadow
+-- ofy+=12 --to body
+-- spr(1,pwx-ofx,pwy-ofy,2,2)
 
 end
 __gfx__
