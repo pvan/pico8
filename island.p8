@@ -34,7 +34,7 @@ function _update()
 
  msx,msy=get_mouse()
  mwx,mwy=msx+cx,msy+cy
- mix,miy=screen2iso(mwx,mwy)
+ mix,miy=world2iso(mwx,mwy)
  
  
 end
@@ -65,8 +65,33 @@ function _draw()
 -- pset(px,py,7)
  
  
+ 
  camera()
  color(7)
+ 
+
+ -- quilt debug
+ --(test tile of every pixel)
+ if btn(🅾️) then
+  for x=-32,32 do
+   for y=0,64 do
+    local tx,ty=world2isofloat(x+cx,y+cy)
+    tx,ty=flr(tx),flr(ty)
+    srand(tx+ty*100)
+    pset(x,y,rnd(16))
+   end
+  end
+ end
+ if btn(❎) then
+  for x=-32,32 do
+   for y=0,64 do
+    local tx,ty=world2iso(x+cx,y+cy)
+    srand(tx+ty*100)
+    pset(x,y,rnd(16))
+   end
+  end
+ end
+ 
  
  print2("cpu:"..stat(1))
  
@@ -80,6 +105,15 @@ function _draw()
  print2(mix..","..miy.." h:"..#mts)
  
  print2("c:"..cx..","..cy)
+
+ 
+ --check isofloat conversions 
+-- print2("morg:"..mwx..","..mwy) 
+-- local mwfx,mwfy=world2isofloat(mwx,mwy)
+-- print2("mwf:"..mwfx..","..mwfy)
+-- local backx,backy=isofloat2world(mwfx,mwfy)
+-- print2("bck:"..backx..","..backy)
+
 
 end
 
@@ -240,7 +274,7 @@ function tget(x,y)
 end
 
 
-function iso2screen(x,y)
+function iso2world(x,y)
  return htw*x-htw*y,hth*x+hth*y
 end
 function bbtile(sx,sy)
@@ -249,7 +283,7 @@ end
 function bblocal(sx,sy) 
  return sx%tw,sy%th
 end
-function screen2iso(sx,sy)
+function world2iso(sx,sy)
  local bx,by=bbtile(sx,sy)
  local lx,ly=bblocal(sx,sy)
  local ix,iy=bx+by,by-bx
@@ -261,6 +295,19 @@ function screen2iso(sx,sy)
  return ix,iy
 end
 
+function world2isofloat(wx,wy)
+ wx-=htw
+ wx+=0.01 --kind of a hack to fix edge fill conventions
+ local isox=(wx/htw+wy/hth)/2
+ local isoy=(wy/hth-wx/htw)/2
+ return isox,isoy
+end
+function isofloat2world(fx,fy)
+ local wx=(fx-fy)*htw
+ local wy=(fx+fy)*hth
+ --undo our edge fill hack and round near() to stick with integer coords
+ return near(wx+htw-0.01),near(wy)
+end
 
 
 --uses (at least):
@@ -268,11 +315,11 @@ end
 --mouse tile mix,miy (for selection)
 function draw_terrain()
 
- local selx,sely=iso2screen(mix,miy)
+ local selx,sely=iso2world(mix,miy)
  
- local ptx,pty=screen2iso(px,py)
+ local ptx,pty=world2iso(px,py)
  
- local tlx,tly=screen2iso(cx,cy)
+ local tlx,tly=world2iso(cx,cy)
  local countx=128/tw+1 //+1 to avoid calc'ing exact row counts
  local county=(128/th+1)*2 //*2 since we zig zag down the column
  local rx,ry=tlx-1,tly //start one tile to the tl
@@ -280,7 +327,7 @@ function draw_terrain()
 	 for x=0,countx do
 	  
 	  local tx,ty=rx+x,ry-x
-	  local sx,sy=iso2screen(tx,ty)
+	  local sx,sy=iso2world(tx,ty)
 	  
 	  local ts=tget(tx,ty)
 	  
@@ -347,7 +394,7 @@ py=150
 
 
 function pgroundpos()
- local ptx,pty=screen2iso(px,py) 
+ local ptx,pty=world2iso(px,py) 
  local ts=tget(ptx,pty)
  return px,py-#ts*hth
 end
@@ -356,68 +403,83 @@ end
 function update_player()
 
  local speed=2
+ if (btn(🅾️)) speed=1
+ 
  local pdx,pdy=0,0
  if (btn(⬆️)) pdy=-1
  if (btn(⬇️)) pdy=1
  if (btn(⬅️)) pdx=-2
  if (btn(➡️)) pdx=2
  
-	local xstep,ystep=0,0
+	xstep,ystep=0,0
 	if pdx!=0 or pdy!=0 then
 	 local mag=sqrt(pdx*pdx+pdy*pdy)
 	 pdx/=mag
 	 pdy/=mag
 	 xstep,ystep=pdx*speed,pdy*speed
+	 local npx,npy=px+xstep,py+ystep
+	 local pwfx,pwfy=world2isofloat(px,py)
+	 local nwfx,nwfy=world2isofloat(npx,npy)
+  local wfdx,wfdy=nwfx-pwfx,nwfy-pwfy
+  xstep,ystep=wfdx,wfdy --converted to isofloat coords
 	end
 
--- local xstep,ystep=0,0
--- if (btn(⬆️)) ystep=-1
--- if (btn(⬇️)) ystep=1
--- if (btn(⬅️)) xstep=-1
--- if (btn(➡️)) xstep=1
--- 
+
 
 
  -- collisiton detection here 
  local allowx=true
  local allowy=true
- local ptx,pty=screen2iso(px,py) 
- local ntx,nty=screen2iso(px+xstep,py+ystep)
- local ts=tget(ptx,pty)
- local nts=tget(ntx,nty)
- if (#nts>#ts) allowx=false allowy=false
+ local pwfx,pwfy=world2isofloat(px,py) 
+ local ptx,pty=flr(pwfx),flr(pwfy)
  
--- local xts=tget(ntx,pty)
--- local yts=tget(ptx,nty)
--- if (#xts>#ts) allowx=false 
--- if (#yts>#ts) allowy=false
+-- local hotspotsx={-2,2}
+-- local hotspotsy={-4,0}
+ local hotspotsx={0}
+ local hotspotsy={0}
+ for j=1,#hotspotsy do
+  local hy = hotspotsy[j]
+  for i=1,#hotspotsx do
+   local hx = hotspotsx[i]
 
--- local pwx,pwy=pgroundpos()
--- local ptx,pty=screen2iso(pwx,pwy) 
--- local ts=tget(ptx,pty)
+		 local nwfx,nwfy=pwfx+hx+xstep,pwfy+hy+ystep
+		 local ntx,nty=flr(nwfx),flr(nwfy)
+		 local ts=tget(ptx,pty)
+		 local xts=tget(ntx,pty)
+		 local yts=tget(ptx,nty)
+		 if (#xts>#ts) allowx=false 
+		 if (#yts>#ts) allowy=false
+		 
+  end
+ end
+
+	if (allowx) pwfx+=xstep
+	if (allowy) pwfy+=ystep
+	px,py=isofloat2world(pwfx,pwfy)
+	 
+-- -- collisiton detection here 
 -- local allowx=true
 -- local allowy=true
+-- local ptx,pty=world2iso(px,py) 
+-- 
 -- local hotspotsx={-2,2}
 -- local hotspotsy={-4,0}
 -- for j=1,#hotspotsy do
 --  local hy = hotspotsy[j]
 --  for i=1,#hotspotsx do
 --   local hx = hotspotsx[i]
---   
---   local nx,ny=pwx+hx,pwy+hy
---   local ntx,nty=screen2iso(nx+xstep,ny+ystep)
---   
---   --recall we test 1 dir at a time so we can slide against walls
---   testtilex = tget(ntx,pty)
---   testtiley = tget(ptx,nty)
---   if (#testtilex>#ts) allowx = false
---   if (#testtiley>#ts) allowy = false
---   
+--
+--		 local ntx,nty=world2iso(px+xstep+hx,py+ystep+hy)
+--		 local ts=tget(ptx,pty)
+--		 local nts=tget(ntx,nty)
+--		 if (#nts>#ts) allowx=false allowy=false
+--		 
 --  end
 -- end
-	
-	if (allowx) px+=xstep
-	if (allowy) py+=ystep
+-- 
+--	if (allowx) px+=xstep
+--	if (allowy) py+=ystep
+	 
 	 
 end
 
@@ -425,7 +487,7 @@ end
 
 function draw_player(tx,ty)
 
- --local tx,ty=screen2iso(px,py)
+ --local tx,ty=world2iso(px,py)
  local ts=tget(tx,ty)
  
  local pwx,pwy=pgroundpos()
