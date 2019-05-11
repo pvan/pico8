@@ -2,98 +2,35 @@ pico-8 cartridge // http://www.pico-8.com
 version 18
 __lua__
 
-a=64
-b=80
-c=96
-d=112
-
-blocks={
-128,  //1 water
-132,  //2 grass
-136,  //3 dirt
-140,  //4 sand
-}
 
 xsteps={1,0,-1,0}
 ysteps={0,1,0,-1}
 
 
-tw=32    //tile width
-th=tw/2  //tile height
-htw=tw/2 //half tile width
-hth=th/2 //half tile height
-
-
-function init_tiles()
- tiles={}
- for x=1,20 do
-  row={}
-  for y=1,20 do
-   row[y]={2}
-   if (rnd(20)<2) row[y]={3}
-   if (rnd(20)<1) row[y]={4}
-   if (rnd(10)<2) add(row[y],rndbw(3,4))
-   if (rnd(50)<2) add(row[y],rndbw(3,4)) add(row[y],rndbw(3,4))
-   if (x==10 and y==10) row[y]={4,4,4,4}
-  end
-  tiles[x]=row
- end
-end
-
-
-function tget(x,y)
- local row=tiles[x]
- if (row==nil) return {}
- if (row[y]==nil) return {}
- return row[y] 
-end
-
-
-function iso2screen(x,y)
- return htw*x-htw*y,hth*x+hth*y
-end
-function bbtile(sx,sy)
- return flr(sx/tw),flr(sy/th)
-end
-function bblocal(sx,sy) 
- return sx%tw,sy%th
-end
-function screen2iso(sx,sy)
- local bx,by=bbtile(sx,sy)
- local lx,ly=bblocal(sx,sy)
- local ix,iy=bx+by,by-bx
- col=sget(32+lx,32+ly)--pixels
- if (col==0) ix-=1
- if (col==1) ix+=1
- if (col==2) iy-=1
- if (col==3) iy+=1
- return ix,iy
-end
 
 function _init()
- srand(0)--6934
+ srand(0)
  init_mouse()
  init_tiles()
 end
 
 
 // center somewhere in middle
-cx,cy=-(63-htw),5*th-th
+cx,cy=-(63-8),5*8-8
 
 
 function _update()
 
  mouse_pan()
  
- if (btnp(⬆️)) px+=xsteps[pd+1] py+=ysteps[pd+1]
- if (btnp(⬇️)) px-=1
- if (btnp(⬅️)) pd=(pd+3)%4
- if (btnp(➡️)) pd=(pd+1)%4
+ 
+ update_player()
  
  
  if (outline==nil) outline=false
  if (btnp(🅾️)) outline=not outline
 
+-- cx,cy=px-64,py-64
 
  msx,msy=get_mouse()
  mwx,mwy=msx+cx,msy+cy
@@ -110,66 +47,22 @@ function _draw()
  camera(cx,cy)
  
  
- local selx,sely=iso2screen(mix,miy)
+ draw_terrain()
  
- 
- tlx,tly=screen2iso(cx,cy)
- countx=128/tw+1 //+1 to avoid calc'ing exact row counts
- county=(128/th+1)*2 //*2 since we zig zag down the column
- local rx,ry=tlx-1,tly //start one tile to the tl
- for y=0,county+1 do //appears like we need even an extra y
-	 for x=0,countx do
-	  
-	  local tx,ty=rx+x,ry-x
-	  local sx,sy=iso2screen(tx,ty)
-	  
-	  local ts=tget(tx,ty)
-	  
-	  if #ts==0 then
- 	  --water
- 	  spr(blocks[1],sx,sy,4,2)
- 	 else
-		  lts=tget(tx,ty+1)
-		  rts=tget(tx+1,ty)
-		  count=max(#ts-#lts,#ts-#rts)+1
-		  for ti=#ts,1,-1 do
-			  t=ts[ti]
-			  h=#ts-ti+1
-		   spr(blocks[t],sx,sy-h*8,4,4)
-	   end
-   end
 
-   --selection
-   if tx==mix and ty==miy then 
-    palt(1,true)
-    palt(2,true)
-    palt(3,true)
-    spr(68,selx,sely-#ts*8,4,2)
-    palt(1,false)
-    palt(2,false)
-    palt(3,false)
-   end
-  
+ local pwx,pwy=pgroundpos()
+ local hotspotsx={-2,2}
+ local hotspotsy={-4,0}
+ for j=1,#hotspotsy do
+  local hy=hotspotsy[j]
+  for i=1,#hotspotsx do
+   local hx = hotspotsx[i]
+    pset(pwx+hx,pwy+hy,0)
+--    pset(px+hx,py+hy,0)
   end
-  --zig zag down left column
-  --which dir we start going
-  --depends on if our tl tile
-  --is halfway on or off screen
-  --but instead of dealing with that
-  --lets just iterate 1 extra row/col
-  if y%2==1 then ry+=1
-  else rx+=1 end
  end
- 
- 
- --selection icon (bg)
-	local ts=tget(mix,miy)
- spr(100,selx,sely-#ts*8,4,2)
---  pal(7,14)
--- 	spr(100,selx,sely-t*8,4,2)
---  pal()
- 
- 
+ pset(pwx,pwy,7)
+-- pset(px,py,7)
  
  
  camera()
@@ -184,7 +77,7 @@ function _draw()
  if (r==nil) r={}
  local t=r[miy]
  if (t==nil) t=0 
- print2(mix..","..miy.." h:"..#ts)
+ print2(mix..","..miy.." h:"..#mts)
  
  print2("c:"..cx..","..cy)
 
@@ -292,39 +185,294 @@ function near(num)
  else return ceil(num-0.5) 
  end
 end
+-->8
+--tiles
+
+
+
+blocks={
+128,  //1 water
+132,  //2 grass
+136,  //3 dirt
+140,  //4 sand
+}
+
+
+tw=32    //tile width
+th=tw/2  //tile height
+htw=tw/2 //half tile width
+hth=th/2 //half tile height
+
+
+function init_tiles()
+ // each tile is a list of blocks
+ // ordered top to bottom
+ // eg {1,2,3} 1 is topmost block
+ tiles={}
+ for x=1,20 do
+  row={}
+  for y=1,20 do
+   row[y]={2}
+   if (rnd(20)<2) row[y]={3}
+   if (rnd(20)<1) row[y]={4}
+   if (rnd(10)<2) add(row[y],rndbw(3,4))
+   if (rnd(50)<2) add(row[y],rndbw(3,4)) add(row[y],rndbw(3,4))
+   if (x==10 and y==10) row[y]={4,4,4,4}
+  end
+  tiles[x]=row
+ end
+ 
+ --add extra dirt layer
+ for row in all(tiles) do
+  for ts in all(row) do
+   add(ts,3)
+  end
+ end
+ 
+end
+
+
+function tget(x,y)
+ local row=tiles[x]
+ if (row==nil) return {}
+ if (row[y]==nil) return {}
+ return row[y] 
+end
+
+
+function iso2screen(x,y)
+ return htw*x-htw*y,hth*x+hth*y
+end
+function bbtile(sx,sy)
+ return flr(sx/tw),flr(sy/th)
+end
+function bblocal(sx,sy) 
+ return sx%tw,sy%th
+end
+function screen2iso(sx,sy)
+ local bx,by=bbtile(sx,sy)
+ local lx,ly=bblocal(sx,sy)
+ local ix,iy=bx+by,by-bx
+ col=sget(32+lx,32+ly)--pixels
+ if (col==0) ix-=1
+ if (col==1) ix+=1
+ if (col==2) iy-=1
+ if (col==3) iy+=1
+ return ix,iy
+end
+
+
+
+--uses (at least):
+--camera cx,cy
+--mouse tile mix,miy (for selection)
+function draw_terrain()
+
+ local selx,sely=iso2screen(mix,miy)
+ 
+ local ptx,pty=screen2iso(px,py)
+ 
+ local tlx,tly=screen2iso(cx,cy)
+ local countx=128/tw+1 //+1 to avoid calc'ing exact row counts
+ local county=(128/th+1)*2 //*2 since we zig zag down the column
+ local rx,ry=tlx-1,tly //start one tile to the tl
+ for y=0,county+1 do //need more extra y the taller our terrain gets
+	 for x=0,countx do
+	  
+	  local tx,ty=rx+x,ry-x
+	  local sx,sy=iso2screen(tx,ty)
+	  
+	  local ts=tget(tx,ty)
+	  
+	  if #ts==0 then
+ 	  --water
+ 	  spr(blocks[1],sx,sy,4,2)
+ 	 else
+		  local lts=tget(tx,ty+1)
+		  local rts=tget(tx+1,ty)
+		  local count=max(#ts-#lts,#ts-#rts)
+		  count=max(count+1,1)
+		  for ti=count,1,-1 do
+			  local t=ts[ti]
+			  local h=#ts-ti+1
+		   spr(blocks[t],sx,sy-h*8,4,4)
+	   end
+   end
+
+   --selection
+   if tx==mix and ty==miy then 
+    palt(1,true)
+    palt(2,true)
+    palt(3,true)
+    spr(68,selx,sely-#ts*8,4,2)
+    palt(1,false)
+    palt(2,false)
+    palt(3,false)
+    mts=ts --just for print debugging
+   end
+   
+   --player
+   if tx==ptx and ty==pty then
+    draw_player(tx,ty)
+   end
+  
+  end
+  --zig zag down left column
+  --which dir we start going
+  --depends on if our tl tile
+  --is halfway on or off screen
+  --but instead of dealing with that
+  --lets just iterate 1 extra row/col
+  if y%2==1 then ry+=1
+  else rx+=1 end
+ end
+ 
+ 
+ --selection icon (bg)
+	local ts=tget(mix,miy)
+ spr(100,selx,sely-#ts*8,4,2)
+--  pal(7,14)
+-- 	spr(100,selx,sely-t*8,4,2)
+--  pal()
+ 
+ 
+end
+-->8
+--player
+
+
+
+px=40
+py=150
+
+
+function pgroundpos()
+ local ptx,pty=screen2iso(px,py) 
+ local ts=tget(ptx,pty)
+ return px,py-#ts*hth
+end
+
+
+function update_player()
+
+ local speed=2
+ local pdx,pdy=0,0
+ if (btn(⬆️)) pdy=-1
+ if (btn(⬇️)) pdy=1
+ if (btn(⬅️)) pdx=-2
+ if (btn(➡️)) pdx=2
+ 
+	local xstep,ystep=0,0
+	if pdx!=0 or pdy!=0 then
+	 local mag=sqrt(pdx*pdx+pdy*pdy)
+	 pdx/=mag
+	 pdy/=mag
+	 xstep,ystep=pdx*speed,pdy*speed
+	end
+
+-- local xstep,ystep=0,0
+-- if (btn(⬆️)) ystep=-1
+-- if (btn(⬇️)) ystep=1
+-- if (btn(⬅️)) xstep=-1
+-- if (btn(➡️)) xstep=1
+-- 
+
+
+ -- collisiton detection here 
+ local allowx=true
+ local allowy=true
+ local ptx,pty=screen2iso(px,py) 
+ local ntx,nty=screen2iso(px+xstep,py+ystep)
+ local ts=tget(ptx,pty)
+ local nts=tget(ntx,nty)
+ if (#nts>#ts) allowx=false allowy=false
+ 
+-- local xts=tget(ntx,pty)
+-- local yts=tget(ptx,nty)
+-- if (#xts>#ts) allowx=false 
+-- if (#yts>#ts) allowy=false
+
+-- local pwx,pwy=pgroundpos()
+-- local ptx,pty=screen2iso(pwx,pwy) 
+-- local ts=tget(ptx,pty)
+-- local allowx=true
+-- local allowy=true
+-- local hotspotsx={-2,2}
+-- local hotspotsy={-4,0}
+-- for j=1,#hotspotsy do
+--  local hy = hotspotsy[j]
+--  for i=1,#hotspotsx do
+--   local hx = hotspotsx[i]
+--   
+--   local nx,ny=pwx+hx,pwy+hy
+--   local ntx,nty=screen2iso(nx+xstep,ny+ystep)
+--   
+--   --recall we test 1 dir at a time so we can slide against walls
+--   testtilex = tget(ntx,pty)
+--   testtiley = tget(ptx,nty)
+--   if (#testtilex>#ts) allowx = false
+--   if (#testtiley>#ts) allowy = false
+--   
+--  end
+-- end
+	
+	if (allowx) px+=xstep
+	if (allowy) py+=ystep
+	 
+end
+
+
+
+function draw_player(tx,ty)
+
+ --local tx,ty=screen2iso(px,py)
+ local ts=tget(tx,ty)
+ 
+ local pwx,pwy=pgroundpos()
+ --keeping the px,py point
+ --near the bottom so we don't
+ --overdraw the player with the next tile
+ local ofx,ofy=3,4
+ spr(32,pwx-ofx,pwy-ofy,1,1)
+ 
+ ofx+=5  --offset from shadow
+ ofy+=12 --to body
+ spr(1,pwx-ofx,pwy-ofy,2,2)
+
+end
 __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000003bb300000000000000000000000000003bb300000000000000000000000000003bb3000000000000000000000000000000
-00700700000000000000000000003bbbbbb30000000000000000000000003bbbbbb30000000000000000000000003bbbbbb30000000000000000000000000000
-000770000000000000000000003bbbbbbbbbb3000000000000000000003bbbbbbbbbb3000000000000000000003bbbbbbbbbb300000000000000000000000000
-0007700000000000000000003bbbbbbbbbbbbbb300000000000000003bbbbbbbbb3bbbb300000000000000003bbbbbbbbbbbbbb3000000000000000000000000
-00700700000000000000003bbbbbbbbbbbbbbbbbb30000000000003bbbbbbbbbb13bbbbbb30000000000003bbbbbbbbbbbbbbbbbb30000000000000000000000
-000000000000000000003bbbbbbbbbbbbbbbbbbbbbb3000000003bbbbbbbb3bbbbbbbbbbbbb3000000003bbbbbbbbbbbbbbbbbbbbbb300000000000000000000
-0000000000000000003bbbbbbbbbbbbbbbbbbbbbbbbbb300003bbbbbb3bb13bbbbbbbbb3bbbbb300003bbbbbbbbbbbbbbbbbbbbbbbbbb3000000000000000000
-777700000000000013bbbbbbbbbbbbbbbbbbbbbbbbbbbbb313bbbbbb13bbbbbbbb3bbb13bbbbbb1313bbbbbbbbbbbbbbbbbbbbbbbbbbbbb30000000000000000
-70000000000000001313bbbbbbbbbbbbbbbbbbbbbbbbb3b31313bbbbbbbbbbbbb13bbbbbbbbb13131313bbbbbbbbbbbbbbbbbbbbbbbbb3b30000000000000000
-7000000000000000111313bbbbbbbbbbbbbbbbbbbbb3b333111313bbbbbbbbbbbbbbbbbbbb131333111313bbbbbbbbbbbbbbbbbbbbb3b3330000000000000000
-700000000000000011111313bbbbbbbbbbbbbbbbb3b3333311111313bbbbbbb3bbbbbbbb1313333311111313bbbbbbbbbbbbbbbbb3b333330000000000000000
-00000000000000001111111313bbbbbbbbbbbbb3b33331111111111313bbbb13bbbbbb13133331111111111313bbbbbbbbbbbbb3b33331110000000000000000
-0000000000000000111111111313bbbbbbbbb3b333331444111111111313bbbbbbbb131333331444111111111313bbbbbbbbb3b3333314440000000000000000
-000000000000000055551111111313bbbbb3b3333331499955551111111313bbbb1313333331499955551111111313bbbbb3b333333149990000000000000000
-00000000000000004444511111111313b3b3333333149999444451111111131313133333331499994444511111111313b3b33333331499990000000000000000
-00000000000000001444451111111113b333111111499994455445111111111313331111114995591444451111111113b3331111114999940000000000000000
-00000000000000000014445555511111333144444499940041144455555111113331444444999449441444555551111133314444449994990000000000000000
-00000000000000000000144444451111331499999994000044444444444511113314999999999999444414444445111133149999999499990000000000000000
-00000000000000000000001444445111114999999400000044444445544451111149995599999999444444144444511111499999949999990000000000000000
-00000000000000000000000014444555449999940000000044444441144445554499994499999999444444441444455544999994999999990000000000000000
-00000000000000000000000000144444999994000000000044444444444444444999999999999999444444444414444499999499999999990000000000000000
-00000000000000000000000000001444999400000000000044444444444444499999999999999999444444444444144499949999999999990000000000000000
-00000000000000000000000000000014940000000000000044444444444444444999999999999999444444444444441494999999999999990000000000000000
-00000000000000000000000000000000000000000000000044444444444444499999999999999999444444444444444499999999999999990000000000000000
-00000000000000000000000000000000000000000000000000444444444444444999999999999900004444444444444499999999999999000000000000000000
-00000000000000000000000000000000000000000000000000004444444444499999999999990000000044444444444499999999999900000000000000000000
-00000000000000000000000000000000000000000000000000000044444444444999999999000000000000444444444499999999990000000000000000000000
-00000000000000000000000000000000000000000000000000000000444444499999999900000000000000004444444499999999000000000000000000000000
-00000000000000000000000000000000000000000000000000000000004444444999990000000000000000000044444499999900000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000044499999000000000000000000000000444499990000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000444900000000000000000000000000004499000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000003bb300000000000000000000000000003bb300000000000000
+0070070000000dddddd0000000000000000000000000000000000000000000000000000000003bbbbbb30000000000000000000000003bbbbbb3000000000000
+0007700000000ddddddd0000000000000000000000000000000000000000000000000000003bbbbbbbbbb3000000000000000000003bbbbbbbbbb30000000000
+00077000000066ddddddd0000000000000000000000000000000000000000000000000003bbbbbbbbb3bbbb300000000000000003bbbbbbbbbbbbbb300000000
+0070070000006666dddd600000000000000000000000000000000000000000000000003bbbbbbbbbb13bbbbbb30000000000003bbbbbbbbbbbbbbbbbb3000000
+00000000000002266dd66000000000000000000000000000000000000000000000003bbbbbbbb3bbbbbbbbbbbbb3000000003bbbbbbbbbbbbbbbbbbbbbb30000
+000000000000622266d622000000000000000000000000000000000000000000003bbbbbb3bb13bbbbbbbbb3bbbbb300003bbbbbbbbbbbbbbbbbbbbbbbbbb300
+77770000000ff22666666200000000000000000000000000000000000000000013bbbbbb13bbbbbbbb3bbb13bbbbbb1313bbbbbbbbbbbbbbbbbbbbbbbbbbbbb3
+70000000006ff2666dd6660000000000000000000000000000000000000000001313bbbbbbbbbbbbb13bbbbbbbbb13131313bbbbbbbbbbbbbbbbbbbbbbbbb3b3
+7000000000666666dddd66000000000000000000000000000000000000000000111313bbbbbbbbbbbbbbbbbbbb131333111313bbbbbbbbbbbbbbbbbbbbb3b333
+700000000006666ddddd6600000000000000000000000000000000000000000011111313bbbbbbb3bbbbbbbb1313333311111313bbbbbbbbbbbbbbbbb3b33333
+000000000000666ddddd600000000000000000000000000000000000000000001111111313bbbb13bbbbbb13133331111111111313bbbbbbbbbbbbb3b3333111
+00000000000011dddddd00000000000000000000000000000000000000000000111111111313bbbbbbbb131333331444111111111313bbbbbbbbb3b333331444
+000000000000010000100000000000000000000000000000000000000000000055551111111313bbbb1313333331499955551111111313bbbbb3b33333314999
+0000000000000000000000000000000000000000000000000000000000000000444451111111131313133333331499994444511111111313b3b3333333149999
+0111110000000000000000000000000000000000000000000000000000000000455445111111111313331111114995591444451111111113b333111111499994
+11111110000000000000000000000000000000000000000000000000000000004114445555511111333144444499944944144455555111113331444444999499
+11111110000000000000000000000000000000000000000000000000000000004444444444451111331499999999999944441444444511113314999999949999
+01111100000000000000000000000000000000000000000000000000000000004444444554445111114999559999999944444414444451111149999994999999
+00000000000000000000000000000000000000000000000000000000000000004444444114444555449999449999999944444444144445554499999499999999
+00000000000000000000000000000000000000000000000000000000000000004444444444444444499999999999999944444444441444449999949999999999
+00000000000000000000000000000000000000000000000000000000000000004444444444444449999999999999999944444444444414449994999999999999
+00000000000000000000000000000000000000000000000000000000000000004444444444444444499999999999999944444444444444149499999999999999
+00000000000000000000000000000000000000000000000000000000000000004444444444444449999999999999999944444444444444449999999999999999
+00000000000000000000000000000000000000000000000000000000000000000044444444444444499999999999990000444444444444449999999999999900
+00000000000000000000000000000000000000000000000000000000000000000000444444444449999999999999000000004444444444449999999999990000
+00000000000000000000000000000000000000000000000000000000000000000000004444444444499999999900000000000044444444449999999999000000
+00000000000000000000000000000000000000000000000000000000000000000000000044444449999999990000000000000000444444449999999900000000
+00000000000000000000000000000000000000000000000000000000000000000000000000444444499999000000000000000000004444449999990000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000004449999900000000000000000000000044449999000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000044490000000000000000000000000000449900000000000000
 00000000000000000000000000000000000000000000000022222222222222220000000000000000000000000000000000000000000000000000000000000000
 00000000000000444400000000000000000000000000007777222222222222220000000000000044440000000000000000000000000000333300000000000000
 00000000000044444444000000000000000000000000777777772222222222220000000000004444444400000000000000000000000033333333000000000000
