@@ -30,7 +30,14 @@ function _update()
  if (outline==nil) outline=false
  if (btnp(🅾️)) outline=not outline
 
--- cx,cy=px-64,py-64
+ pwx,pwy=pbodyworldpos()
+ pwx-=64 pwy-=64 //to cam coords
+ cgap=24
+ if (pwx>cx+cgap) cx=pwx-cgap
+ if (pwx<cx-cgap) cx=pwx+cgap
+ if (pwy>cy+cgap) cy=pwy-cgap
+ if (pwy<cy-cgap) cy=pwy+cgap
+ --cx,cy=pwx-64,pwy-64
 
  msx,msy=get_mouse()
  mwx,mwy=msx+cx,msy+cy
@@ -109,20 +116,16 @@ function _draw()
  local mts=tget(mix,miy)
  print2(mix..","..miy.." h:"..#mts)
  
- print2("c:"..cx..","..cy)
+-- print2("c:"..cx..","..cy)
+-- print2("p:"..truepx..","..truepy)
 
 
--- pwx,pwy=pgroundpos()
--- tempx,tempy=isofloat2world(pwfx,pwfy)
--- print2(pwx..","..pwy)
--- print2(tempx..","..tempy)
-
- print2("p:"..truepx..","..truepy)
 
  if (not allowx) xstep=0
  if (not allowy) ystep=0
  print2(xstep)
  print2(ystep)
+ 
  
  --check isofloat conversions 
 -- print2("morg:"..mwx..","..mwy) 
@@ -131,25 +134,29 @@ function _draw()
 -- local backx,backy=isofloat2world(mwfx,mwfy)
 -- print2("bck:"..backx..","..backy)
 
- draw_iso_rect2(pcol2())
- 
- ctest=7
- if (rcol) ctest=10
- if (r!=nil) draw_iso_rect2(r,ctest)
- 
- 
 
- r={5,5,1,1}
- coltestcol=14
- if (rectcol2(r,pcol2())) coltestcol=5
- draw_iso_rect2(r,coltestcol)
-
- draw_iso_rect2(newpcol,8)
-
- print2(jvel)
- print2(jpos)
+ --collision rects
+-- draw_iso_rect2(pcol2())
+-- ctest=7
+-- if (rcol) ctest=10
+-- if (r!=nil) draw_iso_rect2(r,ctest)
+-- draw_iso_rect2(newpcol,8)
+-- draw_iso_rect2(footrect(),1)
  
- draw_iso_rect2(footrect(),1)
+ 
+ --test collision rects
+-- r={5,5,1,1}
+-- coltestcol=14
+-- if (rectcol2(r,pcol2())) coltestcol=5
+-- draw_iso_rect2(r,coltestcol)
+
+ 
+ --jump vars
+-- print2(jvel)
+-- print2(jpos) 
+-- print2("gnd:"..tostr(isgrounded()))
+-- print2("jmp:"..tostr(jumping))
+-- print2("cnt:"..jumpcount)
 
 end
 
@@ -475,9 +482,12 @@ end
 truepx=10
 truepy=8
 
-jpos=0
+jpos=0 //right now not dist from ground but dist from tile height 0 (so jpos==1 when standing on 1 block)
+jpos=0 //right now not dist from ground but dist from tile height 0 (so jpos==1 when standing on 1 block)
 jvel=0
 
+jumping=false
+jumpcount=0
 
 --function pgroundpos3()
 -- local ptx,pty=world2iso(px,py) 
@@ -553,6 +563,9 @@ function planding_height()
  return landing_height(pcol2())
 end
 
+function isgrounded()
+ return planding_height()==jpos
+end
 
 function footrect()
  height=planding_height()
@@ -569,11 +582,30 @@ function update_player()
  local speed=2
  if (btn(🅾️)) speed=1
  
- if btn(❎) then jvel=6/16
- else jvel=-6/16 end
+ if btnp(❎) and not jumping then 
+  isgrounded()
+  jumping=true
+  jumpcount=0
+  releasedjump=false
+ end
+ jvel=-8/16
+ if jumping then
+  if jumpcount<4 then
+	  jvel=6/16
+	  jumpcount+=1
+  elseif jumpcount<6 then
+   if btn(❎) and not releasedjump then
+ 	  jvel=6/16
+ 	  jumpcount+=1
+   end
+  end  
+ end
+ if jumping and not btn(❎) then
+  releasedjump=true
+ end
  jpos+=jvel
  jpos=max(planding_height(),jpos)
- 
+ if (isgrounded()) jumping=false
  
  --direction in iso coords
  local truedx,truedy=0,0
@@ -629,7 +661,34 @@ function update_player()
  	  --to disable one or both
  	  --(both to stick at corners)
  	  --(one to just pick a direction to slide)
- 	  if (allowx and allowy) allowx=false allowy=false
+ 	  if (allowx and allowy) then
+ 	   --selectively choose x or y
+ 	   --helps with sliding along long walls
+-- 	   if (xstep<0 or ystep>0) or
+-- 	      (xstep>0 and ystep>0)
+-- 	   then 
+-- 	    allowx=false
+-- 	   else 
+-- 	    allowy=false 
+--	    end
+
+-- 	   allowx=false 
+-- 	   allowy=false
+
+       --alternate which
+       --kind of hacky
+       --but won't ever
+       --hang on a corner
+       --more than 1 frame
+			    if slidex then 
+			     allowx=false
+			     slidex=false
+			    else
+			     allowy=false
+			     slidex=true
+		     end
+		     
+ 	  end
  	  
  	 end
 	 end
@@ -640,23 +699,34 @@ function update_player()
 end
 
 
+function pbodyworldpos()
+ local pwx,pwy=isofloat2world(truepx,truepy)
+ pwy-=jpos*hth
+ return pwx,pwy
+end
 
 function draw_player(tx,ty)
-
-
- --local pflrx,pflry=pground()
  
+ --p center
  local pwx,pwy=isofloat2world(truepx,truepy)
- pset(pwx,pwy,0)
+ --pset(pwx,pwy,0)
  
- --ts=tget(flr(truepx),flr(truepy))
- pwy-=jpos*hth
+ --for shadow, use p center
+ local ts=tget(flr(truepx),flr(truepy))
  
  --keeping the px,py point
  --near the bottom so we don't
  --overdraw the player with the next tile
- local ofx,ofy=3,4
--- spr(32,pwx-ofx,pwy-ofy,1,1)
+ local ofx,ofy=3,3
+ spr(32,pwx-ofx,pwy-ofy-#ts*hth,1,1)
+
+
+-- --try a second shadow on ground pos
+-- planding_height()
+ 
+ 
+ --for body, draw at j height
+ pwy-=jpos*hth
  
  ofx+=5  --offset from shadow
  ofy+=12 --to body
