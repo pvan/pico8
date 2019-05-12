@@ -135,16 +135,19 @@ function _draw()
 -- print2("bck:"..backx..","..backy)
 
 
- --collision rects
+ --player collision rects
 -- draw_iso_rect2(pcol2())
--- ctest=7
--- if (rcol) ctest=10
--- if (r!=nil) draw_iso_rect2(r,ctest)
 -- draw_iso_rect2(newpcol,8)
 -- draw_iso_rect2(footrect(),1)
+
+ --world collision rects 
+-- i=0
+-- for r in all(debugcolrects) do
+--  i+=1
+--  draw_iso_rect2(r,debugcolrectcols[i])
+-- end
  
- 
- --test collision rects
+ --test rect collision code
 -- r={5,5,1,1}
 -- coltestcol=14
 -- if (rectcol2(r,pcol2())) coltestcol=5
@@ -252,6 +255,10 @@ end
 -->8
 --util
 
+
+function mag(x,y)
+ return sqrt(x*x+y*y)
+end
 
 function rndbw(l,h)
  return flr(rnd(h+1-l))+l
@@ -632,13 +639,18 @@ function update_player()
 	--new rect-based collision detection
 	allowx=true
 	allowy=true
+	debugcolrects={}
+ debugcolrectcols={}
+ atleastoneimpassable=false
 	nearcoords=nearest4coords()
 	for pos in all (nearcoords) do
 	 thists=tget(pos[1],pos[2])
 	 if #thists > jpos then
  	 r=isorect2(pos)
+ 	 add(debugcolrects,r)
  	 if rectcol2(r,newpcol) then
- 	 
+ 	  
+ 	  add(debugcolrectcols,10)
  	  --only check individual x/y
  	  --(for sliding) if we
  	  --already know the combined
@@ -656,43 +668,99 @@ function update_player()
  	   allowy=false
  	  end
  	  
- 	  --if both x y individually 
- 	  --are passable, need
- 	  --to disable one or both
- 	  --(both to stick at corners)
- 	  --(one to just pick a direction to slide)
- 	  if (allowx and allowy) then
- 	   --selectively choose x or y
- 	   --helps with sliding along long walls
--- 	   if (xstep<0 or ystep>0) or
--- 	      (xstep>0 and ystep>0)
--- 	   then 
--- 	    allowx=false
--- 	   else 
--- 	    allowy=false 
---	    end
-
--- 	   allowx=false 
--- 	   allowy=false
-
-       --alternate which
-       --kind of hacky
-       --but won't ever
-       --hang on a corner
-       --more than 1 frame
-			    if slidex then 
-			     allowx=false
-			     slidex=false
-			    else
-			     allowy=false
-			     slidex=true
-		     end
-		     
- 	  end
+ 	  atleastoneimpassable=true
  	  
+ 	 else
+ 	  add(debugcolrectcols,7)
  	 end
 	 end
 	end
+	
+	
+ --special for outside corners
+ --(each x,y sep are passable)
+ --(but together they hit the corner)
+ --need to just pick a direction
+ --or not move anywhere
+ if (allowx and allowy) then
+  --(do this after all rects are 
+  --(checked to make sure it's 
+  --(an isolated outside corner)
+  if atleastoneimpassable then
+   allowx=false
+   allowy=false
+   --old method:
+ 		--(we were hanging when sliding on long walls)
+ 		--alternate which, kind of
+ 		--hacky but won't ever hang
+ 		--on a corner more than 1 frame
+--   if slidex then
+--    allowx=false
+--    slidex=false
+--   else
+--    allowy=false
+--    slidex=true
+--   end
+  end
+ end
+ 
+ 
+ 
+ --now we want to up our speed
+ --when sliding on walls for
+ --less jitter
+ --two methods:
+ --1. hacky way
+ -- just up by some fudge factor
+ --2. better way
+ -- use full speed, just change 
+ -- direction. if moving fast
+ -- enough, we need to check
+ -- against walls again
+ hackysliding=false
+ if hackysliding then
+		if allowx and not allowy then
+		 xstep*=1.2	
+	 end
+		if allowy and not allowx then
+		 ystep*=1.2
+	 end
+ else 
+	 --if we up our speed too much,
+	 --we need to re-check for cols
+		if allowx and not allowy and xstep!=0 then
+	  if xstep<0 then xstep=-mag(xstep,ystep)
+	  else xstep=mag(xstep,ystep) end
+		 for pos in all (nearcoords) do
+			 thists=tget(pos[1],pos[2])
+			 if #thists > jpos then
+		 	 r=isorect2(pos)
+		 	 xnewpcol=pcol2()
+		   xnewpcol[1]+=xstep
+		 	 if rectcol2(r,xnewpcol) then
+		 	  allowx=false
+		 	 end
+		 	end
+		 end
+	 end
+		if allowy and not allowx and ystep!=0 then
+	  if ystep<0 then ystep=-mag(xstep,ystep)
+	  else ystep=mag(xstep,ystep) end
+		 for pos in all (nearcoords) do
+			 thists=tget(pos[1],pos[2])
+			 if #thists > jpos then
+		 	 r=isorect2(pos)
+		 	 ynewpcol=pcol2()
+		   ynewpcol[2]+=ystep
+		 	 if rectcol2(r,ynewpcol) then
+		 	  allowy=false
+		 	 end
+		 	end
+		 end
+		end
+	end
+	
+	
 	if (allowx) truepx+=xstep
 	if (allowy) truepy+=ystep
 	 
@@ -864,9 +932,9 @@ __sfx__
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-010e00001275200000000001574200000007020e75200702000000070212752007021575200000000000070213752000000000000000000000070213752007021775200702157520070213752007021275200000
-010e00001075200000000000000000000007021075200702107520070212752000000000000000157520070200000000000000000000127520070212752007021375200702000000070212752007020000000000
+010c00001275200000000001574200000007020e75200702000000070212752007021575200000000000070213752000000000000000000000070213752007021775200702157520070213752007021275200000
+010c00001075200000000000000000000007021075200702107520070212752000000000000000157520070200000000000000000000127520070212752007021375200702000000070212752007020000000000
 __music__
-01 08424344
+05 08424344
 02 09424344
 
