@@ -47,26 +47,25 @@ function _draw()
  camera(cx,cy)
  
  
- mix,miy=ptx,pty
+-- mix,miy=ptx,pty
  
  draw_terrain()
  
  
- --selection
- hlx,hly=iso2world(ntx,nty)
- ts=tget(ntx,nty) 
- palt(1,true)
- palt(2,true)
- palt(3,true)
- pal(7,10)
- spr(68,hlx,hly-#ts*8,4,2)
- pal()
- palt(1,false)
- palt(2,false)
-	palt(3,false)
-   
+-- --selection
+-- hlx,hly=iso2world(ntx,nty)
+-- ts=tget(ntx,nty) 
+-- palt(1,true)
+-- palt(2,true)
+-- palt(3,true)
+-- pal(7,10)
+-- spr(68,hlx,hly-#ts*8,4,2)
+-- pal()
+-- palt(1,false)
+-- palt(2,false)
+--	palt(3,false)
+--   
 
--- draw_player()
  
 -- local pwx,pwy=pgroundpos()
 -- local hotspotsx={-2,2}
@@ -116,10 +115,7 @@ function _draw()
  spr(16,msx,msy)
  print2(msx..","..msy)
  
- local r=tiles[mix]
- if (r==nil) r={}
- local t=r[miy]
- if (t==nil) t=0 
+ local mts=tget(mix,miy)
  print2(mix..","..miy.." h:"..#mts)
  
  print2("c:"..cx..","..cy)
@@ -419,9 +415,7 @@ end
 
 
 
---px=40
---py=150
-
+--in iso coordinates
 truepx=10
 truepy=10
 
@@ -438,6 +432,9 @@ function update_player()
  local speed=2
  if (btn(🅾️)) speed=1
  
+ 
+ --direction in screen coords
+ --[[
  local pdx,pdy=0,0
  if (btn(⬆️)) pdy=-1
  if (btn(⬇️)) pdy=1
@@ -456,33 +453,39 @@ function update_player()
 	 local nwfx,nwfy=world2isofloat(npx,npy)
   local wfdx,wfdy=nwfx-truepx,nwfy-truepy
   xstep,ystep=wfdx,wfdy --converted to isofloat coords
-	 
---  xstep,ystep=pdx*speed,pdy*speed
---	 local npx,npy=px+xstep,py+ystep
---	 local pwfx,pwfy=world2isofloat(px,py)
---	 local nwfx,nwfy=world2isofloat(npx,npy)
---  local wfdx,wfdy=nwfx-pwfx,nwfy-pwfy
---  xstep,ystep=wfdx,wfdy --converted to isofloat coords
-
---  xstep/=16
---  ystep/=16
+	
 	end
+ ]]
+ 
 
-
-
+ --direction in iso coords
+ local truedx,truedy=0,0
+ if (btn(⬆️)) truedx-=1 truedy-=1
+ if (btn(⬇️)) truedx+=1 truedy+=1
+ if (btn(⬅️)) truedx-=1 truedy+=1
+ if (btn(➡️)) truedx+=1 truedy-=1
+ xstep,ystep=0,0
+	if truedx!=0 or truedy!=0 then
+	 local mag=sqrt(truedx*truedx+truedy*truedy)
+	 truedx/=mag
+	 truedy/=mag
+	 xstep,ystep=truedx*speed/16,truedy*speed/16
+	end
+	
 
  -- collisiton detection here 
  allowx=true
  allowy=true
- --pwfx,pwfy=world2isofloat(px,py) 
  pwfx,pwfy=truepx,truepy
  ptx,pty=flr(pwfx),flr(pwfy)
  ts=tget(ptx,pty)
  
--- local hotspotsx={-2,2}
--- local hotspotsy={-4,0}
- local hotspotsx={0}
- local hotspotsy={0}
+-- hotspotsx={-4/16,1/16}
+-- hotspotsy={-4/16,1/16}
+-- hotspotsx={-2/16,2/16}
+-- hotspotsy={-4/16,2/16}
+ hotspotsx={0}
+ hotspotsy={0}
  for j=1,#hotspotsy do
   local hy = hotspotsy[j]
   for i=1,#hotspotsx do
@@ -491,28 +494,31 @@ function update_player()
 		 local nwfx,nwfy=pwfx+hx+xstep,pwfy+hy+ystep
 		 ntx,nty=flr(nwfx),flr(nwfy)
 		 
---		 local bts=tget(ntx,nty)
---		 if (#bts>#ts) allowx=false allowy=false
-		 
 		 local xts=tget(ntx,pty)
 		 local yts=tget(ptx,nty)
 		 if (#xts>#ts) allowx=false 
 		 if (#yts>#ts) allowy=false
 		 
---		 --if x,y look ok separately
---		 --but not ok together, dont move
---		 if allowx and allowy then
---	 	 local bts=tget(ntx,nty)
--- 		 if (#bts>#ts) allowx=false allowy=false
---		 end
-		 
-		 
   end
  end
+ 
+ 
+ --if we run into an exact
+ --outside corner, both the
+ --the x,y separate checks
+ --might pass the check ok (allowx,y true)
+ --even though the combined 
+ --new x,y would be impassable (allowx,y false)
+ --in that case, we just 
+ --pick one direction to slide 
+-- if allowx and allowy then
+--  bts=tget(ntx,nty)
+--  if (#bts>#ts) allowx=false 
+-- end
+ 
 
 	if (allowx) truepx+=xstep
 	if (allowy) truepy+=ystep
--- px,py=isofloat2world(pwfx,pwfy)
 	 
 	 
 end
@@ -536,25 +542,15 @@ function draw_player(tx,ty)
  spr(1,pwx-ofx,pwy-ofy,2,2)
 
 
--- local pwx,pwy=pgroundpos()
--- pset(pwx,pwy,0)
--- 
--- tempx,tempy=isofloat2world(pwfx,pwfy)
--- pset(tempx,tempy,1)
-
--- --local tx,ty=world2iso(px,py)
--- local ts=tget(tx,ty)
--- 
--- local pwx,pwy=pgroundpos()
--- --keeping the px,py point
--- --near the bottom so we don't
--- --overdraw the player with the next tile
--- local ofx,ofy=3,4
--- spr(32,pwx-ofx,pwy-ofy,1,1)
--- 
--- ofx+=5  --offset from shadow
--- ofy+=12 --to body
--- spr(1,pwx-ofx,pwy-ofy,2,2)
+ for j=1,#hotspotsy do
+  local hy = hotspotsy[j]
+  for i=1,#hotspotsx do
+   local hx = hotspotsx[i]
+   
+   local psx,psy=isofloat2world(truepx+hx,truepy+hy)
+   pset(psx,psy-#ts*8,2)
+  end
+ end
 
 end
 __gfx__
