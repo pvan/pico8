@@ -138,17 +138,6 @@ function _draw()
  if (r!=nil) draw_iso_rect2(r,ctest)
  
  
--- --little test of rect collision
--- if (btn(⬆️)) yyy-=1 
--- if (btn(⬇️)) yyy+=1
--- if (btn(⬅️)) xxx-=1 
--- if (btn(➡️)) xxx+=1
--- r1={10,10,45,25}
--- r2={xxx,yyy,xxx+www,yyy+hhh}
--- ccc=5
--- if (rectcol2(r1,r2)) ccc=7
--- draw_iso_rect2(r1,ccc)
--- draw_iso_rect2(r2,4)
 
  r={5,5,1,1}
  coltestcol=14
@@ -157,10 +146,13 @@ function _draw()
 
  draw_iso_rect2(newpcol,8)
 
+ print2(jvel)
+ print2(jpos)
+ 
+ draw_iso_rect2(footrect(),1)
+
 end
 
--- xxx,yyy=50,50
--- www,hhh=32,32
  
 function print2(str,col)
  local cursor_x=peek(0x5f26)
@@ -319,8 +311,8 @@ function init_tiles()
  for row in all(tiles) do
   for ts in all(row) do
    --add(ts,3)
-   del(ts,ts[1])
-   del(ts,ts[1])
+--   del(ts,ts[1])
+--   del(ts,ts[1])
   end
  end
  
@@ -449,9 +441,9 @@ end
 
 
 
-function isorect(pos)
- return {pos[1],pos[2],pos[1]+1,pos[2]+1}
-end
+--function isorect(pos)
+-- return {pos[1],pos[2],pos[1]+1,pos[2]+1}
+--end
 function isorect2(pos)
  return {pos[1],pos[2],1,1}
 end
@@ -483,24 +475,27 @@ end
 truepx=10
 truepy=8
 
+jpos=0
+jvel=0
 
-function pgroundpos3()
- local ptx,pty=world2iso(px,py) 
- local ts=tget(ptx,pty)
- return px,py-#ts*hth
-end
 
-function draw_iso_rect(r,col)
- if (col!=nil) color(col)
- tlx,tly=isofloat2world(r[1],r[2])
- trx,try=isofloat2world(r[3],r[2])
- blx,bly=isofloat2world(r[1],r[4])
- brx,bry=isofloat2world(r[3],r[4])
- line(tlx-cx,tly-cy,trx-cx,try-cy)
- line(brx-cx,bry-cy)
- line(blx-cx,bly-cy)
- line(tlx-cx,tly-cy)
-end
+--function pgroundpos3()
+-- local ptx,pty=world2iso(px,py) 
+-- local ts=tget(ptx,pty)
+-- return px,py-#ts*hth
+--end
+
+--function draw_iso_rect(r,col)
+-- if (col!=nil) color(col)
+-- tlx,tly=isofloat2world(r[1],r[2])
+-- trx,try=isofloat2world(r[3],r[2])
+-- blx,bly=isofloat2world(r[1],r[4])
+-- brx,bry=isofloat2world(r[3],r[4])
+-- line(tlx-cx,tly-cy,trx-cx,try-cy)
+-- line(brx-cx,bry-cy)
+-- line(blx-cx,bly-cy)
+-- line(tlx-cx,tly-cy)
+--end
 function draw_iso_rect2(r,col)
  if (col!=nil) color(col)
  tlx,tly=isofloat2world(r[1],r[2])
@@ -512,48 +507,74 @@ function draw_iso_rect2(r,col)
  line(blx-cx,bly-cy)
  line(tlx-cx,tly-cy)
 end
-function pcol() 
- sz=3/16
- return {truepx-sz,truepy-sz,
-         truepx+sz,truepy+sz}
-end
+--function pcol() 
+-- sz=3/16
+-- return {truepx-sz,truepy-sz,
+--         truepx+sz,truepy+sz}
+--end
 function pcol2() 
  sz=3/16
  return {truepx-sz,truepy-sz,
          2*sz,2*sz}
 end
 
+--function pheight()
+-- ptx,pty=flr(truepx),flr(truepy)
+-- ts=tget(ptx,pty)
+-- return #ts+(jpos/hth)
+--end
+
+
+function nearest4coords()
+	return {
+	 {flr(truepx+.5),flr(truepy+.5)},
+	 {flr(truepx+.5)-1,flr(truepy+.5)},
+	 {flr(truepx+.5),flr(truepy+.5)-1},
+	 {flr(truepx+.5)-1,flr(truepy+.5)-1},
+	}
+end
+
+function landing_height(objrec)
+ nearest=nearest4coords()
+ highest=0
+ for coord in all(nearest) do
+  r=isorect2(coord)
+  if rectcol2(r,objrec) then
+   thists=tget(coord[1],coord[2])
+   if #thists>highest then
+    highest=#thists
+   end
+  end
+ end
+ return highest
+end
+
+function planding_height()
+ return landing_height(pcol2())
+end
+
+
+function footrect()
+ height=planding_height()
+ result=pcol2()
+ result[1]-=height/2
+ result[2]-=height/2
+ return result
+end
+
+
+
 function update_player()
 
  local speed=2
  if (btn(🅾️)) speed=1
  
+ if btn(❎) then jvel=6/16
+ else jvel=-6/16 end
+ jpos+=jvel
+ jpos=max(planding_height(),jpos)
  
- --direction in screen coords
- --[[
- local pdx,pdy=0,0
- if (btn(⬆️)) pdy=-1
- if (btn(⬇️)) pdy=1
- if (btn(⬅️)) pdx=-2
- if (btn(➡️)) pdx=2
  
-	xstep,ystep=0,0
-	if pdx!=0 or pdy!=0 then
-	 local mag=sqrt(pdx*pdx+pdy*pdy)
-	 pdx/=mag
-	 pdy/=mag
-	 
-	 xstep,ystep=pdx*speed,pdy*speed
-	 spx,spy=isofloat2world(truepx,truepy)
-	 npx,npy=spx+xstep,spy+ystep
-	 local nwfx,nwfy=world2isofloat(npx,npy)
-  local wfdx,wfdy=nwfx-truepx,nwfy-truepy
-  xstep,ystep=wfdx,wfdy --converted to isofloat coords
-	
-	end
- ]]
- 
-
  --direction in iso coords
  local truedx,truedy=0,0
  if (btn(⬆️)) truedx-=1 truedy-=1
@@ -579,15 +600,10 @@ function update_player()
 	--new rect-based collision detection
 	allowx=true
 	allowy=true
-	nearcoords={
-	 {flr(truepx+.5),flr(truepy+.5)},
-	 {flr(truepx+.5)-1,flr(truepy+.5)},
-	 {flr(truepx+.5),flr(truepy+.5)-1},
-	 {flr(truepx+.5)-1,flr(truepy+.5)-1},
-	}
+	nearcoords=nearest4coords()
 	for pos in all (nearcoords) do
 	 thists=tget(pos[1],pos[2])
-	 if #thists > #ts then
+	 if #thists > jpos then
  	 r=isorect2(pos)
  	 if rectcol2(r,newpcol) then
  	 
@@ -608,63 +624,18 @@ function update_player()
  	   allowy=false
  	  end
  	  
---				allowx=false
---				allowy=false
-				rcol=true
-			else
-			 rcol=false
+ 	  --if both x y individually 
+ 	  --are passable, need
+ 	  --to disable one or both
+ 	  --(both to stick at corners)
+ 	  --(one to just pick a direction to slide)
+ 	  if (allowx and allowy) allowx=false allowy=false
+ 	  
  	 end
 	 end
 	end
 	if (allowx) truepx+=xstep
 	if (allowy) truepy+=ystep
-	
---[[
- -- collisiton detection here 
- allowx=true
- allowy=true
- pwfx,pwfy=truepx,truepy
- ptx,pty=flr(pwfx),flr(pwfy)
- ts=tget(ptx,pty)
- 
--- hotspotsx={-4/16,1/16}
--- hotspotsy={-4/16,1/16}
--- hotspotsx={-2/16,2/16}
--- hotspotsy={-4/16,2/16}
- hotspotsx={0}
- hotspotsy={0}
- for j=1,#hotspotsy do
-  local hy = hotspotsy[j]
-  for i=1,#hotspotsx do
-   local hx = hotspotsx[i]
-
-		 local nwfx,nwfy=pwfx+hx+xstep,pwfy+hy+ystep
-		 ntx,nty=flr(nwfx),flr(nwfy)
-		 
-		 local xts=tget(ntx,pty)
-		 local yts=tget(ptx,nty)
-		 if (#xts>#ts) allowx=false 
-		 if (#yts>#ts) allowy=false
-		 
-  end
- end
- 
- --if we run into an exact
- --outside corner, both the
- --the x,y separate checks
- --might pass the check ok (allowx,y true)
- --even though the combined 
- --new x,y would be impassable (allowx,y false)
- --in that case, we just 
- --pick one direction to slide 
--- if allowx and allowy then
---  bts=tget(ntx,nty)
---  if (#bts>#ts) allowx=false 
--- end
- 
-	if (allowx) truepx+=xstep
-	if (allowy) truepy+=ystep
-]] 
 	 
 end
 
@@ -672,30 +643,25 @@ end
 
 function draw_player(tx,ty)
 
- local psx,psy=isofloat2world(truepx,truepy)
- ts=tget(flr(truepx),flr(truepy))
- pwx,pwy=psx,psy-#ts*8
+
+ --local pflrx,pflry=pground()
+ 
+ local pwx,pwy=isofloat2world(truepx,truepy)
  pset(pwx,pwy,0)
+ 
+ --ts=tget(flr(truepx),flr(truepy))
+ pwy-=jpos*hth
+ 
  --keeping the px,py point
  --near the bottom so we don't
  --overdraw the player with the next tile
  local ofx,ofy=3,4
- spr(32,pwx-ofx,pwy-ofy,1,1)
+-- spr(32,pwx-ofx,pwy-ofy,1,1)
  
  ofx+=5  --offset from shadow
  ofy+=12 --to body
  spr(1,pwx-ofx,pwy-ofy,2,2)
 
-
--- for j=1,#hotspotsy do
---  local hy = hotspotsy[j]
---  for i=1,#hotspotsx do
---   local hx = hotspotsx[i]
---   
---   local psx,psy=isofloat2world(truepx+hx,truepy+hy)
---   pset(psx,psy-#ts*8,2)
---  end
--- end
 
 end
 __gfx__
