@@ -51,21 +51,12 @@ function _draw()
  
  draw_terrain()
  
- 
--- --selection
--- hlx,hly=iso2world(ntx,nty)
--- ts=tget(ntx,nty) 
--- palt(1,true)
--- palt(2,true)
--- palt(3,true)
--- pal(7,10)
--- spr(68,hlx,hly-#ts*8,4,2)
--- pal()
--- palt(1,false)
--- palt(2,false)
---	palt(3,false)
---   
-
+ --4 nearest tiles
+-- col=10
+-- for coords in all(nearcoords) do
+--  hl_stack(coords,col)
+--  col+=1
+-- end
  
 -- local pwx,pwy=pgroundpos()
 -- local hotspotsx={-2,2}
@@ -126,6 +117,7 @@ function _draw()
 -- print2(pwx..","..pwy)
 -- print2(tempx..","..tempy)
 
+ print2("p:"..truepx..","..truepy)
 
  if (not allowx) xstep=0
  if (not allowy) ystep=0
@@ -139,10 +131,37 @@ function _draw()
 -- local backx,backy=isofloat2world(mwfx,mwfy)
 -- print2("bck:"..backx..","..backy)
 
+ draw_iso_rect2(pcol2())
+ 
+ ctest=7
+ if (rcol) ctest=10
+ if (r!=nil) draw_iso_rect2(r,ctest)
+ 
+ 
+-- --little test of rect collision
+-- if (btn(⬆️)) yyy-=1 
+-- if (btn(⬇️)) yyy+=1
+-- if (btn(⬅️)) xxx-=1 
+-- if (btn(➡️)) xxx+=1
+-- r1={10,10,45,25}
+-- r2={xxx,yyy,xxx+www,yyy+hhh}
+-- ccc=5
+-- if (rectcol2(r1,r2)) ccc=7
+-- draw_iso_rect2(r1,ccc)
+-- draw_iso_rect2(r2,4)
+
+ r={5,5,1,1}
+ coltestcol=14
+ if (rectcol2(r,pcol2())) coltestcol=5
+ draw_iso_rect2(r,coltestcol)
+
+ draw_iso_rect2(newpcol,8)
 
 end
 
-
+-- xxx,yyy=50,50
+-- www,hhh=32,32
+ 
 function print2(str,col)
  local cursor_x=peek(0x5f26)
  local cursor_y=peek(0x5f27)
@@ -244,6 +263,21 @@ function near(num)
  else return ceil(num-0.5) 
  end
 end
+
+
+function rectcol2(a,b)
+
+ if a[1]+a[3]>b[1] and 
+    a[1]<b[1]+b[3] and
+    a[2]+a[4]>b[2] and
+    a[2]<b[2]+b[4] 
+ then
+  return true 
+ else
+  return false
+ end
+
+end
 -->8
 --tiles
 
@@ -284,7 +318,9 @@ function init_tiles()
  --add extra dirt layer
  for row in all(tiles) do
   for ts in all(row) do
-   add(ts,3)
+   --add(ts,3)
+   del(ts,ts[1])
+   del(ts,ts[1])
   end
  end
  
@@ -410,6 +446,34 @@ function draw_terrain()
  
  
 end
+
+
+
+function isorect(pos)
+ return {pos[1],pos[2],pos[1]+1,pos[2]+1}
+end
+function isorect2(pos)
+ return {pos[1],pos[2],1,1}
+end
+
+function hl_stack(isopos,col)
+
+ --selection
+ hlx,hly=iso2world(isopos[1],isopos[2])
+ ts=tget(isopos[1],isopos[2]) 
+ palt(1,true)
+ palt(2,true)
+ palt(3,true)
+ pal(7,col)
+ spr(68,hlx,hly-#ts*8,4,2)
+ pal()
+ palt(1,false)
+ palt(2,false)
+	palt(3,false)
+   
+end
+
+
 -->8
 --player
 
@@ -417,15 +481,47 @@ end
 
 --in iso coordinates
 truepx=10
-truepy=10
+truepy=8
 
 
-function pgroundpos()
+function pgroundpos3()
  local ptx,pty=world2iso(px,py) 
  local ts=tget(ptx,pty)
  return px,py-#ts*hth
 end
 
+function draw_iso_rect(r,col)
+ if (col!=nil) color(col)
+ tlx,tly=isofloat2world(r[1],r[2])
+ trx,try=isofloat2world(r[3],r[2])
+ blx,bly=isofloat2world(r[1],r[4])
+ brx,bry=isofloat2world(r[3],r[4])
+ line(tlx-cx,tly-cy,trx-cx,try-cy)
+ line(brx-cx,bry-cy)
+ line(blx-cx,bly-cy)
+ line(tlx-cx,tly-cy)
+end
+function draw_iso_rect2(r,col)
+ if (col!=nil) color(col)
+ tlx,tly=isofloat2world(r[1],r[2])
+ trx,try=isofloat2world(r[1]+r[3],r[2])
+ blx,bly=isofloat2world(r[1],r[2]+r[4])
+ brx,bry=isofloat2world(r[1]+r[3],r[2]+r[4])
+ line(tlx-cx,tly-cy,trx-cx,try-cy)
+ line(brx-cx,bry-cy)
+ line(blx-cx,bly-cy)
+ line(tlx-cx,tly-cy)
+end
+function pcol() 
+ sz=3/16
+ return {truepx-sz,truepy-sz,
+         truepx+sz,truepy+sz}
+end
+function pcol2() 
+ sz=3/16
+ return {truepx-sz,truepy-sz,
+         2*sz,2*sz}
+end
 
 function update_player()
 
@@ -472,7 +568,58 @@ function update_player()
 	 xstep,ystep=truedx*speed/16,truedy*speed/16
 	end
 	
-
+	
+ ptx,pty=flr(truepx),flr(truepy)
+ ts=tget(ptx,pty)
+ 
+ newpcol=pcol2()
+ newpcol[1]+=xstep
+ newpcol[2]+=ystep
+ 
+	--new rect-based collision detection
+	allowx=true
+	allowy=true
+	nearcoords={
+	 {flr(truepx+.5),flr(truepy+.5)},
+	 {flr(truepx+.5)-1,flr(truepy+.5)},
+	 {flr(truepx+.5),flr(truepy+.5)-1},
+	 {flr(truepx+.5)-1,flr(truepy+.5)-1},
+	}
+	for pos in all (nearcoords) do
+	 thists=tget(pos[1],pos[2])
+	 if #thists > #ts then
+ 	 r=isorect2(pos)
+ 	 if rectcol2(r,newpcol) then
+ 	 
+ 	  --only check individual x/y
+ 	  --(for sliding) if we
+ 	  --already know the combined
+ 	  --new point is impassable
+ 	 
+ 	  xnewpcol=pcol2()
+    xnewpcol[1]+=xstep
+ 	  ynewpcol=pcol2()
+    ynewpcol[2]+=ystep
+    
+ 	  if rectcol2(r,xnewpcol) then
+ 	   allowx=false
+ 	  end
+ 	  if rectcol2(r,ynewpcol) then
+ 	   allowy=false
+ 	  end
+ 	  
+--				allowx=false
+--				allowy=false
+				rcol=true
+			else
+			 rcol=false
+ 	 end
+	 end
+	end
+	if (allowx) truepx+=xstep
+	if (allowy) truepy+=ystep
+	
+--[[
  -- collisiton detection here 
  allowx=true
  allowy=true
@@ -502,7 +649,6 @@ function update_player()
   end
  end
  
- 
  --if we run into an exact
  --outside corner, both the
  --the x,y separate checks
@@ -516,10 +662,9 @@ function update_player()
 --  if (#bts>#ts) allowx=false 
 -- end
  
-
 	if (allowx) truepx+=xstep
 	if (allowy) truepy+=ystep
-	 
+]] 
 	 
 end
 
@@ -542,15 +687,15 @@ function draw_player(tx,ty)
  spr(1,pwx-ofx,pwy-ofy,2,2)
 
 
- for j=1,#hotspotsy do
-  local hy = hotspotsy[j]
-  for i=1,#hotspotsx do
-   local hx = hotspotsx[i]
-   
-   local psx,psy=isofloat2world(truepx+hx,truepy+hy)
-   pset(psx,psy-#ts*8,2)
-  end
- end
+-- for j=1,#hotspotsy do
+--  local hy = hotspotsy[j]
+--  for i=1,#hotspotsx do
+--   local hx = hotspotsx[i]
+--   
+--   local psx,psy=isofloat2world(truepx+hx,truepy+hy)
+--   pset(psx,psy-#ts*8,2)
+--  end
+-- end
 
 end
 __gfx__
@@ -674,3 +819,18 @@ __gfx__
 00000000001444449999940000000000000000000014444499999400000000000000000000144455449994000000000000000000000000000000000000000000
 00000000000014449994000000000000000000000000144499940000000000000000000000001444999400000000000000000000000000000000000000000000
 00000000000000149400000000000000000000000000001494000000000000000000000000000015440000000000000000000000000000000000000000000000
+__sfx__
+000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+010e00001275200000000001574200000007020e75200702000000070212752007021575200000000000070213752000000000000000000000070213752007021775200702157520070213752007021275200000
+010e00001075200000000000000000000007021075200702107520070212752000000000000000157520070200000000000000000000127520070212752007021375200702000000070212752007020000000000
+__music__
+01 08424344
+02 09424344
+
