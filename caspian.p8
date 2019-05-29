@@ -65,19 +65,14 @@ function _update()
   playing_music=false
   music(-1)
   
-  if (btnp(⬇️)) debugsel+=1
-  if (btnp(⬆️)) debugsel-=1
-  if (debugsel<1) debugsel=debugcount
-  if (debugsel>debugcount) debugsel=1
+  if (btnp(⬇️)) dsel+=1
+  if (btnp(⬆️)) dsel-=1
+  if (dsel<1) dsel=#dnames
+  if (dsel>#dnames) dsel=1
   
   if btnp(⬅️) or btnp(➡️) then
-   i=0
-   for k,v in pairs(debug) do
-    i+=1
-    if i==debugsel then
-     debug[k]=not v
-    end
-   end
+   local dname=dnames[dsel]
+   debug(dname,not debug(dname))
   end
   
   return --dont update the rest
@@ -164,7 +159,7 @@ function _draw()
 	   
 	   
 	
-	 if debug.map then
+	 if debug("map") then
 	  draw_map_from_mem(64,64,mapaddr)
 	  local wdtx,wdty=w2lt(player.x,player.y,player.x,player.y)
 	  pset(64+wdtx,64+wdty,7)
@@ -173,7 +168,7 @@ function _draw()
 	 
 	 
   color(0)
-  if debug.fps then
+  if debug("fps") then
 	  print("fps "..stat(7).."/"..stat(8))
 	  kbs=stat(0)
 	  bts=(kbs-flr(kbs))*1024
@@ -182,7 +177,7 @@ function _draw()
 	  print("sys "..stat(2))
 	 end
 	 	
-	 if debug.cpu then
+	 if debug("cpu") then
 	 	print(" ")
 	 	lastt = 0
 	 	for i=1,#gtime do
@@ -202,7 +197,8 @@ function _draw()
   local tx,ty=screen_to_tlocal(msx,msy,cam.x,cam.y)
   local t=mapget(tx,ty)
 	  
-	 if debug.mouse and not debug.cpu then
+	 if debug("mouse") and
+	    not debug("cpu") then
 	  print(" ")
 	  print("c "..cam.x.." "..cam.y)
 	  print("ct "..cam.tx.." "..cam.ty)
@@ -215,12 +211,12 @@ function _draw()
 	  spr(207,msx,msy)
 	  
 	  --minimap mouse dot
-	  if debug.map then
+	  if debug("map") then
 	   pset(64+mltx,64+mlty,0)
 	  end
 	 end
 	
-	 if debug.pts then
+	 if debug("pts") then
 	  render_curve_pts(curves,cam)
 	 end
  end
@@ -236,20 +232,15 @@ function _draw()
   i=0
   local pmx,pmy=40,30
   rectfill(pmx-8,pmy+3,pmx+40,
-           pmy+debugcount*6+6,6)
-  for k,op in pairs(debug) do
-   i+=1
+           pmy+#dnames*6+6,6)
+  for i=1,#dnames do
    c=0
-   if (debugsel==i) then
-    c=14
+   if (dsel==i) then
+    c=1
     spr(222,pmx-9,pmy+i*6-1)
    end
-   local str=k
-   if op then
-    str=str.."❎"
-   else
-    --str=str.."🅾️"
-   end
+   local str=dnames[i]
+   if (debug(str)) str=str.."❎"
    print(str,pmx,pmy+i*6,c)
   end
  end
@@ -257,36 +248,6 @@ function _draw()
 	 
  
 end
-
-
---doing it like this to
---make accessing easier
---e.g. if debug.fill then
---could also do like...
---if debug[dbi["fill"]] then
---or is this best??:
---if debug("fill") then
-debug={}
-debug.fill=true
-debug.map=false
-debug.cpu=false
-debug.col=true
-debug.mouse=true
-debug.pts=false
-debug.fps=true
-debug.speed=false
-debug.freeze=false
-debug.hotspots=false
-
---actual best way to count
---table without int indices
-debugcount=0
-for k,v in pairs(debug) do
- debugcount+=1
-end
-
-debugsel=1
-
 
 -->8
 --overworld
@@ -681,7 +642,7 @@ end
 
 function fill_map() 
 
- if debug.fill then
+ if debug("fill") then
 
   local wdtx,wdty=w2lt(player.x,player.y,player.x,player.y)
   flood_fill(wdtx,wdty,tile_nil,tile_water)
@@ -851,7 +812,7 @@ function player_update(p)
   ystep = 0
   
   speed = 1
-  if (debug.speed) speed=4
+  if (debug("speed")) speed=4
   skip_diag_every = 10
 
   angle = p.d / 8 --pico trig is percent of circle (0-1 is 0-360)
@@ -873,7 +834,7 @@ function player_update(p)
   -- collisiton detection here 
   local allowx=true
   local allowy=true
-  if debug.col then
+  if debug("col") then
    local hotspotsx={0,7}
    local hotspotsy={0,7}
    for j=1,#hotspotsy do
@@ -903,7 +864,7 @@ function player_update(p)
  	 end
 	 end
      
-  if not debug.freeze then
+  if not debug("freeze") then
    if allowx then p.x += xstep end
    if allowy then p.y += ystep end    
   end
@@ -931,7 +892,7 @@ function player_draw(p)
  --spr(sail+p.d,p.x-cam.x,p.y-3-cam.y)
  spr(sail+p.d,64,64-3)
 
- if debug.hotspots then
+ if debug("hotspots") then
   hotspotsx={0,7}
   hotspotsy={0,7}
   for j=1,#hotspotsy do
@@ -945,8 +906,17 @@ function player_draw(p)
 
 end
 -->8
---util
+--util/debug
 
+
+function has(arr,val)
+ if type(arr)=='table' then 
+  for i=1,#arr do
+   if (arr[i]==val) return true
+  end
+ end
+ return false
+end
 
 
 function pinrect(p,r)
@@ -963,6 +933,35 @@ function round(num)
  else return ceil(num-0.5) 
  end
 end
+
+
+
+------ debug related -----
+
+
+dflags={}
+dnames={}
+dsel=1
+function debug(code,val)
+ if not has(dnames,code) then
+  add(dnames,code)
+  dflags[dnames[#dnames]]=val
+ end
+ if val==nil then
+  return dflags[code]
+ end
+ dflags[code]=val
+end
+debug("fill",true)
+debug("map",false)
+debug("cpu",false)
+debug("col",true)
+debug("mouse",true)
+debug("pts",false)
+debug("fps",true)
+debug("speed",false)
+debug("freeze",false)
+debug("hotspots",false)
 
 
 
