@@ -7,6 +7,7 @@ __lua__
 tilesz=16 
 
 
+
  
 function _init()
  cartdata("pv_caspian")
@@ -57,33 +58,31 @@ function _update()
  cls() -- clear here since we use screen memory for building our tilemap
  add(gtime,{"cls(",stat(1)})
  
+ 
  if btn(❎) and btn(🅾️) then
   pause_menu=true
   
   playing_music=false
   music(-1)
   
-  --pm=0
-  if (btnp(⬆️)) then
-   if (pm==3) pm=0 else pm=1
+  if (btnp(⬇️)) debugsel+=1
+  if (btnp(⬆️)) debugsel-=1
+  if (debugsel<1) debugsel=debugcount
+  if (debugsel>debugcount) debugsel=1
+  
+  if btnp(⬅️) or btnp(➡️) then
+   i=0
+   for k,v in pairs(debug) do
+    i+=1
+    if i==debugsel then
+     debug[k]=not v
+    end
+   end
   end
-  if (btnp(⬅️)) then
-   if (pm==4) pm=0 else pm=2
-  end
-  if (btnp(⬇️)) then
-   if (pm==1) pm=0 else pm=3
-  end
-  if (btnp(➡️)) then
-   if (pm==2) pm=0 else pm=4
-  end
+  
   return --dont update the rest
  else
   pause_menu=false
-  if (pm==1) debugcpu=not debugcpu
-  if (pm==2) debugmap=not debugmap
-  if (pm==3) debugfill=not debugfill
-  if (pm==4) debugcol=not debugcol
-  pm=0
  end
  
  
@@ -165,37 +164,25 @@ function _draw()
 	   
 	   
 	
-	 if debugmap then
+	 if debug.map then
 	  draw_map_from_mem(64,64,mapaddr)
 	  local wdtx,wdty=w2lt(player.x,player.y,player.x,player.y)
 	  pset(64+wdtx,64+wdty,7)
 	 end
 	 
 	 
-	 if pause_menu then
-	  spr(223,64-4,64-4)
-	  spr(239,64-4,64-4-10)
-	  spr(254,64-4-10,64-4)
-	  spr(255,64-4,64-4+10)
-	  spr(238,64-4+10,64-4)
-	  
-	  local rx,ry=64-4,64-4
-	  if (pm==1) rx=64-4 ry=64-4-10
-	  if (pm==2) rx=64-4-10 ry=64-4
-	  if (pm==3) rx=64-4 ry=64-4+10
-	  if (pm==4) rx=64-4+10 ry=64-4
-	  rect(rx-1,ry-1,rx+8,ry+8)
-	 end
 	 
   color(0)
-  print("fps "..stat(7).."/"..stat(8))
-  kbs=stat(0)
-  bts=(kbs-flr(kbs))*1024
-  print("ram "..flr(kbs).."k "..bts.." (of 2048k)")
-  print("cpu "..stat(1))
-  print("sys "..stat(2))
+  if debug.fps then
+	  print("fps "..stat(7).."/"..stat(8))
+	  kbs=stat(0)
+	  bts=(kbs-flr(kbs))*1024
+	  print("ram "..flr(kbs).."k "..bts.." (of 2048k)")
+	  print("cpu "..stat(1))
+	  print("sys "..stat(2))
+	 end
 	 	
-	 if debugcpu then
+	 if debug.cpu then
 	 	print(" ")
 	 	lastt = 0
 	 	for i=1,#gtime do
@@ -215,7 +202,7 @@ function _draw()
   local tx,ty=screen_to_tlocal(msx,msy,cam.x,cam.y)
   local t=mapget(tx,ty)
 	  
-	 if debugmouse and not debugcpu then
+	 if debug.mouse and not debug.cpu then
 	  print(" ")
 	  print("c "..cam.x.." "..cam.y)
 	  print("ct "..cam.tx.." "..cam.ty)
@@ -228,12 +215,12 @@ function _draw()
 	  spr(207,msx,msy)
 	  
 	  --minimap mouse dot
-	  if debugmap then
+	  if debug.map then
 	   pset(64+mltx,64+mlty,0)
 	  end
 	 end
 	
-	 if debugpts then
+	 if debug.pts then
 	  render_curve_pts(curves,cam)
 	 end
  end
@@ -242,19 +229,65 @@ function _draw()
   //true if menu open
  end
  
+ 
+ 
+ if pause_menu then
+  lin=0
+  i=0
+  local pmx,pmy=40,30
+  rectfill(pmx-8,pmy+3,pmx+40,
+           pmy+debugcount*6+6,6)
+  for k,op in pairs(debug) do
+   i+=1
+   c=0
+   if (debugsel==i) then
+    c=14
+    spr(222,pmx-9,pmy+i*6-1)
+   end
+   local str=k
+   if op then
+    str=str.."❎"
+   else
+    --str=str.."🅾️"
+   end
+   print(str,pmx,pmy+i*6,c)
+  end
+ end
+	 
+	 
+ 
 end
 
-gptx=0
-gpty=0
-gsteps={}
-rolmsg={}
 
-debugfill=true
-debugmap=false
-debugcpu=false
-debugcol=true
-debugmouse=true
-debugpts=false
+--doing it like this to
+--make accessing easier
+--e.g. if debug.fill then
+--could also do like...
+--if debug[dbi["fill"]] then
+--or is this best??:
+--if debug("fill") then
+debug={}
+debug.fill=true
+debug.map=false
+debug.cpu=false
+debug.col=true
+debug.mouse=true
+debug.pts=false
+debug.fps=true
+debug.speed=false
+debug.freeze=false
+debug.hotspots=false
+
+--actual best way to count
+--table without int indices
+debugcount=0
+for k,v in pairs(debug) do
+ debugcount+=1
+end
+
+debugsel=1
+
+
 -->8
 --overworld
 
@@ -648,7 +681,7 @@ end
 
 function fill_map() 
 
- if debugfill then
+ if debug.fill then
 
   local wdtx,wdty=w2lt(player.x,player.y,player.x,player.y)
   flood_fill(wdtx,wdty,tile_nil,tile_water)
@@ -818,7 +851,7 @@ function player_update(p)
   ystep = 0
   
   speed = 1
-  if (btn(🅾️)) then speed=4 end
+  if (debug.speed) speed=4
   skip_diag_every = 10
 
   angle = p.d / 8 --pico trig is percent of circle (0-1 is 0-360)
@@ -840,7 +873,7 @@ function player_update(p)
   -- collisiton detection here 
   local allowx=true
   local allowy=true
-  if debugcol then
+  if debug.col then
    local hotspotsx={0,7}
    local hotspotsy={0,7}
    for j=1,#hotspotsy do
@@ -870,7 +903,7 @@ function player_update(p)
  	 end
 	 end
      
-  if not btn(❎) then
+  if not debug.freeze then
    if allowx then p.x += xstep end
    if allowy then p.y += ystep end    
   end
@@ -898,7 +931,7 @@ function player_draw(p)
  --spr(sail+p.d,p.x-cam.x,p.y-3-cam.y)
  spr(sail+p.d,64,64-3)
 
-
+ if debug.hotspots then
   hotspotsx={0,7}
   hotspotsy={0,7}
   for j=1,#hotspotsy do
@@ -908,6 +941,7 @@ function player_draw(p)
     pset(64+hx,64+hy,14)
    end
   end
+ end
 
 end
 -->8
@@ -1886,7 +1920,7 @@ c7c7c7c7c7c7c7c7c7c7c7c70000d0d1d2d3d0d1d2d300000000008a8a8a8a8a8a8a8a8a8a8a8a8a
 00eaeb00c7c7c7c7c700e7f8f9f9f800000000000000000000000080818283808b8e8e8e8182838081828300000000020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020101020000000000000000000000000000000000000000
 00fafb00000000000000e7e7e7e7e7000000000000000000000000909192a6a78b9293909192939091929300000000020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020102020000000000000000000000000000000000000000
 000000000000000000000000000000000000000000000000000000a0a1a2a3a08ea2a3a0a1a2a3a0a1a2a300000002020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020101010101010101010102020000000000000000000000000000000000000000
-000000000000000000000000000000000000000000000000000000b0b1b2b3b0b1b2b3b0b1b2b3b0b1b2b300000002020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020201010102020202020202020202020000000000000000000000000000000000000000
+000000000000000000000000000000000000000000000000000000b0b1b2b3b0f1b2b3b0b1b2b3b0b1b2b300000002020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020201010102020202020202020202020000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020201020202020202020202020202020000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020101020202020202020202020202020000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020101020202020202020202020202020000000000000000000000000000000000000000
