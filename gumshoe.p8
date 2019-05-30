@@ -42,10 +42,10 @@ function _update()
   return --dont update the rest
  else
   pause_menu=false
-  if (pm==1) debugxxxx=not debugxxxx
-  if (pm==2) debughots=not debughots
-  if (pm==3) debugxxxx=not debugxxxx
-  if (pm==4) debuguse=not debuguse
+  if (pm==1) debugcols=not debugcols
+  if (pm==2) debugtrigs=not debugtrigs
+  if (pm==3) debugxxx=not debugxxx
+  if (pm==4) debugxxx=not debugxxx
   pm=0
  end
  
@@ -57,47 +57,77 @@ function _update()
 end
 
 
-function special_glass(plr_y)
+function draw_player_behind_glass()
+ local plr_y = pybase()
  
- for obj in all(things) do
+ --right now the only glass
+ --is on closed doors
+ --but potentiall other things
+ --in future
  
- --skip doors behind the player
- if obj[2]+obj[4]>plr_y then
+ --could clarify like this?
+ --make list of all pixels
+ --that are glass
+ --then iterate over those
+ --instead of the objects twice
  
- --if closed door
- if obj[7]==13 then 
-  basex=obj[1]+obj[8]+1
-  basey=obj[2]+obj[9]+5
+ for i=1,#things do
+  local obj=things[i]
+ 
+  --only do doors below player
+  --since we dont want to cover
+  --up things alerady drawn
+	 if ybase(obj)>plr_y then
+	 
+		 --if closed door
+		 if obj.spr==13 then 
+		  basex=obj.x+1
+		  basey=obj.y+5
+		
+		  --red bg
+			 for x=0,5 do
+			  for y=0,3 do
+			   pset(basex+x,basey+y,8)
+			  end
+			 end
+			 
+			end
+		end
+	end
 
-  --red bg
-	 for x=0,5 do
-	  for y=0,3 do
-	   pset(basex+x,basey+y,8)
-	  end
-	 end
-	 
-	 --draw over red
-	 player_draw()
-	 
-	 --check what isn't red anymore
-	 for x=0,5 do
-	  for y=0,3 do
-	   col=pget(basex+x,basey+y)
-	   if col!=8 then
-	    pset(basex+x,basey+y,13)
-	   else
-	    pset(basex+x,basey+y,6)
-	   end
-	  end
-	 end
-	 --draw lettering
-	 pset(basex+2,basey+1,0)
-	 pset(basex+1,basey+1,0)
-	 pset(basex+1,basey+2,0)
-	 pset(basex+4,basey+1,0)
-	 pset(basex+4,basey+2,0)
-	end
-	end
+ --(only do once no matter
+ --(how many doors we have)	
+ --draw over the red
+ --this is now also the 
+ --only time player is drawn
+ player_draw()
+
+	
+ --check what isn't red anymore
+ for i=1,#things do
+  local obj=things[i]
+	 if ybase(obj)>plr_y then
+		 if obj.spr==13 then 
+		  basex=obj.x+1
+		  basey=obj.y+5		 
+		  
+			 for x=0,5 do
+			  for y=0,3 do
+			   col=pget(basex+x,basey+y)
+			   if col!=8 then
+			    pset(basex+x,basey+y,13)
+			   else
+			    pset(basex+x,basey+y,6)
+			   end
+			  end
+			 end
+			 
+			 --used to draw letterin here
+			 --but now drawing transparent
+			 --sprite over this (pink pixel method)
+
+			end
+		end
 	end
 end
 
@@ -105,16 +135,15 @@ function _draw()
  cls()
  
  map()
- 
- --special_glass()
 
+ --sort objects + player
  ypos={}
  for i=1,#things do
   local obj=things[i]
-  local ybase=obj[2]+obj[4]
+  local ybase=ybase(obj)
   add(ypos,{ybase,i})
  end
- add(ypos,{py+hoty[2],0})
+ add(ypos,{pybase(),0})
  sort_objs(ypos)
  
  --ok this is pretty simple
@@ -139,12 +168,11 @@ function _draw()
  drewplayer=false
  for i=1,#ypos do
   if ypos[i][2]==0 then
-   player_draw()
-   special_glass(py+hoty[2])
+   draw_player_behind_glass()
    drewplayer=true
   else
    local obj=things[ypos[i][2]]
-   if obj[7]==13 then
+   if obj.spr==13 then --is door (closed)
     if drewplayer then  
 	    palt(14,true) --transparent
   	 else
@@ -181,11 +209,20 @@ function _draw()
  end
 	 
  
- if (debughots) then
+ if (debugtrigs) then
   for obj in all(things) do
-   rect2(obj,7)
+   rect2(obj_trig(obj),7)
   end
  end
+ 
+ if (debugcols) then
+  for obj in all(things) do
+   c=9
+   if (obj.solid) c=10
+   rect2(obj_col(obj),c)
+  end
+ end
+
 
 end
 
@@ -198,6 +235,13 @@ end
 --psprs={236,237,238,239}
 psprs={128,129,130,131}
 
+
+--for sorting
+function pybase()
+ return py+16 --(bottom of sprite)
+end
+
+
 function init_player()
 	px,py=60,60
 	pd=2
@@ -206,10 +250,14 @@ function init_player()
 	
 	pclothes=true
 	
- hotx={-4,3}
- hoty={-2,2}
+--	-4,0,3
+-- hoty={-2,0,2}
+ 
+ hotx={0,3,7}
+ hoty={12,14,17}
 	
 end
+
 
 function player_update()
 
@@ -221,10 +269,9 @@ function player_update()
  if (btn(⬇️)) dy+=1
  
  if dx!=0 or dy!=0 then
-	 usebox={px+hotx[1]+dx*4,
-	         py+hoty[1]+dy*4-3,
-	         hotx[2]-hotx[1],
-	         hoty[2]-hoty[1]+3}
+	 usebox={px+dx*4,
+	         py+11+dy*4,
+	         8,8}
  end
  
  if pstate=="use" then
@@ -282,7 +329,7 @@ function player_update()
     pstate=="use" 
  then
   for obj in all(things) do
-   if obj[5] then
+   if obj.usefunc then
     if usetrig(usebox,obj) then
      p_use_ready=false
     end
@@ -300,8 +347,8 @@ end
 
 function player_draw()
   
- local psprx=px-4
- local pspry=py-15
+ local psprx=px
+ local pspry=py
  
  --do fake project shadow?
  spr(64,psprx,pspry+12)
@@ -318,7 +365,7 @@ function player_draw()
  if (pclothes) pspr+=(160-128)
  spr(pspr,psprx,pspry,1,2,pflip)
 
- if debughots then
+ if debugcols then
   pset(px,py,11)
   
   for x in all(hotx) do
@@ -326,8 +373,9 @@ function player_draw()
   pset(px+x,py+y,10)
   end end
  end
- if debuguse then
-  if (usebox!=nil) rect2(usebox)
+ if debugtrigs then
+  if usebox!=nil then
+   rect2(usebox,7) end
  end
 
 end
@@ -395,72 +443,141 @@ function rect2(r,c)
 end
 
 -->8
---triggers
+--objects
 
 
 function draw_obj(obj)
- spr(obj[7],
-     obj[1]+obj[8],
-     obj[2]+obj[9],
-     obj[10],obj[11])
+ spr(obj.spr,obj.x,obj.y,
+     obj.sprw,obj.sprh)
 end
 
 
-function userack1()
- local rack=things[1]
+
+function userack(rack)
  pclothes=not pclothes
- rack[7]=34
- if (pclothes) rack[7]=32
+ rack.spr=34
+ if (pclothes) rack.spr=32
 end
 
-function usedoor(i)
- local door=things[i]
- door[7]+=1
- if (door[7]==15) door[7]=13
- if door[7]==13 then
-  door[6]=true
+function usedoor(door)
+ door.spr+=1
+ if (door.spr==15) door.spr=13
+ if door.spr==13 then
+  door.solid=true
  else
-  door[6]=false
+  door.solid=false
  end
 end
 
 
-
--- colx,coly,colw,colh,fp,solid,
--- spr, sprx, spry, sprw, sprh
-
---1234 col rect
---5 trig fp
---6 solid
---7 spr
---8,9 sprx,y
---10,11 sprw,h tiles
-
-things={
- --rack 1
- {20,10,7,16,userack1,t,
-  32,-4,0,2,2},
- --door 2
- {5*8,15*8+5,8,3,
- function() usedoor(2) end,t,
-  13,0,-8-5,1,2},
- --door 3
- {5*8,10*8+5,8,3,
- function() usedoor(3) end,t,
-  13,0,-8-5,1,2},
+mold_door={
+ "door",
+ 13,  --sprite
+ 1,2, --tilesize
+ true, --is solid
+ 0,8+4,8,8-4,  --col rel to sprite
+ 0,8,8,8, --trig rel to sprite
+ usedoor, --trigger handler
+-- 0, --sort offset?
+}
+mold_rack={
+ "rack",
+ 32,  --sprite
+ 2,2, --tilesize
+ true, --is solid
+ 4,10,7,6,  --col rel to sprite
+ 4,10,7,6, --trig rel to sprite
+ userack, --trigger handler
+-- 0, --sort offset?
 }
 
+function named_mold(m)
+ nm={}
+ nm.name=m[1]
+ 
+ nm.spr=m[2]
+ nm.sprw=m[3]
+ nm.sprh=m[4]
+ 
+ nm.solid=m[5]
+ nm.relcol={}
+ nm.relcol.x=m[6]
+ nm.relcol.y=m[7]
+ nm.relcol.w=m[8]
+ nm.relcol.h=m[9]
+ 
+ nm.reltrig={}
+ nm.reltrig.x=m[10]
+ nm.reltrig.y=m[11]
+ nm.reltrig.w=m[12]
+ nm.reltrig.h=m[13]
+
+ nm.usefunc=m[14]
+ return nm
+end
+
+
+function obj_col(obj)
+ return {
+  obj.x+obj.relcol.x,
+  obj.y+obj.relcol.y,
+  obj.relcol.w,
+  obj.relcol.h
+  }
+end
+
+function obj_trig(obj)
+ return {
+  obj.x+obj.reltrig.x,
+  obj.y+obj.reltrig.y,
+  obj.reltrig.w,
+  obj.reltrig.h
+  }
+end
+
+--for sorting
+function ybase(obj)
+ return obj.y+obj.sprh*8
+end
+
+
+function spawn(x,y,mold)
+ obj={}
+ 
+ obj.x=x
+ obj.y=y
+ 
+ local nm=named_mold(mold)
+ for k,v in pairs(nm) do
+  obj[k]=v
+ end
+ 
+ add(things,obj)
+end
 
 
 
-function usetrig(r,trig)
- if rectcol(r,trig)
+function usetrig(r,obj)
+ if rectcol(r,obj_trig(obj))
  then
-  trig[5]()
+  obj.usefunc(obj)
   return true
  end 
  return false
 end
+
+
+
+things={}
+
+
+spawn(4*8,5*8,mold_door)
+spawn(5*8,14*8,mold_door)
+spawn(7*8,10*8,mold_door)
+spawn(12*8,12*8,mold_door)
+spawn(3*8,2*8,mold_rack)
+
+
 -->8
 
 
@@ -470,8 +587,8 @@ function solidtile(x,y)
  if (fget(tile,0)==false) return true
  
  for obj in all(things) do
-		if obj[6] then
-			if pinrect(x,y,obj) then
+		if obj.solid then
+			if pinrect(x,y,obj_col(obj)) then
  			return true
 			end
 		end
@@ -484,11 +601,11 @@ end
 
 function newobjcol(x,y,dx,dy)
  for obj in all(things) do
-		if obj[6] then
+		if obj.solid then
 		 --ignore obj if we are
 		 --already on top of it
-			if not pinrect(x,y,obj) and
-			   pinrect(x+dx,y+dy,obj) then
+			if not pinrect(x,y,obj_col(obj)) and
+			   pinrect(x+dx,y+dy,obj_col(obj)) then
  			return true
 			end
 		end
@@ -500,33 +617,33 @@ __gfx__
 00000000ddddddddd666666ddddddddddddddddd0000000016666666000000000000000066666666666666660000000066666666333333333333333317777771
 00700700dddddddddd666d6ddddddddddddddddd0000000016666666000000000000000011111111111111110000000011111111333333333333333317555771
 00077000ddddddddddd66d6ddddddddddddddddd0000000016ddddd60000000000000000dddddddddddddddd00000000dddddddd333333333333333317575d71
-00077000ddddddddddd6dddddddddddddddddddd0000000016d666d60000000000000000dddddddddddddddd0000000011111111111111113333311117555d71
-00700700dddd6dddddd6dddddddddddddddddddd0000000016ddddd60000000000000000dddddddddddddddd00000000333333331eeeeee1333331d1177ddd71
-00000000dddd6ddddddddddddddddddddddddddd00000000166666660000000000000000dddddddddddddddd00000000333333331e00e0e1333331d117777771
-00000000ddd666dddddddddddddddddddddddddd00000000111111110000000000000000dddddddddddddddd00000000333333331e0ee0e1333331d111111111
-00000000d666666ddddddddddddddddddddddddd00000000155555555555555500000000dddddddddddddddd00000000333333331eeeeee1333331d111111111
-0000000066666666dddddddddddddddddddddddd00000000155555555555555500000000dddddddddddddddd0000000033333333155555513333315111177771
-00000000111111111111111111111111111111110000000015555555555555550000000011111111111111110000000033333333155555513333315111111771
-00000000444444444444144444444444444444440000000011111111111111110000000044441444444444440000000033333333151111513333314111177771
-00000000222222222224142222222222222222220000000055555555515555550000000022241422222222220000000033333333151444513333314111777771
-00000000222222222224142222222222222222220000000055555555515555550000000022241422222222220000000033333333155555513333315111177771
-00000000222222222224142222222222222222220000000055555555515555550000000022241422222222220000000033333333111111113333311117777771
+00077000ddddddddddd6dddddddddddddddddddd0000000016d666d60000000000000000dddddddddddddddd0000000011111111111111111113333317555d71
+00700700dddd6dddddd6dddddddddddddddddddd0000000016ddddd60000000000000000dddddddddddddddd00000000333333331eeeeee115133333177ddd71
+00000000dddd6ddddddddddddddddddddddddddd00000000166666660000000000000000dddddddddddddddd00000000333333331e00e0e1d513333317777771
+00000000ddd666dddddddddddddddddddddddddd00000000111111110000000000000000dddddddddddddddd00000000333333331e0ee0e1d513333311111111
+00000000d666666ddddddddddddddddddddddddd00000000155555555555555500000000dddddddddddddddd00000000333333331eeeeee11513333311111111
+0000000066666666dddddddddddddddddddddddd00000000155555555555555500000000dddddddddddddddd0000000033333333155555511513333314444441
+0000000011111111111111111111111111111111000000001555555555555555000000001111111111111111000000003333333315555551151333331444a4a1
+0000000044444444444414444444444444444444000000001111111111111111000000004444144444444444000000003333333315111151d513333314444441
+0000000022222222222414222222222222222222000000005555555551555555000000002224142222222222000000003333333315144451d51333331444a4a1
+0000000022222222222414222222222222222222000000005555555551555555000000002224142222222222000000003333333315555551151333331aaa4441
+000000002222222222241422222222222222222200000000555555555155555500000000222414222222222200000000333333331111111111133333144a4441
 00000000111111111111111111111111111111110000000011111111111111110000000011111111111111110000000033333333333333333333333311111111
 33333333333333333333333333333333444444444444444444444444555555550000000000000000000000000000000000000000000000000000000011111111
-333337333733333333333733373333334444444444444444444444445dddddd50000000000000000000000000000000000000000000000000000000014444441
-333333767333333333333376733333334444444444444444eeee44445111111500000000000000000000000000000000000000000000000000000000144a4a41
-33333336333333333333333633333333444444666444444ffffe4444111111110000000000000000000000000000000000000000000000000000000014444441
-33333736373333333333443634443333444477766774444ffffe44445111111500000000000000000000000000000000000000000000000000000000144a4a41
-33333376733333333334447674663333444477766774446ffffe44445dddddd50000000000000000000000000000000000000000000000000000000014444441
-33333336333333333334443634643333444477766774446ffffe44445dddddd50000000000000000000000000000000000000000000000000000000014444441
+333337333733333333333733373333334444444444444444444444445dddddd50000000000000000000000000000000000000000000000000000000014441111
+333333767333333333333376733333334444444444444444eeee4444511111150000000000000000000000000000000000000000000000000000000014477711
+33333336333333333333333633333333444444666444444ffffe4444111111110000000000000000000000000000000000000000000000000000000014474711
+33333736373333333333443634443333444477766774444ffffe4444511111150000000000000000000000000000000000000000000000000000000017777711
+33333376733333333334447674663333444477766774446ffffe44445dddddd50000000000000000000000000000000000000000000000000000000017447441
+33333336333333333334443634643333444477766774446ffffe44445dddddd50000000000000000000000000000000000000000000000000000000017777441
 33333336333333333334443634643333444477747774444ffff444441dddddd10000000000000000000000000000000000000000000000000000000011111111
 33333336333333333334443634443333444444444444444444444444544444450000000000000000000000000000000000000000000000001111111111111111
-33333336333333333334443633333333111111111111111111111111511111150000000000000000000000000000000000000000000000001444777117776d71
-3333333633333333333444363333333311111111111111111111111151111115000000000000000000000000000000000000000000000000144474711776dd71
-333333363333333333344336333333331110000000000000000001115111111500000000000000000000000000000000000000000000000014447771176ddd71
-33333dd6dd33333333333dd6dd333333111000000000000000000111544444450000000000000000000000000000000000000000000000001aaa444117ddd771
-3333ddddddd333333333ddddddd33333111000000000000000000111544444450000000000000000000000000000000000000000000000001a4a444117dd7771
-33333ddddd33333333333ddddd333333111000000000000000000111544444450000000000000000000000000000000000000000000000001aaa444115777771
+33333336333333333334443633333333111111111111111111111111511111150000000000000000000000000000000000000000000000001444444117776d71
+3333333633333333333444363333333311111111111111111111111151111115000000000000000000000000000000000000000000000000144444411776dd71
+333333363333333333344336333333331110000000000000000001115111111500000000000000000000000000000000000000000000000014444441176ddd71
+33333dd6dd33333333333dd6dd333333111000000000000000000111544444450000000000000000000000000000000000000000000000001444444117ddd771
+3333ddddddd333333333ddddddd33333111000000000000000000111544444450000000000000000000000000000000000000000000000001444444117dd7771
+33333ddddd33333333333ddddd333333111000000000000000000111544444450000000000000000000000000000000000000000000000001444444115777771
 33333333333333333333333333333333111000000000000000000111511111150000000000000000000000000000000000000000000000001111111111111111
 33333333000000000000000000000000000000000000600000006100000061000000610000006500000051000000100000000000000010000000000000005000
 33333333000000000000000000000000000000000066606000666160006661600066616000666560005551500011101000000000001110100000000000555050
