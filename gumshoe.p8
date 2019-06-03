@@ -58,13 +58,10 @@ function _update()
  end
  
  
- if btn(🅾️) then
-  inventory_open=true
-  if (btnp(⬅️)) selitem-=1
-  if (btnp(➡️)) selitem+=1
-  selitem=mid(1,selitem,#inventory)
- else
-  inventory_open=false
+ 
+ update_inv_icons()
+ 
+ if not inventory_open then
   player_update(dx,dy)
  end
 
@@ -171,9 +168,7 @@ function _draw()
  end
  
  
- if inventory_open then
-  draw_inventory()
- end
+ draw_inventory()
  
  
  
@@ -435,6 +430,12 @@ end
 --util
 
 
+--ease into t from v at rate
+function easeto(v,t,rate)
+ return (t-v)/rate
+end
+
+
 --print text centered on x
 function printcenter(s,x,y)
  print(s,x-#s*2,y)
@@ -483,6 +484,35 @@ function sort_objs(t)
 		end
 	end
 end
+
+--sort list of pairs {y,i}
+--by the 1st val (y in this case)
+function sort_objs(t) 
+	for n=2,#t do
+		local i=n
+		while i>1 and 
+		 t[i][1] < t[i-1][1] --[1]=metric
+		do
+			t[i],t[i-1]=t[i-1],t[i]
+			i-=1
+		end
+	end
+end
+
+
+--sort table list by k element of table
+function sort_by_i(t,k) 
+ for n=2,#t do
+  local i=n
+  while i>1 and 
+   t[i][k] < t[i-1][k] --[k]=metric
+  do
+   t[i],t[i-1]=t[i-1],t[i]
+   i-=1
+  end
+ end
+end
+
 
 
 --rects collide
@@ -768,56 +798,162 @@ itemnames={
 }
 selitem=1
 
-function draw_inv_icon(i,x,y,w,h)
- rectfill2(x,y,w+2,h+2,0)
- rectfill2(x+1,y+1,w,h,7)
- palt(0,true)
- ssx,ssy=sspos(inventory[i])
- sspr(ssx,ssy,16,16,
-  x+1,y+1,w,h)
- palt(0,false)
+
+function init_inv_icons()
+ inv_icons={}
+ 
+ for i=selitem,#inventory do
+  add(inv_icons,{0,0,0,i})
+ end
+ for i=selitem,1,-1 do
+  if i!=selitem then
+   add(inv_icons,{0,0,0,i})
+  end
+ end
 end
 
-function draw_inventory()
- sqrs={}
- xstep=12
- ystep=3
- size=16
- x=-6
- y=-18
+function shrink_targ_icons()
+ targ_icons={}
+ 
  for i=selitem,#inventory do
-  add(sqrs,{x,y,size,i})
+  add(targ_icons,{0,0,0})
+ end
+ for i=selitem,1,-1 do
+  if i!=selitem then
+   add(targ_icons,{0,0,0})
+  end
+ end
+end
+
+function set_targ_icons()
+ targ_icons={}
+ 
+ startxstep=12
+ startystep=3
+ startsize=16
+ startx=-6
+ starty=-18
+ 
+ xstep=startxstep
+ ystep=startystep
+ size=startsize
+ x=startx
+ y=starty
+ for i=selitem,#inventory do
+  add(targ_icons,{x,y,size})
   x+=xstep
   y+=ystep
   xstep-=1
   ystep*=0.8
   size-=1
  end
- xstep=12
- ystep=3
- size=16
- x=-6
- y=-18
+ xstep=startxstep
+ ystep=startystep
+ size=startsize
+ x=startx
+ y=starty
  for i=selitem,1,-1 do
-  add(sqrs,{x,y,size,i})
+  if i!=selitem then --don't dup this icon
+   add(targ_icons,{x,y,size})
+  end
   x-=xstep
   y+=ystep
   xstep-=1
   ystep*=0.8
   size-=1
  end
- for i=#sqrs,1,-1 do
-  x=sqrs[i][1]
-  y=sqrs[i][2]
-  size=sqrs[i][3]
-  sprt=sqrs[i][4]
-  draw_inv_icon(
-   sprt, px+x,py+y, size,size)
+ sort_by_i(targ_icons,1)
+end
+
+function step_inv_to_targ_icons()
+ for i=1,#inv_icons do
+  tweenease=2
+  --x
+  inv_icons[i][1]=
+   inv_icons[i][1]+
+   ceil(targ_icons[i][1]-
+    inv_icons[i][1])/tweenease
+  --y
+  inv_icons[i][2]=
+   inv_icons[i][2]+
+   ceil(targ_icons[i][2]-
+    inv_icons[i][2])/tweenease
+  --size
+  inv_icons[i][3]=
+   inv_icons[i][3]+
+   ceil(targ_icons[i][3]-
+    inv_icons[i][3])/tweenease
  end
+end
+
+inventory_open=false
+inv_icons={}
+targ_icons={}
+function update_inv_icons()
  
+ if btn(🅾️) then
+  if not inventory_open then
+   init_inv_icons()
+  end
+ else
+  if inventory_open then
+   shrink_targ_icons()
+  end
+ end
+ inventory_open=btn(🅾️)
+ 
+ if inventory_open then
+  if (btnp(⬅️)) selitem-=1
+  if (btnp(➡️)) selitem+=1
+  selitem=mid(1,selitem,#inventory)
+  
+  set_targ_icons()
+ end
+
+ step_inv_to_targ_icons()
+
+end
+
+
+function draw_icon_i(icons,i)
+
+ icon=icons[i]
+ sprt=inventory[i]
+ x=icon[1]+px
+ y=icon[2]+py
+ size=icon[3]
+ w,h=size,size
+   
+ rectfill2(x,y,w+2,h+2,0)
+ rectfill2(x+1,y+1,w,h,7)
+ palt(0,true)
+ ssx,ssy=sspos(sprt)
+ sspr(ssx,ssy,16,16,
+  x+1,y+1,w,h)
+ palt(0,false)
+end
+function draw_inv_icons(icons)
+
+ for i=#icons,selitem+1,-1 do
+  draw_icon_i(icons,i)
+ end
+ for i=1,selitem do
+  draw_icon_i(icons,i)
+ end
+
+ if inventory_open then
  print2center(
   itemnames[selitem],px+4,py-25)
- 
+ end
+end
+
+
+function draw_inventory()
+ if #inv_icons>0 then
+  if inv_icons[1][3]>1 then --size
+   draw_inv_icons(inv_icons)
+  end
+ end
 end
 __gfx__
 00000000dddddddd66666666dddddddddddddddd0000000016666666000000001666666666666666666666666666666116666661666666666666666611111111
