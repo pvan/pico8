@@ -15,6 +15,10 @@ end
 function _update()
 
  msx,msy=get_mouse()
+ 
+ if (btnp(❎)) zoomout=not zoomout
+ 
+ if (zoomout) msx/=2 msy/=2
  mwx,mwy=msx+cx,msy+cy
  
  update_triggers()
@@ -33,24 +37,80 @@ function _update()
 end
 
 
-function _draw()
- cls(3)
- camera(cx,cy)
- --map()
- 
- draw_board()
- 
- draw_triggers()
- 
- --draw_stickers()
- 
- --highlight_stickers(mwx,mwy)
 
- hl_tilehv(tilehv(mwx,mwy))
+function draw_game(x,y)
+
+ cls(3)
+		 
+	camera(x,y)
+	--map()
+	
+	draw_board()
+	
+	draw_triggers()
+	
+	--draw_stickers()
+	
+	--highlight_stickers(mwx,mwy)
+	
+	hl_tilehv(tilehv(mwx,mwy))
+
+end
+
+
+function _draw()
+
+ gtime={}
+
+ quadx={-64,64,-64,64}
+ quady={-64,-64,64,64}
+ 
+ if zoomout then
+ 
+	 screen_pixels={}
+	 qpix={}
+	 for q=1,4 do
+	  draw_game(cx+quadx[q],cy+quady[q])		 
+	  add(gtime,{"d"..q,stat(1)})
+	 
+	  qpix[q]=read_screen()
+	  add(gtime,{"r"..q,stat(1)})
+	 end
+	 
+	 shkpix={}
+	 for q=1,4 do
+	  shkpix[q]=shrink_pix(qpix[q])
+	  add(gtime,{"s"..q,stat(1)})
+	 end
+	 
+	 cls()
+	 
+	 for q=1,4 do
+	  write_quad(shkpix[q],q)
+	 end
+	 add(gtime,{"w",stat(1)})
+ 
+ else
+  draw_game(cx,cy)
+ end
  
  camera()
  cursor()
  spr(64,mx,my)
+ print2(stat(1))
+ 
+ 
+	--timing
+	if zoomout then
+		lastt = 0
+		for i=1,#gtime do
+		 delta = gtime[i][2]-lastt
+		 --delta=flr(delta*100)
+		 print(gtime[i][1].." "..delta)
+		 lastt = gtime[i][2]
+		end
+	end
+	
 
 end
 -->8
@@ -66,6 +126,18 @@ function printcenter(s,x,y)
   s=tostr(s)
  end
  print(s,x-#s*2,y)
+end
+
+
+--drop shadow print
+function print2(str,col)
+ local cursor_x=peek(0x5f26)
+ local cursor_y=peek(0x5f27)
+ if (col==nil) col=7
+ print(str,cursor_x+1,cursor_y+1,0)
+ print(str,cursor_x,cursor_y+1,0)
+ print(str,cursor_x,cursor_y,col)
+ poke(0x5f27,cursor_y+6)
 end
 
 
@@ -654,6 +726,163 @@ function draw_triggers()
  end
 end
 
+-->8
+--omg what
+
+
+
+function shrink_screen_to_tl()
+ 
+ local addr=0x6000
+ local i32s={}
+ 
+ --unfortunately, this method
+ --of just ignoring 3/4 of all
+ --pixels just doesn't work great
+ --better would be to average
+ --all 4 somehow to get 1
+ 
+ --to compress in y is easy,
+ --just skip ever other row
+ --when reading and writing
+ --to compress in x is harder
+ --(but faster) since we can
+ --read 4 bytes at a time
+ 
+ local i=0
+ for y=0,127,2 do --read every other
+  for x=0,15 do
+		 i32s[i]=peek4(addr+x*4+y*64)
+		 i+=1
+	 end
+ end
+ 
+ res={}
+ j=0
+ for i=0,#i32s-1,2 do
+  
+  --eg with 1byte peek/poke
+--  a=band(i32s[i+1],0xf0)
+--  b=shr(band(i32s[i],0xf0),4)
+--  res[j]=bor(a,b)
+--  j+=1
+
+  --0x a b. c d  1st i32
+  --0x e f. g h  2nd i32
+  --0xefgh.abcd  result
+
+  a=shr(band(i32s[i],0x0f00.0000),3*4)
+  b=shr(band(i32s[i],0x000f.0000),2*4)
+  c=shr(band(i32s[i],0x0000.0f00),1*4)
+  d=shr(band(i32s[i],0x0000.000f),0*4)
+  
+  e=shl(band(i32s[i+1],0x0f00.0000),1*4)
+  f=shl(band(i32s[i+1],0x000f.0000),2*4)
+  g=shl(band(i32s[i+1],0x0000.0f00),3*4)
+  h=shl(band(i32s[i+1],0x0000.000f),4*4)
+  
+  res[j]=bor(bor(bor(bor(bor(bor(bor(a,b),c),d),e),f),g),h)
+  j+=1
+ end
+ i32s=res
+ 
+ cls()
+ 
+ local i=0
+	for y=0,127,2 do
+  for x=0,7 do
+		 poke4(addr+x*4+y*32,res[i])
+		 i+=1
+	 end
+ end
+
+
+end
+
+
+
+
+
+
+
+
+function read_screen()
+ 
+ local addr=0x6000
+ local i32s={}
+ 
+ --unfortunately, this method
+ --of just ignoring 3/4 of all
+ --pixels just doesn't work great
+ --better would be to average
+ --all 4 somehow to get 1
+ 
+ --to compress in y is easy,
+ --just skip ever other row
+ --when reading and writing
+ --to compress in x is harder
+ --(but faster) since we can
+ --read 4 bytes at a time
+ 
+ local i=0
+ for y=0,127,2 do --read every other
+  for x=0,15 do
+		 i32s[i]=peek4(addr+x*4+y*64)
+		 i+=1
+	 end
+ end
+ 
+ return i32s
+end
+
+
+function shrink_pix(pix)
+ res={}
+ j=0
+ for i=0,#pix-1,2 do
+  
+  --eg with 1byte peek/poke
+--  a=band(i32s[i+1],0xf0)
+--  b=shr(band(i32s[i],0xf0),4)
+--  res[j]=bor(a,b)
+--  j+=1
+
+  --0x a b. c d  1st i32
+  --0x e f. g h  2nd i32
+  --0xefgh.abcd  result
+
+  a=shr(band(pix[i],0x0f00.0000),3*4)
+  b=shr(band(pix[i],0x000f.0000),2*4)
+  c=shr(band(pix[i],0x0000.0f00),1*4)
+  d=shr(band(pix[i],0x0000.000f),0*4)
+  
+  e=shl(band(pix[i+1],0x0f00.0000),1*4)
+  f=shl(band(pix[i+1],0x000f.0000),2*4)
+  g=shl(band(pix[i+1],0x0000.0f00),3*4)
+  h=shl(band(pix[i+1],0x0000.000f),4*4)
+  
+  res[j]=bor(bor(bor(bor(bor(bor(bor(a,b),c),d),e),f),g),h)
+  j+=1
+ end
+ return res
+ 
+end
+
+
+destx={0,32,0,32}
+desty={0,0,64,64}
+function write_quad(res,q)
+ bx,by=destx[q],desty[q]
+ local i=0
+	for y=0,127,2 do
+  for x=0,7 do
+		 poke4(0x6000+x*4+y*32+
+		  bx+by*63,
+		  res[i])
+		 i+=1
+	 end
+ end
+end
 __gfx__
 0000000033303333000000001111111111111112ddddddddddddddd6661111111111111200000000000000000000000000000000000000000000000000000000
 0000000033303333000000001111111111111112ddddddddddddddd6661111111111111200000666660000000000000000000000000000000000000000000000
