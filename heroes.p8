@@ -94,6 +94,7 @@ function _draw()
  
  draw_cursor()
  
+ color()
  cursor()
  camera()
  
@@ -459,23 +460,43 @@ end
 
 
 --find all non-wall neighbours
+--now returning table with 
+--cost included {i,cost}
 function ineighbors(i)
  local res={}
+ 
  local li=iaddxy(i, -1,0)
  local ri=iaddxy(i, 1,0)
  local ui=iaddxy(i, 0,-1)
  local di=iaddxy(i, 0,1)
- if (iclear(li)) add(res,li)
- if (iclear(ri)) add(res,ri)
- if (iclear(ui)) add(res,ui)
- if (iclear(di)) add(res,di)
+ if (iclear(li)) add(res,{li,1})
+ if (iclear(ri)) add(res,{ri,1})
+ if (iclear(ui)) add(res,{ui,1})
+ if (iclear(di)) add(res,{di,1})
  
- --correct order bias to 
- --prefer diagonal paths
- local tx,ty=i2xy(i)
- if (tx+ty)%2==0 then
+ 
+ --diag (no sneaking thru)
+ local d1i=iaddxy(i, -1,-1)
+ local d2i=iaddxy(i, 1,-1)
+ local d3i=iaddxy(i, -1,1)
+ local d4i=iaddxy(i, 1,1)
+ if (iclear(li) or iclear(ui)) then
+  if (iclear(d1i)) add(res,{d1i,1.4}) end
+ if (iclear(ri) or iclear(ui)) then
+  if (iclear(d2i)) add(res,{d2i,1.4}) end
+ if (iclear(li) or iclear(di)) then
+  if (iclear(d3i)) add(res,{d3i,1.4}) end
+ if (iclear(ri) or iclear(di)) then
+  if (iclear(d4i)) add(res,{d4i,1.4}) end
+  
+ --not really needed if
+ --we have actual diag options
+-- --correct order bias to 
+-- --prefer diagonal paths
+-- local tx,ty=i2xy(i)
+-- if (tx+ty)%2==0 then
   reverse(res) 
- end
+-- end
  
  return res
 end
@@ -538,10 +559,13 @@ function pathfind(start,goal)
   end
 
   local nearby=ineighbors(ci)
-  for ni in all(nearby) do
+  for neb in all(nearby) do
+ 
+   ni=neb[1]
+   ncost=neb[2]
  
    local new_cost=
-    cost_so_far[ci]+1
+    cost_so_far[ci]+ncost
 
    if (cost_so_far[ni]==nil)
    or (new_cost<cost_so_far[ni])
