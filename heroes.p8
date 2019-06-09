@@ -30,8 +30,8 @@ function _update()
  if (btnp(⬇️)) cury+=8
  curx=max(curx,0)
  cury=max(cury,0)
- curx=min(curx,worldw)
- cury=min(cury,worldh)
+ curx=min(curx,(tilesw-1)*8)
+ cury=min(cury,(tilesh-1)*8)
  
  
  
@@ -44,8 +44,8 @@ function _update()
  if cury<camy+64-camgap then camy-=2 end
  camx=max(camx,-worldborder)
  camy=max(camy,-worldborder)
- camx=min(camx,worldw-128+worldborder*2) --minus size of camera
- camy=min(camy,worldh-128+worldborder*2)
+ camx=min(camx,(tilesw-1)*8-128+worldborder*2) --minus size of camera
+ camy=min(camy,(tilesh-1)*8-128+worldborder*2)
 
 	
 	--select
@@ -141,11 +141,29 @@ function _draw()
  camera()
  print(stat(1))
 
- if sel!=nil then
-  print(sel.movex)
- end
 
- print(curx) 
+ for asdf in all(i2hot) do
+  print(asdf)
+ end
+ 
+ local tx,ty=flr(curx/8),flr(cury/8)
+ print(tx.." "..ty)
+ i=xy2i(tx,ty)
+ print(i)
+ tx,ty=i2xy(i)
+ print(tx.." "..ty)
+
+-- cls(6)
+-- test={}
+-- test[1]=2
+-- test[2]=3
+-- test[3]=4
+-- test[7]=5
+-- for i=1,#test do
+--  print(test[i])
+-- end
+-- stop()
+ 
 
 end
 
@@ -220,13 +238,14 @@ end
 --size of world
 tilesw=32
 tilesh=32
-worldw=tilesw*8
-worldh=tilesh*8
+worldw=(tilesw-1)*8
+worldh=(tilesh-1)*8
 
 worldborder=8
 
 
 
+--for i2xxx arrays
 function drawdebug_layer(lyr,c)
  for k,v in pairs(lyr) do
   x,y=i2xy(k)
@@ -291,8 +310,8 @@ end
 --end
 
 function drawdebug_tilecol()
- for x=0,tilesw do
-  for y=0,tilesh do
+ for x=0,tilesw-1 do
+  for y=0,tilesh-1 do
    if tmap_solid(x,y) then
     rect2({x*8+2,y*8+2,4,4},6)
    end
@@ -308,8 +327,8 @@ function tmap_solid(x,y)
 end
 
 function tile_is_solid(x,y)
- if x<0 or x>tilesw or
-    y<0 or y>tilesh 
+ if x<0 or x>tilesw-1 or
+    y<0 or y>tilesh-1 
  then
   return true
  end
@@ -404,11 +423,11 @@ function draw_overworld()
  
  --border around world
  --(see worldborder)
- for x=0,tilesw do
+ for x=0,tilesw-1 do
   spr(97, x*8, -8)
   spr(97, x*8, worldh+8)
  end
- for y=0,tilesh do
+ for y=0,tilesh-1 do
   spr(96, -8, y*8)
   spr(96, worldw+8, y*8)
  end
@@ -475,14 +494,14 @@ end
 
 
 --1d / 2d conversions
---assumes 1-based arrays
+--assumes 0-based tile grid now
 function i2xy(i) 
- local y=ceil(i/tilesw)
- local x=i-(y-1)*tilesw
+ local y=flr(i/tilesw)
+ local x=i-y*tilesw
  return x,y
 end
 function xy2i(x,y)
- return x+((y-1)*tilesw)
+ return x+y*tilesw
 end
 function v2i(pos)
  return xy2i(pos[1],pos[2])
@@ -492,7 +511,7 @@ end
 --add tile x,y to tile index 
 function iaddxy(i,x,y)
  i+=x
- i+=(y*tilesw)
+ i+=y*tilesw
  return i
 end
 
@@ -568,9 +587,6 @@ function pop(t)
  del(t,t[#t])
  return v
 end
-
-
-
 
 
 
@@ -750,7 +766,7 @@ function update_move_cursor()
  end
  
   
- if btn(❎) then
+ if btnp(❎) then
   setnewmove=true
   if obj!=nil then
    if obj.type=="castle" then
@@ -781,7 +797,7 @@ function update_sel_cursor()
  obj=i2obj[xy2i(tx,ty)]
  if obj!=nil and obj.select then
   style=obj.type
-	 if (btn(❎)) sel=obj
+	 if (btnp(❎)) sel=obj
  else
   style="arrow"
  end
