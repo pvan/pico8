@@ -20,6 +20,10 @@ end
 
 function _update()
 
+ if (update_debug_menu()) return
+ 
+ 
+ 
  if (btnp(⬅️)) curx-=8
  if (btnp(➡️)) curx+=8
  if (btnp(⬆️)) cury-=8
@@ -28,6 +32,9 @@ function _update()
  cury=max(cury,0)
  curx=min(curx,worldw)
  cury=min(cury,worldh)
+ 
+ 
+ 
  
  --camera
  camgap = 32
@@ -48,12 +55,35 @@ function _update()
  end
  
  
- update_mapitemtiles()
+ create_i2tile()
  
  
- syx,sty=flr(mvx/8),flr(mvy/8)
- gyx,gty=flr(curx/8),flr(cury/8)
- path=pathfind({syx,sty}, {gyx,gty})
+ if sel!=nil and
+    sel.type=="hero" 
+ then
+  update_move_cursor()
+ else
+  update_sel_cursor()
+ end
+ 
+ 
+-- stx,sty=flr(mvx/8),flr(mvy/8)
+-- gtx,gty=flr(curx/8),flr(cury/8)
+-- path=pathfind({stx,sty}, {gtx,gty})
+
+
+ --clear path if sel change
+ if (lsel==nil) lsel=sel
+ if (lsel!=sel) path={}
+ lsel=sel
+
+ if sel!=nil then
+  if sel.movex!=nil and sel.movey!=nil then
+   x1,y1=sel.x,sel.y
+   x2,y2=sel.movex,sel.movey
+   path=pathfind({x1,y1},{x2,y2})
+  end
+ end
 
 end
 
@@ -71,55 +101,54 @@ function _draw()
  
  
  --draw path
- spr(128,mvx,mvy)
- lx,ly=flr(mvx/8),flr(mvy/8)
- for i=1,#path do
-  nx,ny=path[i][1],path[i][2]
-  dx,dy=nx-lx,ny-ly
-  if dx==0 then
-   if (dy<0) sprt=144 yflip=true
-   if (dy>0) sprt=144 yflip=false
-  else
-   if (dx<0) sprt=160 xflip=true
-   if (dx>0) sprt=160 xflip=false
-  end
-  spr(sprt,nx*8,ny*8,1,1,xflip,yflip)
-  lx,ly=nx,ny
+ if path!=nil and #path>1 then
+	 lx,ly=path[1][1],path[1][2]
+	 for i=2,#path do
+	  nx,ny=path[i][1],path[i][2]
+	  dx,dy=nx-lx,ny-ly
+	  if dx==0 then
+	   if (dy<0) sprt=144 yflip=false
+	   if (dy>0) sprt=144 yflip=true
+	  else
+	   if (dx<0) sprt=160 xflip=false
+	   if (dx>0) sprt=160 xflip=true
+	  end
+	  if (i==#path) sprt=128
+ 	 spr(sprt,nx*8,ny*8,1,1,xflip,yflip)
+	  lx,ly=nx,ny
+	 end
  end
  
  
- --draw obj collisions
- draw_debug_mapitems()
+ 
+ if (debug("things")) drawdebug_things()
+ 
+ if (debug("obj")) drawdebug_layer(i2obj,10)
+ if (debug("hot")) drawdebug_layer(i2hot,8)
+ if (debug("obj col")) drawdebug_layer(i2col,13)
+ if (debug("tile col")) drawdebug_tilecol()
  
  
  draw_cursor()
  
+ 
+ 
+ draw_debug_menu()
+	 
+ 
  color()
  cursor()
  camera()
- 
  print(stat(1))
 
-end
+ if sel!=nil then
+  print(sel.movex)
+ end
 
-
-
-curx=64
-cury=64
-curanim=0
-function draw_cursor()
-
- --rectfill(curx,cury,curx+8,cury+8,15)
- curanim=(curanim+1)%20
- curextra=flr(curanim/10)
- curminus = 5+curextra
- curplus = 5+curextra
- spr(176, curx-curminus, cury-curminus)
- spr(176, curx+curplus, cury-curminus, 1,1, true,false)
- spr(176, curx-curminus, cury+curplus, 1,1, false,true)
- spr(176, curx+curplus, cury+curplus, 1,1, true,true)
+ print(curx) 
 
 end
+
 
 -->8
 --battle
@@ -197,28 +226,47 @@ worldh=tilesh*8
 worldborder=8
 
 
---map of tile objects
---kind of for looking up 
---object by location
---(checking col, etc)
-mapitemtiles={}
-function update_mapitemtiles()
- mapitemtiles={}
- for i=1,#mapitems do
-  it=mapitems[i]
+
+function drawdebug_layer(lyr,c)
+ for k,v in pairs(lyr) do
+  x,y=i2xy(k)
+  rect2({x*8+1,y*8+1,6,6},c)
+ end
+end
+
+--reverse lookups
+--maps tile xy to obj,col,hot,etc
+i2obj={}
+i2col={}
+i2hot={}
+function create_i2tile()
+ i2obj={}
+ i2col={}
+ i2hot={}
+ for i=1,#things do
+  it=things[i]
   c=it.col
   for cx=0,c[3]-1 do
    for cy=0,c[4]-1 do
-    x=c[1]+cx
-    y=c[2]+cy
-    --leave activation spot walkable
-    if x!=it.hot[1] or
-       y!=it.hot[2] 
+    x=it.x+c[1]+cx
+    y=it.y+c[2]+cy
+    i=xy2i(x,y)
+    
+    --map of objects
+    i2obj[i]=it
+    
+    --map of hot spots
+    if x==it.x+it.hot[1] and 
+       y==it.y+it.hot[2] 
     then
-     x+=it.x
-     y+=it.y
-     mapitemtiles[xy2i(x,y)]=i
+     i2hot[i]=true
     end
+    
+    --dont set hot as col
+    if not i2hot[i] then
+     i2col[i]=true
+    end
+    
    end
   end
  end
@@ -231,20 +279,45 @@ end
 -- --could later change this
 --end
 
+--function tmap_solid(x,y)
+-- if x<0 or x>tilesw or
+--    y<0 or y>tilesh 
+-- then
+--  return true
+-- end
+-- if fget(mget(x,y),0) then
+--  return true
+-- end
+--end
+
+function drawdebug_tilecol()
+ for x=0,tilesw do
+  for y=0,tilesh do
+   if tmap_solid(x,y) then
+    rect2({x*8+2,y*8+2,4,4},6)
+   end
+  end
+ end
+end
+
+--basically just for debug
+function tmap_solid(x,y)
+ if fget(mget(x,y),0) then
+  return true
+ end
+end
+
 function tile_is_solid(x,y)
  if x<0 or x>tilesw or
     y<0 or y>tilesh 
  then
   return true
  end
- if fget(mget(x,y),0) then
-  return true
- end
- if mapitemtiles[xy2i(x,y)] then
-  return true
- end
+ if (tmap_solid(x,y)) return true
+ if (i2col[xy2i(x,y)]) return true
  return false
 end
+
 
 
 // note activation spot (hot)
@@ -252,6 +325,8 @@ end
 // not the collider (col) pos
 archetypes={
  ["castle"]={
+  ["type"]="castle",
+  ["select"]=true,
   ["spr"]=137,
   ["sprx"]=0,
   ["spry"]=0,
@@ -261,6 +336,8 @@ archetypes={
   ["hot"]={2,3},
  },
  ["hero"]={
+  ["type"]="hero",
+  ["select"]=true,
   ["spr"]=66,
   ["sprx"]=-4,
   ["spry"]=-4,
@@ -270,6 +347,7 @@ archetypes={
   ["hot"]={-100,-100},
  },
  ["testhouse"]={
+  ["type"]="testhouse",
   ["spr"]=142,
   ["sprx"]=0,
   ["spry"]=0,
@@ -280,19 +358,19 @@ archetypes={
  },
 }
 
-function itrect(mapitem)
+function itrect(it)
  r={}
- for i=1,#mapitem.col do 
-  r[i]=mapitem.col[i]*8
+ for i=1,#it.col do 
+  r[i]=it.col[i]*8
  end
- r[1]+=mapitem.x*8
- r[2]+=mapitem.y*8
+ r[1]+=it.x*8
+ r[2]+=it.y*8
  return r
 end
 
-mapitems={}
+things={}
 
-function spawnitem(name,tx,ty)
+function spawn(name,tx,ty)
  res={}
  at=archetypes[name]
  for k,v in pairs(at) do
@@ -300,20 +378,20 @@ function spawnitem(name,tx,ty)
  end
  res.x=tx
  res.y=ty
- add(mapitems,res)
+ add(things,res)
 end
 
-spawnitem("castle",3,5)
-spawnitem("hero",7,9)
-spawnitem("testhouse",10,10)
+spawn("castle",3,5)
+spawn("hero",7,9)
+spawn("testhouse",10,10)
 
 
-function draw_maptiems()
- for i in all(mapitems) do
+function draw_things()
+ for i in all(things) do
   spr(i.spr,
-     i.x*8+i.sprx,
-     i.y*8+i.spry,
-     i.sprw,i.sprh)
+      i.x*8+i.sprx,
+      i.y*8+i.spry,
+      i.sprw,i.sprh)
  end
 end
 
@@ -349,7 +427,7 @@ function draw_overworld()
 -- spr(herospr, 64-4,64-4, 2,2)
  
  
- draw_maptiems()
+ draw_things()
  
  
 -- --small hero sprite eg
@@ -358,8 +436,8 @@ function draw_overworld()
 end
 
 
-function draw_debug_mapitems()
- for it in all(mapitems) do
+function drawdebug_things()
+ for it in all(things) do
   
   local r=itrect(it)
   local bx,by=it.x*8,it.y*8
@@ -377,27 +455,6 @@ function draw_debug_mapitems()
   
  end
 end
-
---[[
---draw sprite with w/h 
---in pixels instead of tiles
---(not super needed, could)
---(just use larger sprite)
---(and leave black space)
-function spr2(id, x,y, pw,ph)
- clip(x,y, pw,py)
- spr(id, x,y, ceil(pw/8),ceil(ph/8))
- clip()
-end
-
-function subspr2(id,x,y)
- clip(x,y,4,4)
- if id-flr(id)== 0 then spr(id,x  ,y  ) end
- if id-flr(id)==.1 then spr(id,x-4,y  ) end
- if id-flr(id)==.2 then spr(id,x  ,y-4) end
- if id-flr(id)==.3 then spr(id,x-4,y-4) end 
- clip()
-end]]
 
 
 
@@ -418,6 +475,7 @@ end]]
 
 
 --1d / 2d conversions
+--assumes 1-based arrays
 function i2xy(i) 
  local y=ceil(i/tilesw)
  local x=i-(y-1)*tilesw
@@ -530,7 +588,7 @@ function pathfind(start,goal)
  
  if (si==gi) return {}
  
- if (iwall(si)) return {} 
+-- if (iwall(si)) return {}  --ok to start with solid
  if (iwall(gi)) return {}
  
 
@@ -587,13 +645,12 @@ function pathfind(start,goal)
  if found_goal then
   ci=came_from[gi]
   while ci!=si do
-   x,y=i2xy(ci)
-   add(path,{x,y})
+   add(path,{i2xy(ci)})
    ci=came_from[ci]
   end
+  add(path,start)
   reverse(path)
-  x,y=i2xy(gi) 
-  add(path,{x,y})
+  add(path,goal)
  end
  
  return path
@@ -645,6 +702,203 @@ function rect2(r,c)
       r[1]+r[3]-1,
       r[2]+r[4]-1,c)
 end
+-->8
+--cursor
+
+
+
+
+curx=64
+cury=64
+curanim=0
+--cur sprites
+cur_sprs={
+ ["castle"]=145,
+ ["hero"]=161,
+ ["arrow"]=208,
+ ["horse"]=177,
+ ["hot"]=192,
+}
+cur_spr=cur_sprs["arrow"] --updated each frame
+
+function update_move_cursor()
+ local tx,ty=flr(curx/8),flr(cury/8)
+ i=xy2i(tx,ty)
+ obj=i2obj[i]
+ 
+ --no object on this tile
+ if obj==nil then
+  if tile_is_solid(tx,ty) then
+   style="arrow"
+  else
+   style="horse"
+  end
+ else
+  
+  --object, but what kind?
+  --(note order)
+  if i2col[i] then
+   style="arrow"
+  end
+  if obj.type=="castle" then
+   style="castle"
+  end
+  if i2hot[i] then
+   style="hot"
+  end
+	 
+ end
+ 
+  
+ if btn(❎) then
+  setnewmove=true
+  if obj!=nil then
+   if obj.type=="castle" then
+    if not i2hot[i] then --allow walking on castle hot spot
+     sel=obj
+     setnewmove=false
+    end
+   end
+   if obj.x==tx and obj.y==ty then
+    setnewmove=false
+   end
+  end
+  if tile_is_solid(tx,ty) then
+   setnewmove=false 
+  end
+  if setnewmove then
+   sel["movex"]=tx
+   sel["movey"]=ty
+  end
+ end
+ 
+ cur_spr=cur_sprs[style]
+ 
+end
+
+function update_sel_cursor()
+ local tx,ty=flr(curx/8),flr(cury/8)
+ obj=i2obj[xy2i(tx,ty)]
+ if obj!=nil and obj.select then
+  style=obj.type
+	 if (btn(❎)) sel=obj
+ else
+  style="arrow"
+ end
+ cur_spr=cur_sprs[style]
+end
+
+--function old_square_sel()
+-- curanim=(curanim+1)%20
+-- curextra=flr(curanim/10)
+-- curminus = 5+curextra
+-- curplus = 5+curextra
+-- spr(176, curx-curminus, cury-curminus)
+-- spr(176, curx+curplus, cury-curminus, 1,1, true,false)
+-- spr(176, curx-curminus, cury+curplus, 1,1, false,true)
+-- spr(176, curx+curplus, cury+curplus, 1,1, true,true)
+--end
+
+
+
+function draw_cursor()
+
+ spr(cur_spr, curx,cury)
+  
+end
+
+
+
+
+-->8
+--debug menu
+
+
+if (has!=nil) cls() stop("has dup in debug menu")
+
+--check if array contains
+function has(array, value)
+ if type(array)=='table' then
+  for i=1,#array do
+   if array[i]==value then return true end
+  end
+ end
+ return false
+end
+
+
+
+--put early in _update
+--returns if menu open
+--(skip rest of update if true)
+function update_debug_menu()
+	if btn(❎) and btn(🅾️) then
+  pause_menu=true
+  if (btnp(⬇️)) dsel+=1
+  if (btnp(⬆️)) dsel-=1
+  if (dsel<1) dsel=#dnames
+  if (dsel>#dnames) dsel=1
+  if btnp(⬅️) or btnp(➡️) then
+   local dname=dnames[dsel]
+   toggledebug(dname)
+  end
+  return true
+ end
+ pause_menu=false
+ return false
+end
+
+
+--put near end of _draw
+function draw_debug_menu()
+ if pause_menu then
+  lin=0
+  i=0
+  local pmx,pmy=40,30
+  rectfill(pmx-8,pmy+3,pmx+40,
+           pmy+#dnames*6+6,6)
+  for i=1,#dnames do
+   c=0
+   if (dsel==i) then
+    c=1
+    local tx,ty=pmx-9+3,pmy+i*6-1
+    line(tx,ty,tx+3,ty+3,0)
+    line(tx+3,ty+3,tx,ty+6)
+    --spr(160,pmx-9,pmy+i*6-1,1,1,true)
+   end
+   local str=dnames[i]
+   if (debug(str)) str=str.."❎"
+   print(str,pmx,pmy+i*6,c)
+  end
+ end
+end
+
+dflags={}
+dnames={}
+dsel=1
+function debug(code)
+ if val==nil then
+  return dflags[code]
+ end
+ return false
+end
+function toggledebug(code)
+ setdebug(code,not debug(code))
+end
+function setdebug(code,val)
+ if not has(dnames,code) then
+  add(dnames,code)
+  dflags[dnames[#dnames]]=val
+ end
+ dflags[code]=val
+end
+setdebug("obj",false)
+setdebug("hot",false)
+setdebug("obj col",false)
+setdebug("tile col",false)
+setdebug("things",false)
+
+
 __gfx__
 0000000000999000009990000000000000000000bbb999999bbbbbbb555999999555555500099999900000000009999000000000000999900000000900000000
 0000000009000900090009000000000000000000bb93333339bbbbbb559333333955555500900000090000000090000900000000009000090000009000000000
@@ -719,44 +973,44 @@ b3d3b3b3bb352b5200171dd10171dd100c00000000000000322233bbbb3533330000000000000000
 011111103333333333bbbb331516151611511113331155133111511333333d63333333330000000011101dd10007776000001dd10000000000eeee9999ffff00
 00000000333333333b3b3bb36633111331113333333111133311111333331111333333330000000006701111000667701d1011110000000000eeeeeeffffff00
 00000000000000003b3b3b3b3333a9a9333336333333363333399333b333b333b333b333000000000760077000076660111007700000000000e1deeeffffff00
-00011100000000003b3b3b3b3339999a93333d6333333d6333999a333333336333b333b3000000000770066000077770077006700000000000e1deeeffffff00
-0011f11000000000bb3b3b3b33349a99aa9a3dd3aa9a3dd333b99933336363333333333300000001dd111771101dddd1067007600000000000e11eeefffd1f00
-001fff1000000000b3bb3b3b333499a9aa9a3dd3aa9a3dd33bbb9aa3363333633333d633000000011110766777111111176117700000000000eeeeeeffdd1f00
-0011111000000000b3b3bb3b31114999aa993533aa99353313bb9aa333363633333dd66300000007dd37766777777777777777700000000000eeeeeeffdd1f00
-0001f100000000003113b31133111553a999a533a999a533133b99a3b3333363311d66630000007553333b1111777666677777700000000001eeeeeeffdd1f00
-0001f10000000000311151133331bb511539aa331539aa3311511513336363333311111300000655533b3b5551166771177111d7700000001111eeeeff110000
+00011100111111113b3b3b3b3339999a93333d6333333d6333999a333333336333b333b3000000000770066000077770077006700000000000e1deeeffffff00
+0011f1101f1ff1f1bb3b3b3b33349a99aa9a3dd3aa9a3dd333b99933336363333333333300000001dd111771101dddd1067007600000000000e11eeefffd1f00
+001fff101ffffff1b3bb3b3b333499a9aa9a3dd3aa9a3dd33bbb9aa3363333633333d633000000011110766777111111176117700000000000eeeeeeffdd1f00
+001111101ffffff1b3b3bb3b31114999aa993533aa99353313bb9aa333363633333dd66300000007dd37766777777777777777700000000000eeeeeeffdd1f00
+0001f1001ff11ff13113b31133111553a999a533a999a533133b99a3b3333363311d66630000007553333b1111777666677777700000000001eeeeeeffdd1f00
+0001f10011111111311151133331bb511539aa331539aa3311511513336363333311111300000655533b3b5551166771177111d7700000001111eeeeff110000
 000111000000000033111113333bbb1115199a3315199a33311115133333333333333333000006555b33b377666661666776113377000000011111eeff000000
-00000000000000003333333333bbbbb31111bbb3111469d333333333b333b33333333333000006bb5333dd3dddd161ddddd61333370000000000000000000000
-00111000000000003333333311b3bb9aa33bbbbb333dd36d3333333333333363333333330000067bbb3ddd1d1d11611d1d13b775570000000000000000000000
-011f11110000000033333333311b3b99a9a3bbbba9add1d633333333336363b33d663333000006677bbd2d1d1d1ddd1d1d1b3555770000000000000000000000
-01ff1ff100000000333333333311539aa9aa3bbba9a6d3dd33333333363b3b63111113330000067667777711111d661111133777770000000000000000000000
-011f1111000000003333333333315399a99a333b999ad3dd3333333333b63633333dd33300000666777766677766dd6777677777660000000000000000000000
-00111000000000003333333333311139399915339999135333333333b333b36333111133000016776666776777ddd6d777676666770000000000000000000000
-00000000000000003333333333333115399915131995115333333333336363b3333333330001366677776667176d6dd71767777777b000000000000000000000
+00000000111001113333333333bbbbb31111bbb3111469d333333333b333b33333333333000006bb5333dd3dddd161ddddd61333370000000000000000000000
+001110001f1111f13333333311b3bb9aa33bbbbb333dd36d3333333333333363333333330000067bbb3ddd1d1d11611d1d13b775570000000000000000000000
+011f11111f1ff1f133333333311b3b99a9a3bbbba9add1d633333333336363b33d663333000006677bbd2d1d1d1ddd1d1d1b3555770000000000000000000000
+01ff1ff111ffff11333333333311539aa9aa3bbba9a6d3dd33333333363b3b63111113330000067667777711111d661111133777770000000000000000000000
+011f11111ffffff13333333333315399a99a333b999ad3dd3333333333b63633333dd33300000666777766677766dd6777677777660000000000000000000000
+001110001ffffff13333333333311139399915339999135333333333b333b36333111133000016776666776777ddd6d777676666770000000000000000000000
+00000000111111113333333333333115399915131995115333333333336363b3333333330001366677776667176d6dd71767777777b000000000000000000000
 0000000000000000333333333333333311531113151333333333333333333333333333330013b677667777676766d6d76767666777b000000000000000000000
-1111100000000000333333333333a9a9111d63d3111333d3333333333333333333333333013b3b667776666777d6dd67776777777bbb00000000000000000000
-1fff100000000000333333333339999a3336d36da331d36d33333333333333333333366301b3b3bbbb777767776d66d7776667bbbbbbb0000000000000000000
-1f111000000000003333333333349a99a9ad61d6a9add1d633333333333333333333dd661b3b3bbbbbbb333777d67667776bbbbbbbbbb0000000000000000000
-1f1000000000000033333333333499a9a9ad63dda9aad3dd33333333333333333311d66613b3b3bbbbbbb333bb667773bbbbbbbbbbbbb0000000000000000000
-11100000000000003333333331114999999ad3dda99ad3dd333333333333333333d66111013b3bbbb3bbbbbbbb766763bbbbbbbbbbbb00000000000000000000
-000000000000000033333333331115539999135339991353333333333333333333dd6333001bbbbbbb33bbbbb76677673bbbbbbbbb0000000000000000000000
-0000000000000000333333333331bb5119951153399511513333333333333333111111330000000bbbbbbbbbb667767673bbbbbb000000000000000000000000
-000000000000000033333333333bbb111513333311533333333333333333333333333333000000000000bbbb6666666663bbb000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1111100001110000333333333333a9a9111d63d3111333d3333333333333333333333333013b3b667776666777d6dd67776777777bbb00000000000000000000
+1fff100011f10000333333333339999a3336d36da331d36d33333333333333333333366301b3b3bbbb777767776d66d7776667bbbbbbb0000000000000000000
+1f1110001ff111103333333333349a99a9ad61d6a9add1d633333333333333333333dd661b3b3bbbbbbb333777d67667776bbbbbbbbbb0000000000000000000
+1f1000001f1fff1133333333333499a9a9ad63dda9aad3dd33333333333333333311d66613b3b3bbbbbbb333bb667773bbbbbbbbbbbbb0000000000000000000
+11100000111ffff13333333331114999999ad3dda99ad3dd333333333333333333d66111013b3bbbb3bbbbbbbb766763bbbbbbbbbbbb00000000000000000000
+0000000001f11ff133333333331115539999135339991353333333333333333333dd6333001bbbbbbb33bbbbb76677673bbbbbbbbb0000000000000000000000
+0000000001f11f11333333333331bb5119951153399511513333333333333333111111330000000bbbbbbbbbb667767673bbbbbb000000000000000000000000
+000000000111111033333333333bbb111513333311533333333333333333333333333333000000000000bbbb6666666663bbb000000000000000000000000000
+01111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+11ff1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1fff1110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+111fff11000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+11fffff1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1f11fff1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+11111f11000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00001110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000ffffffffffffff0000fff000000000000000000000011100000000000000000000111111000000000000000000000000
-00000000000000000000000000000000fbbffbbffbbbbf000ffbffff00000000000000000011f1100000000000011100001ffff1000000000000000000000000
-00000000000000000000000000000000fbbbbbbffbbbff00ffbbbbbf0000000000000000001fff10000000000001f11000111ff1000000000000000000000000
-00000000000000000000000000000000ffbbbbfffbbbbff0fbbbbbbf000000000000000001111110000000001111ff110011f1f1000000000000000000000000
-00000000000000000000000000000000ffbbbbfffbfbbbffffbbbbbf000000000000000001fff100000000001ffffff1011ff1f1000000000000000000000000
-00000000000000000000000000000000fbbbbbbfffffbbbf0ffbffff000000000000000001111100000000001ff1ff1111ff1111000000000000000000000000
-00000000000000000000000000000000fbbffbbf000ffbff00fff000000000000000000000000000000000001111f1101ff11000000000000000000000000000
+01111100000000000000000000000000fbbffbbffbbbbf000ffbffff00000000000000000011f1100000000000011100001ffff1000000000000000000000000
+01fff100000000000000000000000000fbbbbbbffbbbff00ffbbbbbf0000000000000000001fff10000000000001f11000111ff1000000000000000000000000
+01ff1100000000000000000000000000ffbbbbfffbbbbff0fbbbbbbf000000000000000001111110000000001111ff110011f1f1000000000000000000000000
+01f1f110000000000000000000000000ffbbbbfffbfbbbffffbbbbbf000000000000000001fff100000000001ffffff1011ff1f1000000000000000000000000
+01111f10000000000000000000000000fbbbbbbfffffbbbf0ffbffff000000000000000001111100000000001ff1ff1111ff1111000000000000000000000000
+00001110000000000000000000000000fbbffbbf000ffbff00fff000000000000000000000000000000000001111f1101ff11000000000000000000000000000
 00000000000000000000000000000000ffffffff0000fff000000000000000000000000000000000000000000001110011110000000000000000000000000000
 000000000000000000000000000000000000000000fff000000fff00000000000000000000000000000000001111100011111111000000000000000000000000
 00000000000000000000000000000000000000000ffbf00000ffbff0000000000000000000000000000000001fff10001ff11ff1000000000000000000000000
