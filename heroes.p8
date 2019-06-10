@@ -105,6 +105,10 @@ function _update()
 	 lselmvy=sel.movey
  end
 
+
+ 
+ 
+ 
 end
 
 
@@ -168,27 +172,51 @@ function _draw()
  print2(stat(1))
 
 
- if debug("coords") then
+ if debug("cur") then
 		local tx,ty=flr(curx/8),flr(cury/8)
 		print2(tx.." "..ty)
 		i=xy2i(tx,ty)
 		print2("i: "..i)
 		print2(tile_is_solid(x,y))
-		print2("z: "..tostr(zone(i)))
-		print2("sz: "..tostr(zone(sel)))
+		print2("z: "..tostr(i2zone[i]))
+		print2("solid: "..tostr(tile_is_solid(tx,ty)))
 	end
 
  if debug("sel") then
   if sel then
    print2("sel: "..sel.type)
    print2("sel ps "..sel.x..","..sel.y)
-   print2("sel mv "..tostr(sel.movex)..","..tostr(sel.movey))
+   print2("sel mv "..tostr(sel.movex)..","..tostr(sel.movey))  
+			selzones=""
+			for z in all(objzones(sel)) do
+			 selzones=selzones..z.." "
+			end
+		 print2("selzones: "..selzones)
   else
    print2("sel: none")
   end
  end
 
 
+
+-- if sel!=nil then
+--		local tx,ty=flr(curx/8),flr(cury/8)
+--		i=xy2i(tx,ty)
+--  zones=objzones(sel)
+--  print(inearzones(i,zones))
+-- end 
+		
+		
+	local tx,ty=flr(curx/8),flr(cury/8)
+	i=xy2i(tx,ty)
+	obj=i2obj[i]
+ if obj!=nil and sel!=nil then
+  selzones=objzones(sel)
+  print("?"..tostr(objnearzones(obj,selzones)))
+ end
+---- print("?"..tostr(has(selzones,i2zone[i])))
+  
+ 
 end
 
 
@@ -268,37 +296,31 @@ worldh=(tilesh-1)*8
 worldborder=8
 
 
-function can_be_region(x,y)
- if
-  permasolid_solid(x,y) or
-  i2danger[i] or
-  i2zone[i]!=nil
-	then
-	 return false
-	else 
-	 return true
-	end
-end
-
-function inearzone(i,z)
- if i2zone[iaddxy(i,-1,0)]==z 
- or i2zone[iaddxy(i,1,0)]==z 
- or i2zone[iaddxy(i,0,-1)]==z 
- or i2zone[iaddxy(i,0,1)]==z
- then return true end
+function inearzones(i,zones)
+ for z in all(zones) do
+	 if i2zone[iaddxy(i,-1,0)]==z 
+	 or i2zone[iaddxy(i,1,0)]==z 
+	 or i2zone[iaddxy(i,0,-1)]==z 
+	 or i2zone[iaddxy(i,0,1)]==z
+	 then return true end
+ end
  return false 
 end
 
-function objnearzone(obj,z)
- if (zone(obj)==z) return true
- c=obj.col
+function objnearzones(obj,zones)
+ local ozones=objzones(obj)
+ for z in all(zones) do
+  if (has(ozones,z)) return true
+ end
+ 
+ local c=obj.col
  for cx=0,c[3]-1 do
   for cy=0,c[4]-1 do
-   x=obj.x+c[1]+cx
-   y=obj.y+c[2]+cy
-   i=xy2i(x,y)
+   local x=obj.x+c[1]+cx
+   local y=obj.y+c[2]+cy
+   local i=xy2i(x,y)
    if not tile_is_solid(x,y) then
-    if inearzone(i,z) then
+    if inearzones(i,zones) then
      return true
     end
    end
@@ -314,8 +336,8 @@ zonecount=10
 function build_i2zone()
  for x=0,tilesw-1 do
   for y=0,tilesh-1 do
-   i=xy2i(x,y)
-   if can_be_region(x,y) then
+   local i=xy2i(x,y)
+   if ok_to_zone(i2zone,x,y) then
     --start new region (floodfill it)
     floodfill(i2zone,i,zonecount)
     zonecount+=1
@@ -323,40 +345,53 @@ function build_i2zone()
   end
  end
 end
+function ok_to_zone(res,x,y)
+ local i=xy2i(x,y)
+ return res[i]==nil and
+        not tile_is_solid(x,y) and
+        not i2danger[i]
+end
 function floodfill(res,i,v)
- x,y=i2xy(i)
--- if can_be_region(x,y) then
- if (res[i]!=nil) return
- if (permasolid_solid(x,y)) return
- if (i2danger[i]) return
-	 res[i]=v
-	 floodfill(res,iaddxy(i,-1,0),v)
-	 floodfill(res,iaddxy(i,1,0),v)
-	 floodfill(res,iaddxy(i,0,-1),v)
-	 floodfill(res,iaddxy(i,0,1),v)
--- end
+ local x,y=i2xy(i)
+ if (not ok_to_zone(res,x,y)) return
+ res[i]=v
+ floodfill(res,iaddxy(i,-1,0),v)
+ floodfill(res,iaddxy(i,1,0),v)
+ floodfill(res,iaddxy(i,0,-1),v)
+	floodfill(res,iaddxy(i,0,1),v)
 end
 function drawdebug_zones()
  for i,z in pairs(i2zone) do
-  x,y=i2xy(i)
+  local x,y=i2xy(i)
   rectfill2(x*8+2,y*8+2,4,4,0)
   rectfill2(x*8+3,y*8+3,2,2,z)
  end
 end
-function zone(obj_or_i)
- if type(obj_or_i)=='table' then
-  local x=obj_or_i.x
-  local y=obj_or_i.y
-  return i2zone[xy2i(x,y)]
- end
- return i2zone[obj_or_i]
+function objzones(obj)
+ if (obj==nil) return {}
+ local x,y=obj.x,obj.y
+ local i=xy2i(x,y)
+ res={}
+ local lz=i2zone[iaddxy(i,-1,0)]
+ local rz=i2zone[iaddxy(i,1,0)]
+ local uz=i2zone[iaddxy(i,0,-1)]
+ local dz=i2zone[iaddxy(i,0,1)]
+ if lz!=nil and not has(res,lz) then
+  add(res,lz) end
+ if rz!=nil and not has(res,rz) then
+  add(res,rz) end
+ if uz!=nil and not has(res,uz) then
+  add(res,uz) end
+ if dz!=nil and not has(res,dz) then
+  add(res,dz) end
+ return res
 end
 
 
 --for i2xxx arrays
 function drawdebug_layer(lyr,c)
  for k,v in pairs(lyr) do
-  x,y=i2xy(k)
+  local x,y=i2xy(k)
   rect2({x*8+1,y*8+1,6,6},c)
  end
 end
@@ -699,7 +734,6 @@ function iwall(i)
  x,y=i2xy(i)
  if (tile_is_solid(x,y)) return true
  if (i2danger[i]) return true
- return false
 end
 function iclear(i)
  return not iwall(i)
@@ -996,24 +1030,37 @@ cur_spr=cur_sprs["arrow"] --updated each frame
 
 function update_move_cursor()
  local tx,ty=flr(curx/8),flr(cury/8)
- i=xy2i(tx,ty)
- obj=i2obj[i]
+ local i=xy2i(tx,ty)
+ local obj=i2obj[i]
+ local selzones=objzones(sel)
  
  --note the fall-thru effect here
  --later things are higher priority
  
  --first reject any out of zone
- if zone(sel)!=zone(i) then
+ if not has(selzones,i2zone[i]) then
   style="arrow"
-  --except allow if mob area
-  --adjacent to zone
+  --except allow mobs/heros
+  --if adjacent to zone
   if obj!=nil then
+  
 	  if obj.type=="mob" then
---   if i2danger[i] then
-    if objnearzone(obj,zone(sel)) then
-  	  style="attack"
+    if objnearzones(obj,selzones) then
+     if inearzones(i,selzones)
+     or obj.x==tx and obj.y==ty
+     then
+   	  style="attack"
+  	  end
 	   end
 	  end
+	  
+	  if obj.type=="hero" 
+	  and objnearzones(obj,selzones)
+	  and obj!=sel
+	  then
+	   style="trade"
+	  end
+	  
   end
  else
   --handle in-zone things
@@ -1030,14 +1077,20 @@ function update_move_cursor()
 	  if i2hot[i] then
 	   style="hot"
 	  end
-	  if obj.type=="hero" 
-	  and obj!=sel then
-	   style="trade"
-	  end
---	  if obj.type=="mob" then
-   if i2danger[i] then
-	   style="attack"
-	  end
+	  
+	  --wont ever get hero
+	  --in a zone now
+--	  if obj.type=="hero" 
+--	  and obj!=sel then
+--	   style="trade"
+--	  end
+
+	  --wont ever get mob
+	  --in a zone now
+--   if i2danger[i] then
+--	   style="attack"
+--	  end
+
   end
 
  end
@@ -1063,90 +1116,6 @@ function update_move_cursor()
    sel["movey"]=ty
   end
  end
- 
- 
- --- end new
- 
--- --no object on this tile
--- if obj==nil then
---  if tile_is_solid(tx,ty) then
---   style="arrow"
---  else
---   if zone(sel)==zone(i) then
-----   if ivalid(i) then
---    style="horse"
---   else
---    style="arrow"
---   end
---  end
--- else
---  
---  --object, but what kind?
---  --(note order)
---  if i2col[i] then
---   style="arrow"
---  end
---  if obj.type=="castle" then
---   style="castle"
---  end
---  if i2hot[i] then
---   style="hot"
---  end
---  if obj.type=="hero" 
---  and obj!=sel then
---   style="trade"
---  end
---  if obj.type=="mob" then
---   style="attack"
---  end
---	 
--- end
- 
-  
--- if btnp(❎) then
--- 
---  allowmove=true
---  
---  if obj!=nil then
---   if obj.type=="castle" then
---    if not i2hot[i] then --allow walking on castle hot spot
---     sel=obj
---     allowmove=false
---    end
---   end
---   
---   if obj.type=="hero" then
---	   if obj==sel then
---	    --clicking ourselves
---	    allowmove=false
---	   else
---	    --move to trade
---		   --(defaults to yes)
---	   end
---   end
---   
---   if obj.type=="mob" then
---    --move to trade
---		  --(defaults to yes)
---   end
---   
---  end
---  
---  if zone(sel)!=zone(i) then
-----  if not ivalid(i) then
---   allowmove=false
---  end
---  
---  if tile_is_solid(tx,ty) then
---   allowmove=false
---  end
---  
---  if allowmove then
---   sel["movex"]=tx
---   sel["movey"]=ty
---  end
--- end
- 
  
  cur_spr=cur_sprs[style]
  
@@ -1435,16 +1404,16 @@ __map__
 7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e6e6e6e6e6e6e7e7e6f6f6f7f7f7f7f7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 7e7e7e7d847e7e7e7e857e7e7e7e7e7e7e7d6e7e6e7d7e6f6f6f7f7f7f7f7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 7e7e7e83857e7e7e83847e7e7e7e7e7e7e7e7e7d7d7d7e7e6f6f7f7f7f7e7e7e7e7e7e7e7e7e7d7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-7e7d7e84837e7e7e7e867e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7d7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-7e7e7e8586847e7e847e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7d7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-7e7e7e7e7e867e857e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-7e7e7e7e7e837e7e867e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7d7e7e7e7e7e7e7e7d7e7d7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7d7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-7e7e7e7e857e7e7e7e837e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-7e7e7e7e7e84867d857e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7d7e7e7e7e7e7e7e7e7e7e7e7d7e7e7d7e7e7e7e7e7e7e7e7e7e7d7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-7e7e7e7d7e7e7e837e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7d7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7d7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+7e7d7e84837e7e7e7e867e7d7e7e7e7e7e7e7e7e7e7e867e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7d7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+7e7e7e8586847e7e847e7e7e7e7e7e7e7e7d7e7e7e7e7e7e868686868686867e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7d7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+7e7e7e7e7e867e857e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e867e7e7e7e7e867e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+7e7e7e7e7e837e7e867e7e7e7e7e7e7e7e7e7e7e86868686867e7e7d7e7e867e7e7e7e7e7e7e7d7e7d7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7d7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+7e7e7e7e857e7e7e7e837e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e867e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+7e7e7e7e7e84867d857e7e7e7e7d7e7e7e7e7e7e86868686867e7e7e7e7e867e7d7e7d7e7e7e7e7e7e7e7e7e7e7e7d7e7e7d7e7e7e7e7e7e7e7e7e7e7d7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+7e7e7e7d7e7e7e837e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e867e7d7e7e7e867e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e867e7e7e7e7e867e7e7e7e7e7d7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7d7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e867e7e7e7e7e867e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e868686868686867e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 7e7e7e7e7e7e7e7e7d7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7d7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
