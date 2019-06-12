@@ -201,8 +201,8 @@ function _update()
  end
  
  
+ update_hud()
  if hud_menu_open then
-  update_menu()
   return
  end 
  
@@ -323,16 +323,16 @@ function _draw()
  camera()
  
  draw_hud()
- if hud_menu_open then
-  draw_menu()
- end
  
  draw_debug_menu()
 	 
  color()
  cursor()
  camera()
- 
+ print2("")
+ print2("")
+ print2("")
+ print2("")
  print2(stat(1))
 
 
@@ -384,6 +384,7 @@ function _draw()
 -- print(obj.type)
 
  
+ 
 end
 
 
@@ -406,7 +407,18 @@ end
 
 menuselx=0
 menusely=0
-function update_menu()
+targ_menu_y=0
+actl_menu_y=0
+function update_hud()
+
+
+ if hud_menu_open then
+  actl_menu_y+=flr(10-actl_menu_y)/4
+ else 
+  actl_menu_y+=flr(0-actl_menu_y)/4
+ end
+ 
+
 
  ports={}
  i=1
@@ -421,16 +433,18 @@ function update_menu()
   i+=1
  end
 
- if (btnp(⬅️)) menuleft=true
- if (btnp(➡️)) menuleft=false
- if menuleft then
-  if (btnp(⬆️)) menusel-=1
-  if (btnp(⬇️)) menusel+=1
-  menusel=mid(menusel,1,#buttons)
- else
-  if (btnp(⬆️)) selport-=1
-  if (btnp(⬇️)) selport+=1
-  selport=mid(selport,1,#ports)
+ if hud_menu_open then
+	 if (btnp(⬇️)) menudown=true
+	 if (btnp(⬆️)) menudown=false
+	 if menudown then
+	  if (btnp(⬅️)) menusel-=1
+	  if (btnp(➡️)) menusel+=1
+	  menusel=mid(menusel,1,#buttons)
+	 else
+	  if (btnp(⬅️)) selport-=1
+	  if (btnp(➡️)) selport+=1
+	  selport=mid(selport,1,#ports)
+	 end
  end
  
  select(ports[selport])
@@ -440,63 +454,92 @@ end
 
 function draw_hud()
 
-
---202
+ --top bar
+ --color banner
+ pal(8,cp.color)
+ spr(244,0,9)
+ pal(8,8)
+ --resource bar
+ rectfill2(0,0, 128,9, 6)
+ draw_resource("gold",
+ 0,0)
+ srt=25
+ spc=17
+ draw_resource("wood",
+ srt+0*spc,0)
+ draw_resource("ore",
+ srt+1*spc,0)
+ draw_resource("sulfur",
+ srt+2*spc,0)
+ draw_resource("crystal",
+ srt+3*spc,0)
+ draw_resource("gems",
+ srt+4*spc,0)
+ draw_resource("mercury",
+ srt+5*spc,0)
+ 
+ 
+ --portrait bar
+ 
+ by=actl_menu_y
+ 
  --castle portraits
- local x,y=128-10,8
- rectfill2(x,y,10,10*4,4)
+ local x,y=63-10*4,128-10-by
+ rectfill2(x,y,10*4,10,4)
  palt(0,false)
  for h in all(cp.castles) do
   if (sel==h) then
    rect2({x,y,10,10},12)
-   if (not menuleft and hud_menu_open) then
+   if (not menudown and hud_menu_open) then
     rect2({x,y,10,10},10)
    end
   end
   spr(202,x+1,y+1)
-  y+=10
+  x+=10
  end
  palt(0,true)
  
-
---201
---217
  --hero portraits
- local x,y=128-10,y+10*3--20
- rectfill2(x,y,10,10*4,4)
+ local x,y=x+10*3,128-10-by
+ rectfill2(x,y,10*4,10,4)
  palt(0,false)
  for h in all(cp.heroes) do
   if (sel==h) then
    rect2({x,y,10,10},12)
-   if (not menuleft and hud_menu_open) then
+   if (not menudown and hud_menu_open) then
     rect2({x,y,10,10},10)
    end
   end
   spr(201,x+1,y+1)
-  y+=10
+  x+=10
  end
  palt(0,true)
  
+ 
+ --menu
+ 
+ mw=0
+ for b in all(buttons) do 
+  mw+=#b*4+4
+ end
+ mh=9
+ mx=63-mw/2
+ my=128-by
+ rectfill2(mx,my,mw,mh,6)
 
- --bottom bar
- rectfill2(0,128-8, 128,8, 6)
- rectfill2(0,120-8, 8,8, cp.color)
- draw_resource("gold",
- 0,128-8)
- srt=25
- spc=17
- draw_resource("wood",
- srt+0*spc,128-8)
- draw_resource("ore",
- srt+1*spc,128-8)
- draw_resource("sulfur",
- srt+2*spc,128-8)
- draw_resource("crystal",
- srt+3*spc,128-8)
- draw_resource("gems",
- srt+4*spc,128-8)
- draw_resource("mercury",
- srt+5*spc,128-8)
+ --bottom buttons
+ local x,y=mx+1,my+1
+ local count=1
+ for b in all(buttons) do
+  bw=#b*4+2
+  rectfill2(x,y,bw,7,13)
+  print(b,x+1,y+1,0)
+  if menudown and menusel==count then
+   rect2({x-1,y-1,bw+2,9},10)   
+  end
+  x+=bw+2
+  count+=1
+ end
  
 
 end
@@ -505,48 +548,12 @@ end
 --menu buttons 
 buttons={
  "map",
- "end turn",
  "dig",
  "spell",
+ "end turn",
 }
+menusel=4
  
-function draw_menu()
-
- --menu
- 
- longb=0
- for b in all(buttons) do 
-  if #b>longb then 
-   longb=#b 
-  end 
- end
- mw=longb*4+2
- mh=#buttons*8
- mx=63-mw/2
- my=63-mh/2
- rectfill2(mx,my,mw+2,mh+1,6)
-
-
- --buttons
- local x,y=mx+1,my+1
- for b in all(buttons) do
-  rectfill2(x,y,#b*4+2,7,13)
-  print(b,x+1,y+1,0)
-  y+=8
- end
- 
- if menuleft then
-  rect2({mx,my+menusel*8-8,
-   #buttons[menusel]*4+4,9},10)
- end
-
--- --right side bar
--- for hero in all(cp.heroes) do
---  rectfill2(128-20,64,20,10,6)
--- end
- 
-end
-
 
 resource_sprs={
  ["gold"]=242,
@@ -1839,14 +1846,14 @@ dddddddddddddddd0011110001111000000c000000000000335533353333333366ff66f600000001
 01ff1ff100000000449944911999994100110000000000001c16b1111781111100000000000000000000000000000000ffffbbbf0ffbffff0000000011ffff11
 01111f110000000014999991114444110011000000000000111bb1811881791000000000000000000000000000000000000ffbff00fff000000000001ff11ff1
 0000111000000000111111110111111000110000000000000011111111111110000000000000000000000000000000000000fff0000000000000000011111111
-00000111000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000fff000000fff001111001111100111
-000011f100000000000111000017100000000000000000000111111001111110011111100000000000000000000000000ffbf00000ffbff01ff111ff1f1111f1
-11111ff1000000000111a1100017e1000000000000000000016d16100144551001be1910000000000000000000000000ffbbffff0ffbbbff11ff1ff111f11f11
-1f11ff110000000001a19a111017e110000000000000000001dd1111014555100111c110000000000000000000000000fbbbbbbf0fbbbbbf0111ff11011f1110
-11fff110000000001179a9a1111ee1e10000000000000000111111d11111111100181810000000000000000000000000fbbbbbbf0ffbbbff011ff1110111f110
-11ff11000000000019aa9a9117e117e100000000000000001d16d11114455551011c1110000000000000000000000000ffbbffff00fbbbf011ff1ff111f11f11
-1f11f10000000000119aa11111ee17110000000000000000111dd161144555510191b1100000000000000000000000000ffbf00000fbbbf01ff111ff1f1111f1
-11111100000000000111110001111110000000000000000000111111111111110111110000000000000000000000000000fff00000fffff01111011111100111
+00000111000000000000000000010000188888100000000000000000000000000000000000000000000000000000000000fff000000fff001111001111100111
+000011f100000000000111000017100018888810000000000111111001111110011111100000000000000000000000000ffbf00000ffbff01ff111ff1f1111f1
+11111ff1000000000111a1100017e1001888881000000000016d16100144551001be1910000000000000000000000000ffbbffff0ffbbbff11ff1ff111f11f11
+1f11ff110000000001a19a111017e110188888100000000001dd1111014555100111c110000000000000000000000000fbbbbbbf0fbbbbbf0111ff11011f1110
+11fff110000000001179a9a1111ee1e11881881000000000111111d11111111100181810000000000000000000000000fbbbbbbf0ffbbbff011ff1110111f110
+11ff11000000000019aa9a9117e117e118101810000000001d16d11114455551011c1110000000000000000000000000ffbbffff00fbbbf011ff1ff111f11f11
+1f11f10000000000119aa11111ee17111100011000000000111dd161144555510191b1100000000000000000000000000ffbf00000fbbbf01ff111ff1f1111f1
+11111100000000000111110001111110100000100000000000111111111111110111110000000000000000000000000000fff00000fffff01111011111100111
 __gff__
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000101010100000000000000000000000101010101000000000000000000000000010101000000000000000000000000000101010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
