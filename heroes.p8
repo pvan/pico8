@@ -161,9 +161,11 @@ end
     
 movespeed=2
 function move_hero()
- del(path,path[1]) --skip square we're on
- moving=true
- movingdelay=movespeed
+ if sel.move>0 then
+--  del(path,path[1]) --skip square we're on
+  moving=true
+  movingdelay=movespeed
+ end
 end
 
 function update_camera()
@@ -193,36 +195,44 @@ function _update()
   local x,y=path[1][1],path[1][2]
   local i=xy2i(x,y)
   local obj=i2obj[i]
-  if obj!=nil and
-	  (obj.type=="hero" or
-	   obj.type=="mob" or
-	   obj.type=="treasure")
-  then
-   if obj.type=="hero" then
-    hero_trade()
-   end
-   if obj.type=="mob" then
-    battle(obj)
-   end
-   if obj.type=="treasure" then
-    pickup(obj)
-   end
-  else
-   sel.x=x
-   sel.y=y
-   sel.move-=5
-   --lock cam to hero?
-   camx=sel.x*8-64
-   camy=sel.y*8-64
-   update_camera()
-  end
-  del(path,path[1])
-  if #path==0 then
+  if sel.move>0 then
+	  del(path,path[1])
+	  if obj!=nil and
+		  (obj.type=="hero" or
+		   obj.type=="mob" or
+		   obj.type=="treasure")
+	  then
+	   if obj.type=="hero" then
+	    hero_trade()
+	   end
+	   if obj.type=="mob" then
+	    battle(obj)
+	   end
+	   if obj.type=="treasure" then
+	    pickup(obj)
+	   end
+	  else
+	   sel.x=x
+	   sel.y=y
+	   sel.move-=5
+	   if (sel.move<0) sel.move=0
+	   --lock cam to hero?
+	   camx=sel.x*8-64
+	   camy=sel.y*8-64
+	   update_camera()
+	  end
+	  if #path==0 then
+	   moving=false
+	   --rebuild zones after move!
+			 create_i2tile()
+			 build_i2zone()
+	  end
+	 else
    moving=false
    --rebuild zones after move!
 		 create_i2tile()
 		 build_i2zone()
-  end
+	 end
  end
 
  if (update_debug_menu()) return
@@ -427,7 +437,7 @@ function _draw()
 -- obj=i2obj[ci]
 -- print(obj.type)
 
- 
+ if path then print2(#path) end
  
 end
 
@@ -580,9 +590,12 @@ function draw_hud()
    end
   end
   spr(201,x+1,y+1)
-  local y8=y+8
-  line(x,y8,x+8,y8,6)
-  line(x,y8,x+h.move/100*8,y8,11)
+  local lx=x+1
+  local ly=y+8
+  line(lx,ly,x+8,ly,6)
+  if h.move>0 then
+   line(lx,ly,lx+h.move/100*8,ly,11)
+  end
   x+=10
  end
  palt(0,true)
@@ -1005,7 +1018,7 @@ archetypes={
   ["sprh"]=1,
   ["col"]={0,0,1,1},
   ["hot"]={0,0},
-  ["gold"]=rnd_bw(1,4)*500
+  ["gold"]=rnd_bw(1,4)*50
  },
 }
 
@@ -1838,6 +1851,7 @@ function update_dialog()
   diag_sel=mid(diag_sel,1,#diag_opts)
  
   if btnp(❎) then
+   sfx(59)
    event=diag_opts[diag_sel]
    close_dialog()
    event() --have to do this dance in case our function opens another dialog
@@ -2095,8 +2109,8 @@ __sfx__
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000100000b3500d3500d3501035014350163501c350243500c3000030000300003000030000300003000030000300003000030000300003000030000300003000030000300003000030000300003000030000300
-00010000133401434031300233000f3001130015300153001b3001c3001d300003000030000300003000030000300003000030000300003000030000300003000030000300003000030000300003000030000300
+000100000b5500d5500e5500e55012500135001c500245000c5000050000500005000050000500005000050000500005000050000500005000050000500005000050000500005000050000500005000050000500
+000100001e5400050031500235000f5001150015500155001b5001c5001d500005000050000500005000050000500005000050000500005000050000500005000050000500005000050000500005000050000500
 00030000130601206011050100400f0300d0200b0200901008010070100601006000060000c0000b0000a00008000000000000000000000000000000000000000000000000000000000000000000000000000000
 00020000075500f550165501e55024540305303a5503e55022500275002950029500275002750024500225001f5001b5001b5001850016500165001f500005000050000500005000050000500005000050000500
 0002000009030090300a0400b0400c0500e0500f06010000130001500000000100000f0000c0000b0000a00008000000000000000000000000000000000000000000000000000000000000000000000000000000
