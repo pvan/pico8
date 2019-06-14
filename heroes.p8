@@ -63,6 +63,15 @@ function set_player(p)
   
 end
 
+
+function random_starting_army()
+ return {
+  {"peasants",rnd_bw(10,20)},
+  {"elves",rnd_bw(5,10)},
+ }
+end
+
+
 function _init()
  music(0)
  
@@ -81,29 +90,20 @@ function _init()
  
  tc=spawn("castle",3,5)
  red_plr.castles[1]=tc
- tc.army={
-  {"peasant",rnd_bw(10,20)},
-  {"elf",rnd_bw(5,10)},
-  }
+ tc.army=random_starting_army()
  red_plr.heroes[1]=
  	spawn("hero",tc.x+2,tc.y+3)
  red_plr.heroes[2]=
  	spawn("hero",tc.x-3,tc.y+6)
  	
  tc=spawn("castle",24,2)
- tc.army={
-  {"peasant",rnd_bw(10,20)},
-  {"elf",rnd_bw(5,10)},
-  }
+ tc.army=random_starting_army()
  green_plr.castles[1]=tc
  green_plr.heroes[1]=
  	spawn("hero",tc.x+2,tc.y+3)
  	
  tc=spawn("castle",16,20)
- tc.army={
-  {"peasant",rnd_bw(10,20)},
-  {"elf",rnd_bw(5,10)},
-  }
+ tc.army=random_starting_army()
  blue_plr.castles[1]=tc
  blue_plr.heroes[1]=
  	spawn("hero",tc.x+2,tc.y+3)
@@ -876,9 +876,9 @@ archetypes={
   ["hot"]={-100,-100},
   ["move"]=100,
   ["army"]={
-   {"calvary",20},
-   {"elf",40},
-   {"peasant",250}
+   {"calavry",20},
+   {"elves",40},
+   {"peasants",250}
   },
  },
  ["testhouse"]={
@@ -900,6 +900,7 @@ archetypes={
   ["sprh"]=1,
   ["col"]={-1,-1,3,3},
   ["hot"]={0,0},
+  ["group"]={"goblins",40}
  },
  ["mob2"]={
   ["type"]="mob",
@@ -910,6 +911,7 @@ archetypes={
   ["sprh"]=1,
   ["col"]={-1,-1,3,3},
   ["hot"]={0,0},
+  ["group"]={"skeletons",15}
  },
  ["gold"]={
   ["type"]="treasure",
@@ -950,6 +952,16 @@ function spawn(name,tx,ty)
  res.x=tx
  res.y=ty
  add(things,res)
+ 
+ --add random army
+ if res.type=="hero" then
+  res.army=random_starting_army()
+ end
+ 
+ if res.type=="mob" then
+  res.group[2]=rnd_bw(5,25)
+ end
+ 
  return res
 end
 
@@ -1423,7 +1435,7 @@ cur_sprs={
  ["trade"]=224,
  ["attack"]=240,
 }
-cur_spr=cur_sprs["arrow"] --updated each frame
+cur_spr=cur_sprs.arrow --updated each frame
 
 function update_move_cursor()
  local tx,ty=flr(curx/8),flr(cury/8)
@@ -1516,6 +1528,12 @@ function update_move_cursor()
   end
  end
 
+ --remember obj for hud description
+ if obj!=nil then
+  cur_obj=obj
+ else
+  cur_obj=nil
+ end
  
  if btnp(❎) then
   if style=="horse" 
@@ -1819,6 +1837,39 @@ function draw_hud()
  srt+5*spc,0)
  
  
+ --map item description
+ if cur_obj then
+  --text descrip
+  if cur_obj.type=="hero"
+  or cur_obj.type=="castle"
+  then
+   map_desc=
+    colorstrings[obj_owner(cur_obj).color]
+    .." "..cur_obj.type
+  elseif cur_obj.type=="mob" 
+  then
+   stack=cur_obj.group
+   map_desc=vague_number(stack[2])
+    .." "..stack[1]
+  else
+   map_desc=cur_obj.type
+  end
+  
+  local x=63-#map_desc*2
+  local y=128-(actl_menu_y+20)
+  local w=#map_desc*4+1
+  
+  if cur_obj.army then
+   y-=4 --army is taller than text
+   draw_h_army(cur_obj.army,63,y)
+   y-=10 --for text above
+  end
+  rect2({x-1,y-1,w+2,9},1)
+  rectfill2(x,y,w,7,6)
+  print(map_desc,x+1,y+1,1)
+ end
+ 
+ 
  --portrait bar
  
  by=actl_menu_y
@@ -1925,14 +1976,25 @@ end
 
 
 
+function vague_number(amt)
+ if (amt<5) return "a few"
+ if (amt<10) return "several"
+ if (amt<20) return "a pack of"
+ if (amt<50) return "lots of"
+ if (amt<100) return "a horde of"
+ if (amt<250) return "a throng of"
+ if (amt<500) return "a swarm of"
+ if (amt<1000) return "zounds... "
+ return "a legion of"
+end
 
 
 mob_sprs={
- ["goblin"]=194,
- ["skeleton"]=210,
- ["calvary"]=197,
- ["elf"]=213,
- ["peasant"]=229,
+ ["goblins"]=194,
+ ["skeletons"]=210,
+ ["calavry"]=197,
+ ["elves"]=213,
+ ["peasants"]=229,
 }
 function draw_army(arm,x,y)
 
@@ -1955,6 +2017,28 @@ function draw_army(arm,x,y)
 end
 
 
+function draw_h_army(arm,cx,y)
+
+ x=cx-10*5/2
+ rectfill2(x,y,10*5,14,6)
+ x+=1
+ y+=1
+ for mob in all(arm) do
+  spr(mob_sprs[mob[1]],x,y)
+--  print(mob[2],x,y+7,0)
+--  print(mob[2],x+1,y+7,0)
+--  print(mob[2],x,y+6,7)
+--  rectfill2(x,y+6,7,5,7)
+  local str=tostr(mob[2])
+  --todo: reduce token here
+  local ofx=0
+  if (#str<2) ofx=2
+  if (#str>2) ofx=-3*(#str-2)
+  print(str,x+ofx,y+8,0)
+  x+=10
+ end
+
+end
 
 __gfx__
 0000000000999000009990000000000000000000bbb999999bbbbbbb555999999555555500099999900000000009999000000000000999900000000900000000
