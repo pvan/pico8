@@ -120,12 +120,31 @@ function _init()
 	spawn("gold",7,16)
 	spawn("gold",8,16)
 	spawn("gold",6,10)
+	
  
+ --do once here so we don't
+ --randomly spawn anything
+ --over anything else
+ create_i2tile()
+ build_i2zone()
+ 
+	for x=0,tilesw do
+ 	for y=0,tilesh do
+ 	 if not tile_is_solid(x,y) then
+ 	  if rnd_bw(1,100)<2 then
+ 	   r=rnd_bw(1,#resources)
+ 	   spawn(resources[r],x,y)
+ 	  end
+ 	 end
+ 	end
+	end
+	
+	
  --after populating map
  --(and whenever anything moves)
  create_i2tile()
  build_i2zone()
- 
+	
 end
 
 
@@ -161,12 +180,17 @@ resources={
  "crystal",
 }
 function pickup(obj)
+ --should only get here 
+ --with type==treasure
  sfx(57)
- for k,v in pairs(obj) do
-  if has(resources,k) then
-   cp[k]+=obj[k]
-  end
+ if has(resources,obj.subtype) then
+  cp[obj.subtype]+=obj.amount
  end
+-- for k,v in pairs(obj) do
+--  if has(resources,k) then
+--   cp[k]+=obj[k]
+--  end
+-- end
  del(things,obj)
 end
     
@@ -480,6 +504,25 @@ end
 
 
 --util
+
+
+
+--recursive deep copy
+--works on non-tables too
+function copy(o)
+ local c
+ if type(o) == 'table' then
+  c = {}
+  for k, v in pairs(o) do
+   c[k] = copy(v)
+  end
+  else
+   c = o
+ end
+ return c
+end
+
+
 
 --inclusive (low<=result<=high)
 --remove +1 for low<=result<high
@@ -915,6 +958,8 @@ archetypes={
  },
  ["gold"]={
   ["type"]="treasure",
+  ["subtype"]="gold",
+  ["amount"]=rnd_bw(1,4)*50,
   ["spr"]=242,
   ["sprx"]=0,
   ["spry"]=0,
@@ -922,9 +967,20 @@ archetypes={
   ["sprh"]=1,
   ["col"]={0,0,1,1},
   ["hot"]={0,0},
-  ["gold"]=rnd_bw(1,4)*50
+--  ["gold"]=rnd_bw(1,4)*50
  },
 }
+
+--dup some similar archetypes
+--rather than typing them all out
+for r in all(resources) do
+ if r!="gold" then
+  archetypes[r]=copy(archetypes.gold)
+  archetypes[r].subtype=r
+ end
+end
+
+
 
 --permtypes={
 -- "castle",
@@ -960,6 +1016,13 @@ function spawn(name,tx,ty)
  
  if res.type=="mob" then
   res.group[2]=rnd_bw(5,25)
+ end
+ 
+ if res.type=="treasure" then
+  res.amount=rnd_bw(1,4)
+  if res.subtype=="gold" then
+   res.amount*=50
+  end
  end
  
  return res
@@ -1001,7 +1064,13 @@ end
 function draw_things()
  sort_by_y(things)
  for i in all(things) do
-  spr(i.spr,
+ 
+  sprt=i.spr
+  if i.type=="treasure" then
+   sprt=resource_sprs[i.subtype]
+  end
+  
+  spr(sprt,
       i.x*8+i.sprx,
       i.y*8+i.spry,
       i.sprw,i.sprh)
@@ -1839,18 +1908,26 @@ function draw_hud()
  
  --map item description
  if cur_obj then
+ 
   --text descrip
+  
   if cur_obj.type=="hero"
   or cur_obj.type=="castle"
   then
    map_desc=
     colorstrings[obj_owner(cur_obj).color]
     .." "..cur_obj.type
+    
   elseif cur_obj.type=="mob" 
   then
    stack=cur_obj.group
    map_desc=vague_number(stack[2])
     .." "..stack[1]
+    
+  elseif cur_obj.type=="treasure" 
+  then
+   map_desc=cur_obj.subtype
+    
   else
    map_desc=cur_obj.type
   end
