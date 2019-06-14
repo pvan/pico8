@@ -66,7 +66,6 @@ end
 function _init()
  music(0)
  
- menuleft=true
  
  
  red_plr=create_player(8)
@@ -82,17 +81,29 @@ function _init()
  
  tc=spawn("castle",3,5)
  red_plr.castles[1]=tc
+ tc.army={
+  {"peasant",rnd_bw(10,20)},
+  {"elf",rnd_bw(5,10)},
+  }
  red_plr.heroes[1]=
  	spawn("hero",tc.x+2,tc.y+3)
  red_plr.heroes[2]=
  	spawn("hero",tc.x-3,tc.y+6)
  	
  tc=spawn("castle",24,2)
+ tc.army={
+  {"peasant",rnd_bw(10,20)},
+  {"elf",rnd_bw(5,10)},
+  }
  green_plr.castles[1]=tc
  green_plr.heroes[1]=
  	spawn("hero",tc.x+2,tc.y+3)
  	
  tc=spawn("castle",16,20)
+ tc.army={
+  {"peasant",rnd_bw(10,20)},
+  {"elf",rnd_bw(5,10)},
+  }
  blue_plr.castles[1]=tc
  blue_plr.heroes[1]=
  	spawn("hero",tc.x+2,tc.y+3)
@@ -150,6 +161,7 @@ resources={
  "crystal",
 }
 function pickup(obj)
+ sfx(57)
  for k,v in pairs(obj) do
   if has(resources,k) then
    cp[k]+=obj[k]
@@ -212,6 +224,7 @@ function _update()
 	    pickup(obj)
 	   end
 	  else
+ 	  sfx(58,-1,1,1)
 	   sel.x=x
 	   sel.y=y
 	   sel.move-=5
@@ -445,221 +458,9 @@ end
 
 
 
-lsel="no obj"
-function select(obj)
- sel=obj
- if sel!=lsel then
-	 curx,cury=sel.x*8,sel.y*8
-	 if sel.type=="castle" then
-	  curx+=2*8
-	  cury+=3*8
-	 end
-	 camx,camy=curx-64,cury-64
-	 --update_camera()
- end
- lsel=sel
-end
-
-
-menuselx=0
-menusely=0
-targ_menu_y=0
-actl_menu_y=0
-function update_hud()
-
- if hud_menu_open then
-  actl_menu_y+=flr(10-actl_menu_y)/4
- else 
-  actl_menu_y+=flr(0-actl_menu_y)/4
- end
- 
-
- ports={}
- i=1
- for h in all(cp.castles) do
-  add(ports,h)
-  if (sel==h) selport=i
-  i+=1
- end
- for h in all(cp.heroes) do
-  add(ports,h)
-  if (sel==h) selport=i
-  i+=1
- end
-
- if hud_menu_open then
-	 if (btnp(⬇️)) menudown=true sfx(60)
-	 if (btnp(⬆️)) menudown=false sfx(60)
-	 if menudown then
-	  if (btnp(⬅️)) menusel-=1 sfx(60)
-	  if (btnp(➡️)) menusel+=1 sfx(60)
-	  menusel=mid(menusel,1,#buttons)
-	 else
-	  if (btnp(⬅️)) selport-=1 sfx(60)
-	  if (btnp(➡️)) selport+=1 sfx(60)
-	  selport=mid(selport,1,#ports)
-	 end
-	 
-   select(ports[selport])
- 
-  if btnp(❎) then
-   if menusel==4 and menudown then
-    sfx(59)
-    local askturn=false
-    for h in all(cp.heroes) do
-     if h.move>0 then
-      askturn=true
-      break
-     end
-    end
-    if askturn then
-     open_dialog({
-      "one of your heroes",
-      "can still move.",
-      "are you sure you",
-      "want to end your turn?",
-      "   yes",
-      "   no"},{
-      end_turn,
-      close_dialog})
-    else
-     end_turn()
-    end
-   end
-  end
- 
- end --end menu open chek
- 
-end
-
-
-function draw_hud()
-
- --top bar
- --color banner
- pal(8,cp.color)
- spr(244,0,9)
- pal(8,8)
- --resource bar
- rectfill2(0,0, 128,9, 6)
- draw_resource("gold",
- 0,0)
- srt=25
- spc=17
- draw_resource("wood",
- srt+0*spc,0)
- draw_resource("ore",
- srt+1*spc,0)
- draw_resource("sulfur",
- srt+2*spc,0)
- draw_resource("crystal",
- srt+3*spc,0)
- draw_resource("gems",
- srt+4*spc,0)
- draw_resource("mercury",
- srt+5*spc,0)
- 
- 
- --portrait bar
- 
- by=actl_menu_y
- 
- --castle portraits
- local x,y=63-10*4,128-10-by
- rectfill2(x,y,10*4,10,4)
- palt(0,false)
- for c in all(cp.castles) do
-  if (sel==c) then
-   rect2({x,y,10,10},12)
-   if (not menudown and hud_menu_open) then
-    rect2({x,y,10,10},10)
-   end
-  end
-  spr(202,x+1,y+1)
-  x+=10
- end
- palt(0,true)
- 
- --hero portraits
- local x,y=x+10*3,128-10-by
- rectfill2(x,y,10*4,10,4)
- palt(0,false)
- for h in all(cp.heroes) do
-  if (sel==h) then
-   rect2({x,y,10,10},12)
-   if (not menudown and hud_menu_open) then
-    rect2({x,y,10,10},10)
-   end
-  end
-  spr(201,x+1,y+1)
-  local lx=x+1
-  local ly=y+8
-  line(lx,ly,x+8,ly,6)
-  if h.move>0 then
-   line(lx,ly,lx+h.move/100*8,ly,11)
-  end
-  x+=10
- end
- palt(0,true)
- 
- 
- --menu
- 
- mw=0
- for b in all(buttons) do 
-  mw+=#b*4+4
- end
- mh=9
- mx=63-mw/2
- my=128-by
- rectfill2(mx,my,mw,mh,6)
-
- --bottom buttons
- local x,y=mx+1,my+1
- local count=1
- for b in all(buttons) do
-  bw=#b*4+2
-  rectfill2(x,y,bw,7,13)
-  print(b,x+1,y+1,0)
-  if menudown and menusel==count then
-   rect2({x-1,y-1,bw+2,9},10)   
-  end
-  x+=bw+2
-  count+=1
- end
- 
-
-end
-
-
---menu buttons 
-buttons={
- "map",
- "dig",
- "spell",
- "end turn",
-}
-menusel=4
- 
-
-resource_sprs={
- ["gold"]=242,
- ["wood"]=195,
- ["ore"]=211,
- ["sulfur"]=227,
- ["crystal"]=243,
- ["gems"]=196,
- ["mercury"]=212,
-}
-function draw_resource(name,x,y)
- spr(resource_sprs[name],x,y)
- print(cp[name],x+9,y+2,0)
-end
-
-
 
 function end_turn()
- 
+ menudown=false
  i=1
  for p in all(plrs) do
   if (p==cp) then
@@ -672,13 +473,13 @@ function end_turn()
   end
   i+=1
  end
- 
- 
 end
+
 -->8
+--util / debug menu
+
+
 --util
-
-
 
 --inclusive (low<=result<=high)
 --remove +1 for low<=result<high
@@ -715,8 +516,102 @@ function print2(str,col)
  print(str,cursor_x,cursor_y,col)
  poke(0x5f27,cursor_y+6)
 end
+
+
+
+--debug menu
+
+
+if (has!=nil) cls() stop("has dup in debug menu")
+
+--check if array contains
+function has(array, value)
+ if type(array)=='table' then
+  for i=1,#array do
+   if array[i]==value then return true end
+  end
+ end
+ return false
+end
+
+
+
+--put early in _update
+--returns if menu open
+--(skip rest of update if true)
+function update_debug_menu()
+	if btn(❎) and btn(🅾️) then
+  pause_menu=true
+  if (btnp(⬇️)) dsel+=1
+  if (btnp(⬆️)) dsel-=1
+  if (dsel<1) dsel=#dnames
+  if (dsel>#dnames) dsel=1
+  if btnp(⬅️) or btnp(➡️) then
+   local dname=dnames[dsel]
+   toggledebug(dname)
+  end
+  return true
+ end
+ pause_menu=false
+ return false
+end
+
+
+--put near end of _draw
+function draw_debug_menu()
+ if pause_menu then
+  lin=0
+  i=0
+  local pmx,pmy=40,30
+  rectfill(pmx-8,pmy+3,pmx+40,
+           pmy+#dnames*6+6,6)
+  for i=1,#dnames do
+   c=0
+   if (dsel==i) then
+    c=1
+    local tx,ty=pmx-9+3,pmy+i*6-1
+    line(tx,ty,tx+3,ty+3,0)
+    line(tx+3,ty+3,tx,ty+6)
+    --spr(160,pmx-9,pmy+i*6-1,1,1,true)
+   end
+   local str=dnames[i]
+   if (debug(str)) str=str.."❎"
+   print(str,pmx,pmy+i*6,c)
+  end
+ end
+end
+
+dflags={}
+dnames={}
+dsel=1
+function debug(code)
+ if not has(dnames,code) then
+  add(dnames,code)
+  dflags[dnames[#dnames]]=false
+ end
+ return dflags[code]
+end
+function toggledebug(code)
+ setdebug(code,not debug(code))
+end
+function setdebug(code,val)
+ if not has(dnames,code) then
+  add(dnames,code)
+  dflags[dnames[#dnames]]=val
+ end
+ dflags[code]=val
+end
+--setdebug("obj",false)
+--setdebug("hot",false)
+--setdebug("obj col",false)
+--setdebug("tile col",false)
+--setdebug("things",false)
+--setdebug("valid",false)
+--setdebug("coords",false)
+
+
 -->8
---overworld
+--overworld/pathfinding/cursor
 
 
 
@@ -979,7 +874,12 @@ archetypes={
   ["sprh"]=2,
   ["col"]={0,0,1,1},
   ["hot"]={-100,-100},
-  ["move"]=100
+  ["move"]=100,
+  ["army"]={
+   {"calvary",20},
+   {"elf",40},
+   {"peasant",250}
+  },
  },
  ["testhouse"]={
   ["type"]="testhouse",
@@ -1199,7 +1099,8 @@ end
 
 
 
--->8
+
+
 --a* pathfinding
 --see redblobgames
 --and @richy486
@@ -1498,69 +1399,7 @@ function ivalid(i)
 end
 
 
--->8
---battle
 
-function draw_battle_map()
-
-	cls(3)
-	
-	col=1
-	cols={3,11}
-	--[[
-	
---	sprt = 35
---	xspc = 8
---	yspc = 10
-	
---	sprt = 51
---	xspc = 8
---	yspc = 9
-
---	sprt = 36
---	xspc = 10
---	yspc = 10
-	
-	for j=0,11 do
- 	for i=0,11 do
- 	 pal(2,cols[col+1])
- 		spr(sprt, i*xspc, yspc*j,2,2)
- 		pal()
- 		col=(col+1)%#cols
- 	end
- 	for i=0,10 do
- 	 pal(2,cols[col+1])
- 		spr(sprt, (i*xspc)+xspc/2, yspc*j+yspc/2,2,2)
- 		pal()
- 		col=(col+1)%#cols
- 	end
-	end
-	]]
-	
-	
- sprt=11
-	xspc = 12
-	yspc = 6
-	for j=0,11 do
- 	for i=0,11 do
- 	 pal(2,cols[col+1])
- 		spr(sprt, i*xspc, yspc*j,2,2)
- 		pal()
- 		col=(col+1)%#cols
- 	end
-	end
-	
-	for j=0,11 do
- 	for i=0,11 do
- 	 pal(2,cols[col+1])
- 		spr(sprt, i*xspc+6, yspc*j+3,2,2)
- 		pal()
- 		col=(col+1)%#cols
- 	end
-	end
-	
-end
--->8
 --cursor
 
 
@@ -1722,10 +1561,10 @@ end
 
 
 function update_cursor()
- if (btnp(⬅️)) curx-=8 sfx(58)
- if (btnp(➡️)) curx+=8 sfx(58)
- if (btnp(⬆️)) cury-=8 sfx(58)
- if (btnp(⬇️)) cury+=8 sfx(58)
+ if (btnp(⬅️)) curx-=8 sfx(58,-1,1,2)
+ if (btnp(➡️)) curx+=8 sfx(58,-1,1,2)
+ if (btnp(⬆️)) cury-=8 sfx(58,-1,1,2)
+ if (btnp(⬇️)) cury+=8 sfx(58,-1,1,2)
  curx=max(curx,0)
  cury=max(cury,0)
  curx=min(curx,(tilesw-1)*8)
@@ -1740,101 +1579,72 @@ end
 
 
 -->8
---debug menu
+--battle
 
+function draw_battle_map()
 
-if (has!=nil) cls() stop("has dup in debug menu")
+	cls(3)
+	
+	col=1
+	cols={3,11}
+	--[[
+	
+--	sprt = 35
+--	xspc = 8
+--	yspc = 10
+	
+--	sprt = 51
+--	xspc = 8
+--	yspc = 9
 
---check if array contains
-function has(array, value)
- if type(array)=='table' then
-  for i=1,#array do
-   if array[i]==value then return true end
-  end
- end
- return false
+--	sprt = 36
+--	xspc = 10
+--	yspc = 10
+	
+	for j=0,11 do
+ 	for i=0,11 do
+ 	 pal(2,cols[col+1])
+ 		spr(sprt, i*xspc, yspc*j,2,2)
+ 		pal()
+ 		col=(col+1)%#cols
+ 	end
+ 	for i=0,10 do
+ 	 pal(2,cols[col+1])
+ 		spr(sprt, (i*xspc)+xspc/2, yspc*j+yspc/2,2,2)
+ 		pal()
+ 		col=(col+1)%#cols
+ 	end
+	end
+	]]
+	
+	
+ sprt=11
+	xspc = 12
+	yspc = 6
+	for j=0,11 do
+ 	for i=0,11 do
+ 	 pal(2,cols[col+1])
+ 		spr(sprt, i*xspc, yspc*j,2,2)
+ 		pal()
+ 		col=(col+1)%#cols
+ 	end
+	end
+	
+	for j=0,11 do
+ 	for i=0,11 do
+ 	 pal(2,cols[col+1])
+ 		spr(sprt, i*xspc+6, yspc*j+3,2,2)
+ 		pal()
+ 		col=(col+1)%#cols
+ 	end
+	end
+	
 end
-
-
-
---put early in _update
---returns if menu open
---(skip rest of update if true)
-function update_debug_menu()
-	if btn(❎) and btn(🅾️) then
-  pause_menu=true
-  if (btnp(⬇️)) dsel+=1
-  if (btnp(⬆️)) dsel-=1
-  if (dsel<1) dsel=#dnames
-  if (dsel>#dnames) dsel=1
-  if btnp(⬅️) or btnp(➡️) then
-   local dname=dnames[dsel]
-   toggledebug(dname)
-  end
-  return true
- end
- pause_menu=false
- return false
-end
-
-
---put near end of _draw
-function draw_debug_menu()
- if pause_menu then
-  lin=0
-  i=0
-  local pmx,pmy=40,30
-  rectfill(pmx-8,pmy+3,pmx+40,
-           pmy+#dnames*6+6,6)
-  for i=1,#dnames do
-   c=0
-   if (dsel==i) then
-    c=1
-    local tx,ty=pmx-9+3,pmy+i*6-1
-    line(tx,ty,tx+3,ty+3,0)
-    line(tx+3,ty+3,tx,ty+6)
-    --spr(160,pmx-9,pmy+i*6-1,1,1,true)
-   end
-   local str=dnames[i]
-   if (debug(str)) str=str.."❎"
-   print(str,pmx,pmy+i*6,c)
-  end
- end
-end
-
-dflags={}
-dnames={}
-dsel=1
-function debug(code)
- if not has(dnames,code) then
-  add(dnames,code)
-  dflags[dnames[#dnames]]=false
- end
- return dflags[code]
-end
-function toggledebug(code)
- setdebug(code,not debug(code))
-end
-function setdebug(code,val)
- if not has(dnames,code) then
-  add(dnames,code)
-  dflags[dnames[#dnames]]=val
- end
- dflags[code]=val
-end
---setdebug("obj",false)
---setdebug("hot",false)
---setdebug("obj col",false)
---setdebug("tile col",false)
---setdebug("things",false)
---setdebug("valid",false)
---setdebug("coords",false)
-
-
 -->8
+--dialog / hud
+
+
 --dialog
-
-
 
 function open_dialog(txt,opts)
  diag_open=true
@@ -1885,6 +1695,266 @@ function draw_dialog()
   spr(225,x+1+sin(t()),y+diag_sel*7-1)
  end
 end
+
+
+
+
+--hud
+
+
+
+lsel="no obj"
+function select(obj)
+ sel=obj
+ if sel!=lsel then
+	 curx,cury=sel.x*8,sel.y*8
+	 if sel.type=="castle" then
+	  curx+=2*8
+	  cury+=3*8
+	 end
+	 camx,camy=curx-64,cury-64
+	 --update_camera()
+ end
+ lsel=sel
+end
+
+
+menuselx=0
+menusely=0
+targ_menu_y=0
+actl_menu_y=0
+function update_hud()
+
+ if hud_menu_open then
+  actl_menu_y+=flr(10-actl_menu_y)/4
+ else 
+  actl_menu_y+=flr(0-actl_menu_y)/4
+ end
+ 
+
+ ports={}
+ i=1
+ for h in all(cp.castles) do
+  add(ports,h)
+  if (sel==h) selport=i
+  i+=1
+ end
+ for h in all(cp.heroes) do
+  add(ports,h)
+  if (sel==h) selport=i
+  i+=1
+ end
+
+ if hud_menu_open then
+	 if (btnp(⬇️)) menudown=true sfx(60)
+	 if (btnp(⬆️)) menudown=false sfx(60)
+	 if menudown then
+	  if (btnp(⬅️)) menusel-=1 sfx(60)
+	  if (btnp(➡️)) menusel+=1 sfx(60)
+	  menusel=mid(menusel,1,#buttons)
+	 else
+	  if (btnp(⬅️)) selport-=1 sfx(60)
+	  if (btnp(➡️)) selport+=1 sfx(60)
+	  selport=mid(selport,1,#ports)
+	 end
+	 
+   select(ports[selport])
+ 
+  if btnp(❎) then
+   if menusel==4 and menudown then
+    sfx(59)
+    local askturn=false
+    for h in all(cp.heroes) do
+     if h.move>0 then
+      askturn=true
+      break
+     end
+    end
+    if askturn then
+     open_dialog({
+      "one of your heroes",
+      "can still move.",
+      "are you sure you",
+      "want to end your turn?",
+      "   yes",
+      "   no"},{
+      end_turn,
+      close_dialog})
+    else
+     end_turn()
+    end
+   end
+  end
+ 
+ end --end menu open chek
+ 
+end
+
+
+function draw_hud()
+
+ --top bar
+ 
+ --color banner
+ pal(8,cp.color)
+ spr(244,0,9)
+ pal(8,8)
+ --resource bar
+ rectfill2(0,0, 128,9, 6)
+ draw_resource("gold",
+ 0,0)
+ srt=25
+ spc=17
+ draw_resource("wood",
+ srt+0*spc,0)
+ draw_resource("ore",
+ srt+1*spc,0)
+ draw_resource("sulfur",
+ srt+2*spc,0)
+ draw_resource("crystal",
+ srt+3*spc,0)
+ draw_resource("gems",
+ srt+4*spc,0)
+ draw_resource("mercury",
+ srt+5*spc,0)
+ 
+ 
+ --portrait bar
+ 
+ by=actl_menu_y
+ 
+ --castle portraits
+ local x,y=63-10*4,128-10-by
+ rectfill2(x,y,10*4,10,4)
+ palt(0,false)
+ for c in all(cp.castles) do
+  if (sel==c) then
+   rect2({x,y,10,10},12)
+   if (not menudown and hud_menu_open) then
+    rect2({x,y,10,10},10)
+   end
+  end
+  spr(202,x+1,y+1)
+  x+=10
+ end
+ palt(0,true)
+ 
+ --hero portraits
+ local x,y=x+10*3,128-10-by
+ rectfill2(x,y,10*4,10,4)
+ palt(0,false)
+ for h in all(cp.heroes) do
+  if (sel==h) then
+   rect2({x,y,10,10},12)
+   if (not menudown and hud_menu_open) then
+    rect2({x,y,10,10},10)
+   end
+  end
+  spr(201,x+1,y+1)
+  local lx=x+1
+  local ly=y+8
+  line(lx,ly,x+8,ly,6)
+  if h.move>0 then
+   line(lx,ly,lx+h.move/100*8,ly,11)
+  end
+  x+=10
+ end
+ palt(0,true)
+ 
+ 
+ --menu
+ 
+ mw=0
+ for b in all(buttons) do 
+  mw+=#b*4+4
+ end
+ mh=9
+ mx=63-mw/2
+ my=128-by
+ rectfill2(mx,my,mw,mh,6)
+
+ --bottom buttons
+ local x,y=mx+1,my+1
+ local count=1
+ for b in all(buttons) do
+  bw=#b*4+2
+  rectfill2(x,y,bw,7,13)
+  print(b,x+1,y+1,0)
+  if menudown and menusel==count then
+   rect2({x-1,y-1,bw+2,9},10)   
+  end
+  x+=bw+2
+  count+=1
+ end
+ 
+ 
+ --right sidebar: army
+ 
+ if actl_menu_y>0 then
+  draw_army(sel.army,
+   128-actl_menu_y,30)
+ end
+ 
+
+end
+
+
+--menu buttons 
+buttons={
+ "map",
+ "dig",
+ "spell",
+ "end turn",
+}
+menusel=4
+ 
+ 
+resource_sprs={
+ ["gold"]=242,
+ ["wood"]=195,
+ ["ore"]=211,
+ ["sulfur"]=227,
+ ["crystal"]=243,
+ ["gems"]=196,
+ ["mercury"]=212,
+}
+function draw_resource(name,x,y)
+ spr(resource_sprs[name],x,y)
+ print(cp[name],x+9,y+2,0)
+end
+
+
+
+
+
+mob_sprs={
+ ["goblin"]=194,
+ ["skeleton"]=210,
+ ["calvary"]=197,
+ ["elf"]=213,
+ ["peasant"]=229,
+}
+function draw_army(arm,x,y)
+
+ rectfill2(x,y,10,14*5,6)
+ x+=1
+ y+=1
+ for mob in all(arm) do
+  spr(mob_sprs[mob[1]],x,y)
+--  print(mob[2],x,y+7,0)
+--  print(mob[2],x+1,y+7,0)
+--  print(mob[2],x,y+6,7)
+--  rectfill2(x,y+6,7,5,7)
+  local str=tostr(mob[2])
+  local ofx=0
+  if (#str>2) ofx=-3*(#str-2)
+  print(str,x+ofx,y+8,0)
+  y+=14
+ end
+
+end
+
+
 
 __gfx__
 0000000000999000009990000000000000000000bbb999999bbbbbbb555999999555555500099999900000000009999000000000000999900000000900000000
@@ -1983,38 +2053,38 @@ dddddddddddddddd0011110001111000000c000000000000335533353333333366ff66f600000001
 0000000001f11ff133333333331115539999135339991353333333333333333333dd6333001bbbbbbb33bbbbb76677673bbbbbbbbb0000000000000000000000
 0000000001f11f11333333333331bb5119951153399511513333333333333333111111330000000bbbbbbbbbb667767673bbbbbb000000000000000000000000
 000000000111111033333333333bbb111513333311533333333333333333333333333333000000000000bbbb6666666663bbb000000000000000000000000000
-0111100001111000001111000001111100000000000000000000000000000000000000000dddddd0eeeeeeee0000000000000000000000000000000000011100
-11ff100011ff1000011bb100011155510111111000000000000000000000000000000000dddffdddeee11eee000000000000000000000000000000000011f110
-1fff11001fff111111bbb1110144551101681a1000000000000000000000000000000000dfffffdde1e661ee00000000000000000000000000000000001fff10
-111ff110111ffff11bb11171114411510188111100000000000000000000000000000000d1f11fdde61617110000000000000000000000000000000001111110
-11ffff11001ffff11bbbb61114115551111111c1000000000000000000000000000000000fffffd0116676670000000000000000000000000000000001fff100
-1f11fff1001111111bbb6110144455111c16b11100000000000000000000000000000000ddddff00676116670000000000000000000000000000000001111100
-11111f11001f11f11b16110011441110111bb181000000000000000000000000000000000ffff000676116670000000000000000000000000000000000000000
-00001110001111111b1b100001111000001111110000000000000000000000000000000000000000333333330000000000000000000000000000000000000000
-0000000011f110000011110000000000000000000000000000000000000000000000000008222220000000000000000000000000ffffffff0000000000111111
-011111001fff10000017611100111000001110000000000000000000000000000000000088211122000000000000000000000000fbbffbbf00011100001ffff1
-01fff100111f110001166171016d1110001510000000000000000000000000000000000082179792000000000000000000000000fbbbbbbf0001f11000111ff1
-01ff1100111ff1101116117101dd1d10011d11000000000000000000000000000000000082717190000000000000000000000000ffbbbbff1111ff110011f1f1
-01f1f11001ffff10167766d11111111111ddd1100000000000000000000000000000000021999990000000000000000000000000ffbbbbff1ffffff1011ff1f1
-01111f1001f1ff101176611116d16dd11776661000000000000000000000000000000000219dddd0000000000000000000000000fbbbbbbf1ff1ff1111ff1111
-0000111001111110016161001dd1dd111666661000000000000000000000000000000000218d99d0000000000000000000000000fbbffbbf1111f1101ff11000
-0000000000001f1001616100111111101111111000000000000000000000000000000000228dddd0000000000000000000000000ffffffff0001110011110000
-011100000111000000000000000000000011111000000000000000000000000000000000000000000000000000000000ffffff0000fff0001111100011111111
-11f1111001f1100011111110001111000018881100000000011111100001111100000000000000000000000000000000fbbbbf000ffbffff1fff10001ff11ff1
-1ff1ff1001ff11001aba2c110116a110001888810000000001681a100111c7c100000000000000000000000000000000fbbbff00ffbbbbbf1f11100011ffff11
-11f1111101fff100118cb8a1116aa91100188811000000000188111101b17cc100000000000000000000000000000000fbbbbff0fbbbbbbf1f100000011ff110
-01111f1101ff11004111111119aaa9910011111000000000111111c11111ccc100000000000000000000000000000000fbfbbbffffbbbbbf11100000011ff110
-01ff1ff101f11000449944911999994100110000000000001c16b1111781111100000000000000000000000000000000ffffbbbf0ffbffff0000000011ffff11
-01111f110111000014999991114444110011000000000000111bb1811881791000000000000000000000000000000000000ffbff00fff000000000001ff11ff1
-0000111000000000111111110111111000110000000000000011111111111110000000000000000000000000000000000000fff0000000000000000011111111
+0111100001111000001111000001111100000000001d11110000000000000000000000000dddddd0eeeeeeee0000000000000000000000000000000000011100
+11ff100011ff1000011bb100011155510111111000199121000000000000000000000000dddffdddeee11eee000000000000000000000000000000000011f110
+1fff11001fff111111bbb1110144551101681a1011199222000000000000000000000000dfffffdde1e661ee00000000000000000000000000000000001fff10
+111ff110111ffff11bb111711144115101881111526d6212000000000000000000000000d1f11fdde61617110000000000000000000000000000000001111110
+11ffff11001ffff11bbbb61114115551111111c1526662110000000000000000000000000fffffd0116676670000000000000000000000000000000001fff100
+1f11fff1001111111bbb6110144455111c16b11112222210000000000000000000000000ddddff00676116670000000000000000000000000000000001111100
+11111f11001f11f11b16110011441110111bb181121112100000000000000000000000000ffff000676116670000000000000000000000000000000000000000
+00001110001111111b1b100001111000001111111111111000000000000000000000000000000000333333330000000000000000000000000000000000000000
+0000000011f110000011110000000000000000000133110000000000000000000000000008222220000000000000000000000000ffffffff0000000000111111
+011111001fff10000017611100111000001110000133311100000000000000000000000088211122000000000000000000000000fbbffbbf00011100001ffff1
+01fff100111f110001166171016d111000151000015f175100000000000000000000000082179792000000000000000000000000fbbbbbbf0001f11000111ff1
+01ff1100111ff1101116117101dd1d10011d11000133171500000000000000000000000082717190000000000000000000000000ffbbbbff1111ff110011f1f1
+01f1f11001ffff10167766d11111111111ddd1100133171500000000000000000000000021999990000000000000000000000000ffbbbbff1ffffff1011ff1f1
+01111f1001f1ff101176611116d16dd11776661001331751000000000000000000000000219dddd0000000000000000000000000fbbbbbbf1ff1ff1111ff1111
+0000111001111110016161001dd1dd111666661001515111000000000000000000000000218d99d0000000000000000000000000fbbffbbf1111f1101ff11000
+0000000000001f1001616100111111101111111001515100000000000000000000000000228dddd0000000000000000000000000ffffffff0001110011110000
+011100000111000000000000000000000011111000111100000000000000000000000000000000000000000000000000ffffff0000fff0001111100011111111
+11f1111001f11000111111100011110000188811001ff100000000000000000000000000000000000000000000000000fbbbbf000ffbffff1fff10001ff11ff1
+1ff1ff1001ff11001aba2c110116a11000188881011ff100000000000000000000000000000000000000000000000000fbbbff00ffbbbbbf1f11100011ffff11
+11f1111101fff100118cb8a1116aa9110018881101411100000000000000000000000000000000000000000000000000fbbbbff0fbbbbbbf1f100000011ff110
+01111f1101ff11004111111119aaa9910011111001441000000000000000000000000000000000000000000000000000fbfbbbffffbbbbbf11100000011ff110
+01ff1ff101f1100044994491199999410011000001441100000000000000000000000000000000000000000000000000ffffbbbf0ffbffff0000000011ffff11
+01111f110111000014999991114444110011000001f1f100000000000000000000000000000000000000000000000000000ffbff00fff000000000001ff11ff1
+000011100000000011111111011111100011000001f1f1000000000000000000000000000000000000000000000000000000fff0000000000000000011111111
 00000111000000000000000000010000188888100000000000000000000000000000000000000000000000000000000000fff000000fff001111001111100111
-000011f100000000000111000017100018888810000000000111111001111110011111100000000000000000000000000ffbf00000ffbff01ff111ff1f1111f1
-11111ff1000000000111a1100017e1001888881000000000016d16100144551001be1910000000000000000000000000ffbbffff0ffbbbff11ff1ff111f11f11
-1f11ff110000000001a19a111017e110188888100000000001dd1111014555100111c110000000000000000000000000fbbbbbbf0fbbbbbf0111ff11011f1110
-11fff110000000001179a9a1111ee1e11881881000000000111111d11111111100181810000000000000000000000000fbbbbbbf0ffbbbff011ff1110111f110
-11ff11000000000019aa9a9117e117e118101810000000001d16d11114455551011c1110000000000000000000000000ffbbffff00fbbbf011ff1ff111f11f11
-1f11f10000000000119aa11111ee17111100011000000000111dd161144555510191b1100000000000000000000000000ffbf00000fbbbf01ff111ff1f1111f1
-11111100000000000111110001111110100000100000000000111111111111110111110000000000000000000000000000fff00000fffff01111011111100111
+000011f100000000000111000017100018888810000000000000000000000000000000000000000000000000000111110ffbf00000ffbff01ff111ff1f1111f1
+11111ff1000000000111a1100017e100188888100000000000000000000000000000000000000000000000000111c7c1ffbbffff0ffbbbff11ff1ff111f11f11
+1f11ff110000000001a19a111017e1101888881000000000000000000000000000000000000000000000000001b17cc1fbbbbbbf0fbbbbbf0111ff11011f1110
+11fff110000000001179a9a1111ee1e1188188100000000000000000000000000000000000000000000000001111ccc1fbbbbbbf0ffbbbff011ff1110111f110
+11ff11000000000019aa9a9117e117e11810181000000000000000000000000000000000000000000000000017811111ffbbffff00fbbbf011ff1ff111f11f11
+1f11f10000000000119aa11111ee171111000110000000000000000000000000000000000000000000000000188179100ffbf00000fbbbf01ff111ff1f1111f1
+11111100000000000111110001111110100000100000000000000000000000000000000000000000000000001111111000fff00000fffff01111011111100111
 __gff__
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000101010100000000000000000000000101010101000000000000000000000000010101000000000000000000000000000101010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -2109,8 +2179,8 @@ __sfx__
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000200000952000500005000050000500005000050000500005000050000500005000050000500005000050000500005000050000500005000050000500005000050000500005000050000500005000050000500
+000600001e51023520285502853026500285002a5002c5002f5003250036500005000050000500005002150022500235002550026500285002a5002c5002f5003250036500005000050000500005000050000500
+00020000095200d550115500050000500005000050000500005000050000500005000050000500005000050000500005000050000500005000050000500005000050000500005000050000500005000050000500
 000100000b5500d5500e5500e55012500135001c500245000c5000050000500005000050000500005000050000500005000050000500005000050000500005000050000500005000050000500005000050000500
 000100001e5400050031500235000f5001150015500155001b5001c5001d500005000050000500005000050000500005000050000500005000050000500005000050000500005000050000500005000050000500
 00030000130601206011050100400f0300d0200b0200901008010070100601006000060000c0000b0000a00008000000000000000000000000000000000000000000000000000000000000000000000000000000
