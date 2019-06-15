@@ -170,6 +170,7 @@ function hero_trade()
 end
 function battle(army,mob)
  in_battle=true
+ init_battle()
  grid={}
  x=0
  for i=1,5 do
@@ -177,7 +178,9 @@ function battle(army,mob)
   grid[xy2i(x,y)]=army[i]
  end
  
+ x=8 --row for enemy movs
  if mob.type=="mob" then
+  battle_enemy_hero=nil
   mobname=mob.group[1]
   mobcount=mob.group[2]
 	 
@@ -197,7 +200,6 @@ function battle(army,mob)
 	  count=3
 	 end
 	 
-	 x=8
 	 for i=0,count-1 do
 	  y=(starty+i)*2
 	  gridi=xy2i(x,y)
@@ -207,10 +209,10 @@ function battle(army,mob)
  end
  
  if mob.type=="hero" then
-	 x=12
-	 for i=1,5 do
-	  y=i*2+1
-	  grid[xy2i(x,y)]=mob.army[i]
+  battle_enemy_hero=mob
+	 for i=0,4 do
+	  y=i*2
+	  grid[xy2i(x,y)]=mob.army[i+1]
 	 end
  end
  
@@ -287,7 +289,11 @@ function _update()
 		   obj.type=="treasure")
 	  then
 	   if obj.type=="hero" then
-	    hero_trade()
+	    if obj_owner(obj)==pc then
+ 	    hero_trade()
+ 	   else
+	     battle(sel.army,obj)
+	    end
 	   end
 	   if obj.type=="mob" then
 	    battle(sel.army,obj)
@@ -529,6 +535,7 @@ function _draw()
 	 if path then print2(#path) end
  end --overworld draw
  
+
  
 end
 
@@ -537,6 +544,7 @@ end
 
 function end_turn()
  menudown=false
+ path=nil
  i=1
  for p in all(plrs) do
   if (p==cp) then
@@ -1721,7 +1729,35 @@ end
 --battle
 
 
+function init_battle()
+
+ --battle cursor
+ bcurx=0
+ bcury=0
+ 
+ --grid tile w/h (global)
+ gw=10
+ gh=10
+ 
+ --grid start x/y (margins)
+ gsx=(128-10*9)/2
+ gsy=(128-10*9)/2
+ 
+end
+
 function update_battle()
+ 
+ if (btnp(⬅️)) bcurx-=1 sfx(58,-1,1,2)
+ if (btnp(➡️)) bcurx+=1 sfx(58,-1,1,2)
+ if (btnp(⬆️)) bcury-=1 sfx(58,-1,1,2)
+ if (btnp(⬇️)) bcury+=1 sfx(58,-1,1,2)
+ local maxx=8
+ local maxy=8
+ if (battle_enemy_hero) maxx=9
+ if (bcurx%2==1) maxy=9
+ bcurx=mid(bcurx,-1,maxx)
+ bcury=mid(bcury,0,maxy)
+ if (bcurx==-1 or bcurx==9) bcury=2
 
 end
 
@@ -1738,80 +1774,15 @@ function draw_battle_map()
 
 	cls(3)
 	
-	col=1
-	cols={3,11}
-	--[[
-	
---	sprt = 35
---	xspc = 8
---	yspc = 10
-	
---	sprt = 51
---	xspc = 8
---	yspc = 9
 
---	sprt = 36
---	xspc = 10
---	yspc = 10
-	
-	for j=0,11 do
- 	for i=0,11 do
- 	 pal(2,cols[col+1])
- 		spr(sprt, i*xspc, yspc*j,2,2)
- 		pal()
- 		col=(col+1)%#cols
- 	end
- 	for i=0,10 do
- 	 pal(2,cols[col+1])
- 		spr(sprt, (i*xspc)+xspc/2, yspc*j+yspc/2,2,2)
- 		pal()
- 		col=(col+1)%#cols
- 	end
-	end
-	]]
-	
-	
--- sprt=13
---	xspc = 12
---	yspc = 6
---	for j=0,11 do
--- 	for i=0,11 do
--- 	 pal(2,cols[col+1])
--- 		spr(sprt, i*xspc, yspc*j,2,2)
--- 		pal()
--- 		col=(col+1)%#cols
--- 	end
---	end
---	
---	for j=0,11 do
--- 	for i=0,11 do
--- 	 pal(2,cols[col+1])
--- 		spr(sprt, i*xspc+6, yspc*j+3,2,2)
--- 		pal()
--- 		col=(col+1)%#cols
--- 	end
---	end
-
-
---	for x=0,7 do
--- 	for y=0,3 do
--- 		spr(9,x*16,y*32,2,4)
--- 	end
---	end
-
- --grid tile w/h (global)
- gw=10
- gh=10
- 
- --grid start x/y
- gsx=(128-10*9)/2
- gsy=(128-10*9)/2
+ --draw grid
  
  local w=gw
  local h=gh
 
  local bx=gsx
  local by=gsy
+ 
  for x=0,8 do 
   for y=0,8 do
    ofy=0
@@ -1819,14 +1790,21 @@ function draw_battle_map()
     ofy=h/2
     --extra tile at bottom of odd cols
     if y==8 then
-     rect2({bx+x*w,by+8*h+ofy,w+1,h+1},9)
+     rect2({bx+x*w,by+8*h+ofy,w+1,h+1},11)
     end
    end
-   rect2({bx+x*w,by+y*h-ofy,w+1,h+1},9)
+   rect2({bx+x*w,by+y*h-ofy,w+1,h+1},11)
   end
  end
  
+ 
+ --heros
  spr(44,2,30,2,2)
+ 
+ if (battle_enemy_hero) spr(44,111,30,2,2,true)
+ 
+ 
+ --draw armies
  
  for i,v in pairs(grid) do
   x,y=i2xy(i)
@@ -1844,8 +1822,24 @@ function draw_battle_map()
  end
  
  
- -- debug
+ --cursor
+ cw,ch=gw+1,gh+1
+ sx,sy=gsx+bcurx*gw,gsy+bcury*gh
+ if bcurx==-1 or bcurx==9 then
+  if (bcurx==-1) sx-=8
+  sy=32 --hero position
+  cw=18
+  ch=22
+  if (bcurx==9) sx+=1 cw-=1
+ end
+ if (bcurx%2==1) sy-=gh/2
+ c=10
+ ex=0
+ if (flr(t()*30)%10<5) c=10 ex=1 cw+=2 ch+=2
+ rect2({sx-ex,sy-ex,cw,ch},c)
  
+ 
+ -- debug
  
  --check tile x,y positions
 -- for x=0,8 do
