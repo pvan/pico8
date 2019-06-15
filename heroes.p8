@@ -170,7 +170,6 @@ function hero_trade()
 end
 function battle(army,mob)
  in_battle=true
- init_battle()
  grid={}
  x=0
  for i=1,5 do
@@ -215,6 +214,9 @@ function battle(army,mob)
 	  grid[xy2i(x,y)]=mob.army[i+1]
 	 end
  end
+ 
+ -- do last, need grid set up
+ init_battle()
  
 end
 
@@ -264,7 +266,10 @@ function update_camera()
 -- camy=min(camy,(tilesh-1)*8-128+worldborder*2)
 end
 
+frame=0
 function _update()
+
+ frame+=1
  
  --true if open
  if (update_dialog()) return
@@ -414,7 +419,7 @@ function _draw()
  --cls()
 	
 	if in_battle then
-  draw_battle_map()
+  draw_battle()
  else
  
  	camera(camx,camy)
@@ -1729,6 +1734,34 @@ end
 --battle
 
 
+
+big_mob_sprs={
+ ["goblins"]=34,
+ ["skeletons"]=1,
+ ["peasants"]=33,
+ ["elves"]=2,
+}
+
+mob_speeds={
+ ["goblins"]=4,
+ ["skeletons"]=4,
+ ["peasants"]=2,
+ ["elves"]=3,
+}
+
+function sort_by_speed(t)
+ for n=2,#t do
+  local i=n
+  while i>1 and
+   mob_speeds[t[i][1]]>
+   mob_speeds[t[i-1][1]]
+  do
+   t[i],t[i-1]=t[i-1],t[i]
+   i-=1
+  end
+ end
+end
+
 function init_battle()
 
  --battle cursor
@@ -1743,9 +1776,139 @@ function init_battle()
  gsx=(128-10*9)/2
  gsy=(128-10*9)/2
  
+ --sort mobs for turn order
+ moblist={}
+ mobturn=1
+ for k,v in pairs(grid) do
+  add(moblist,v)
+ end
+ sort_by_speed(moblist)
+ 
+ --make list of player controlled
+ playermobs={}
+ for i,v in pairs(grid) do
+  x,y=i2xy(i)
+  if x==0 then
+   add(playermobs,v)
+  end
+ end
+ 
+ mobstep=0
+ 
 end
 
+--todo: consider just using
+--list of mobs with added .x .y
+--instead of grid.. would be
+--easier to move, etc
+
+--notes on grid:
+--grid[i]={"mob name",amt}
+--empty spots are nil
+
+grid_neighbors_e={
+ {-1,0},
+ {-1,1},
+ {0,-1},
+ {0,1},
+ {1,0},
+ {1,1},
+}
+grid_neighbors_o={
+ {-1,-1},
+ {-1,0},
+ {0,-1},
+ {0,1},
+ {1,-1},
+ {1,0},
+}
+
+function open_neighbors(bx,by)
+ res={}
+ 
+ grid_neighbors=grid_neighbors_o
+ if (bx%2==0) grid_neighbors=grid_neighbors_e
+ 
+ for n in all(grid_neighbors) do
+  local x,y=bx+n[1],by+n[2]
+  if grid[xy2i(x,y)]==nil and
+    x>=0 and x<9 and
+    y>=0 and y<10
+  then
+   --reject y=9 on even rows
+   if x%2==0 and y==9 then
+   else
+    add(res,{x,y})
+   end
+  end
+ end
+ return res
+end
+
+function mob_pos(mob)
+ for i,v in pairs(grid) do
+  if (mob==v) x,y=i2xy(i) return x,y
+ end
+end
+
+function mob_move(mob,pos)
+ mobx,moby=mob_pos(mob)
+	grid[xy2i(pos[1],pos[2])]=mob
+	grid[xy2i(mobx,moby)]=nil
+end
+
+function ai_path_mob(mob)
+ 
+ mobpath={}
+ 
+ local mobx,moby=mob_pos(mob)
+ for c=1,mob_speeds[mob[1]] do
+ 
+  moves=open_neighbors(mobx,moby)
+  
+	 mi=rnd_bw(1,#moves)
+	 newx,newy=moves[mi][1],moves[mi][2]
+  add(mobpath,{newx,newy})
+  mobx,moby=newx,newy
+	 
+ end
+ 
+ --mobturn+=1
+ return mobpath
+ 
+end
+
+
+
 function update_battle()
+
+ moves={}
+
+ activemob=moblist[mobturn]
+
+ if has(playermobs,activemob) then
+  
+ else
+ 
+  if mobstep==0 then
+   mobpath=ai_path_mob(activemob)
+   mobwait=0
+   mobstep+=1
+  end
+  
+  if mobwait%10==0 then
+   if mobstep>#mobpath then
+    mobturn+=1
+    mobstep=0
+   else
+    mob_move(activemob,mobpath[mobstep])
+    mobstep+=1
+   end
+  end
+  
+  mobwait+=1
+  
+ end
  
  if (btnp(⬅️)) bcurx-=1 sfx(58,-1,1,2)
  if (btnp(➡️)) bcurx+=1 sfx(58,-1,1,2)
@@ -1759,18 +1922,12 @@ function update_battle()
  bcury=mid(bcury,0,maxy)
  if (bcurx==-1 or bcurx==9) bcury=2
 
+
 end
 
 
 
-big_mob_sprs={
- ["goblins"]=34,
- ["skeletons"]=1,
- ["peasants"]=33,
- ["elves"]=2,
-}
-
-function draw_battle_map()
+function draw_battle()
 
 	cls(3)
 	
@@ -1804,6 +1961,7 @@ function draw_battle_map()
  if (battle_enemy_hero) spr(44,111,30,2,2,true)
  
  
+ 
  --draw armies
  
  for i,v in pairs(grid) do
@@ -1811,8 +1969,44 @@ function draw_battle_map()
   sx,sy=gxy2sxy(x,y)
   sx+=2
   sy-=h-2
---  rectfill2(sx,sy+15,8,3,0)
+  
+  
+  --draw mob
   spr(big_mob_sprs[v[1]],sx,sy,1,2)
+  
+  
+  --highlight active mob
+  if v==moblist[mobturn] then
+   if frame%15<3 then
+    pal(1,7)
+   elseif frame%15<6 then
+    pal(1,6)
+   elseif frame%15<9 then
+    pal(1,10)
+   elseif frame%15<12 then
+    pal(1,13)
+   else
+    pal(1,1)
+   end
+   
+  --draw mob
+  spr(big_mob_sprs[v[1]],sx,sy,1,2)
+  
+-- 	  spr(big_mob_sprs[v[1]],sx-1,sy-1,1,2)
+-- 	  spr(big_mob_sprs[v[1]],sx-1,sy,1,2)
+-- 	  spr(big_mob_sprs[v[1]],sx-1,sy+1,1,2)
+-- 	  spr(big_mob_sprs[v[1]],sx,sy-1,1,2)
+-- 	  spr(big_mob_sprs[v[1]],sx,sy+1,1,2)
+-- 	  spr(big_mob_sprs[v[1]],sx+1,sy-1,1,2)
+-- 	  spr(big_mob_sprs[v[1]],sx+1,sy,1,2)
+-- 	  spr(big_mob_sprs[v[1]],sx+1,sy+1,1,2)
+ 	  pal(1,1)
+--	  end
+  end
+  
+  
+  
+  --number
   ofx=0
   str=tostr(v[2])
   if (#str<2) ofx=2
@@ -1835,30 +2029,28 @@ function draw_battle_map()
  if (bcurx%2==1) sy-=gh/2
  c=10
  ex=0
- if (flr(t()*30)%10<5) c=10 ex=1 cw+=2 ch+=2
+-- if (frame%10<5) c=10 ex=1 cw+=2 ch+=2
  rect2({sx-ex,sy-ex,cw,ch},c)
  
  
- -- debug
- 
- --check tile x,y positions
--- for x=0,8 do
---  for y=0,8 do
---   sx,sy=gxy2sxy(x,y)
---   print(x..y,sx,sy,0)
---   if x%2==1 and y==8 then
---    y+=1
---    sx,sy=gxy2sxy(x,y)
---    print(x..y,sx,sy,0)
---   end
---  end
+-- --dot test
+-- for m in all(moves) do
+--  x,y=m[1],m[2]
+--  sx,sy=gxy2sxy(x,y)
+--  rectfill2(sx+4,sy+4,4,4,8)
 -- end
  
+ 
  cursor()
- --check grid
--- for i,v in pairs(grid) do  
---  x,y=i2xy(i)
---  print2(x..","..y..":"..v[1])
+	
+--	if (moves!=nil) then
+--	 for m in all(moves) do 
+--	  print2(m[1]..","..m[2])
+--	 end
+--	end
+	
+--	for m in all(mobpath) do
+-- 	print2(m[1]..","..m[2])
 -- end
 	
 end
