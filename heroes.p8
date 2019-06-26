@@ -236,11 +236,6 @@ function pickup(obj)
  if has(resources,obj.subtype) then
   cp[obj.subtype]+=obj.amount
  end
--- for k,v in pairs(obj) do
---  if has(resources,k) then
---   cp[k]+=obj[k]
---  end
--- end
  del(things,obj)
 end
     
@@ -331,8 +326,6 @@ function _update()
 	 end
  end
 
- if (update_debug_menu()) return
-
 
 
  if (btnp(🅾️)) then
@@ -415,8 +408,6 @@ end
 
 
 function _draw()
-
- --cls()
 	
 	if in_battle then
   draw_battle()
@@ -429,7 +420,6 @@ function _draw()
 	 
 	 --draw path
 	 if path!=nil and #path>1 then
-	--	 lx,ly=path[1][1],path[1][2]
 	  lx,ly=sel.x,sel.y
 		 for i=1,#path do
 		  nx,ny=path[i][1],path[i][2]
@@ -448,21 +438,7 @@ function _draw()
 	 end
 	 
 	 
-	 
-	-- if (debug("things")) drawdebug_things()
-	 
-	 if (debug("obj")) drawdebug_layer(i2obj,10)
-	 if (debug("hot")) drawdebug_layer(i2hot,8)
-	 if (debug("obj col")) drawdebug_layer(i2col,13)
-	 if (debug("danger")) drawdebug_layer(i2danger,2)
-	 if (debug("perm")) drawdebug_layer(i2perm,5)
-	 if (debug("tile col")) drawdebug_tilecol()
-	-- if (debug("valid")) drawdebug_i(sel_valid)
-	 if (debug("zone")) drawdebug_zones()
-	  
 	 draw_cursor()
-	 
-	 
 	 
 	 
 	 --hud elements
@@ -474,70 +450,7 @@ function _draw()
 	 
 	 draw_dialog()
 	 
-	 draw_debug_menu()
 	 
-	 
-	 
-	 
-	 --debug elements 
-	 color()
-	 cursor()
-	 camera()
-	 print2("")
-	 print2("")
-	 print2("")
-	 print2("")
-	 print2(stat(1))
-	
-	
-	 if debug("cur") then
-			local tx,ty=flr(curx/8),flr(cury/8)
-			print2(tx.." "..ty)
-			i=xy2i(tx,ty)
-			print2("i: "..i)
-			print2(tile_is_solid(x,y))
-			print2("z: "..tostr(i2zone[i]))
-			print2("solid: "..tostr(tile_is_solid(tx,ty)))
-		end
-	
-	 if debug("sel") then
-	  if sel then
-	   print2("sel: "..sel.type)
-	   print2("sel ps "..sel.x..","..sel.y)
-	   print2("sel mv "..tostr(sel.movex)..","..tostr(sel.movey))  
-				selzones=""
-				for z in all(objzones(sel)) do
-				 selzones=selzones..z.." "
-				end
-			 print2("selzones: "..selzones)
-	  else
-	   print2("sel: none")
-	  end
-	 end
-	
-	 print2(diag_sel)
-	
-	-- if sel!=nil then
-	--		local tx,ty=flr(curx/8),flr(cury/8)
-	--		i=xy2i(tx,ty)
-	--  zones=objzones(sel)
-	--  print(inearzones(i,zones))
-	-- end 
-			
-			
-	--	local tx,ty=flr(curx/8),flr(cury/8)
-	--	i=xy2i(tx,ty)
-	--	obj=i2obj[i]
-	-- if obj!=nil and sel!=nil then
-	--  selzones=objzones(sel)
-	--  print("?"..tostr(objnearzones(obj,selzones)))
-	-- end
-	
-	 
-	-- obj=i2obj[ci]
-	-- print(obj.type)
-	
-	 if path then print2(#path) end
  end --overworld draw
  
 
@@ -565,10 +478,7 @@ function end_turn()
 end
 
 -->8
---util / debug menu
-
-
---util
+--util 
 
 
 
@@ -627,11 +537,6 @@ end
 
 
 
---debug menu
-
-
-if (has!=nil) cls() stop("has dup in debug menu")
-
 --check if array contains
 function has(array, value)
  if type(array)=='table' then
@@ -641,81 +546,6 @@ function has(array, value)
  end
  return false
 end
-
-
-
---put early in _update
---returns if menu open
---(skip rest of update if true)
-function update_debug_menu()
-	if btn(❎) and btn(🅾️) then
-  pause_menu=true
-  if (btnp(⬇️)) dsel+=1
-  if (btnp(⬆️)) dsel-=1
-  if (dsel<1) dsel=#dnames
-  if (dsel>#dnames) dsel=1
-  if btnp(⬅️) or btnp(➡️) then
-   local dname=dnames[dsel]
-   toggledebug(dname)
-  end
-  return true
- end
- pause_menu=false
- return false
-end
-
-
---put near end of _draw
-function draw_debug_menu()
- if pause_menu then
-  lin=0
-  i=0
-  local pmx,pmy=40,30
-  rectfill(pmx-8,pmy+3,pmx+40,
-           pmy+#dnames*6+6,6)
-  for i=1,#dnames do
-   c=0
-   if (dsel==i) then
-    c=1
-    local tx,ty=pmx-9+3,pmy+i*6-1
-    line(tx,ty,tx+3,ty+3,0)
-    line(tx+3,ty+3,tx,ty+6)
-    --spr(160,pmx-9,pmy+i*6-1,1,1,true)
-   end
-   local str=dnames[i]
-   if (debug(str)) str=str.."❎"
-   print(str,pmx,pmy+i*6,c)
-  end
- end
-end
-
-dflags={}
-dnames={}
-dsel=1
-function debug(code)
- if not has(dnames,code) then
-  add(dnames,code)
-  dflags[dnames[#dnames]]=false
- end
- return dflags[code]
-end
-function toggledebug(code)
- setdebug(code,not debug(code))
-end
-function setdebug(code,val)
- if not has(dnames,code) then
-  add(dnames,code)
-  dflags[dnames[#dnames]]=val
- end
- dflags[code]=val
-end
---setdebug("obj",false)
---setdebug("hot",false)
---setdebug("obj col",false)
---setdebug("tile col",false)
---setdebug("things",false)
---setdebug("valid",false)
---setdebug("coords",false)
 
 
 -->8
@@ -809,6 +639,7 @@ function drawdebug_zones()
   rectfill2(x*8+3,y*8+3,2,2,z)
  end
 end
+
 --return all zones adjacent 
 --to obj base x,y position
 --(basically just for heroes atm)
@@ -942,12 +773,6 @@ function tmap_solid(x,y)
  return false
 end
 
---deprecated?
---function permasolid_solid(x,y)
--- if (tmap_solid(x,y)) return true
--- if (i2perm[xy2i(x,y)]) return true
--- return false
---end
 
 function tile_is_solid(x,y)
  if (tmap_solid(x,y)) return true
@@ -1047,10 +872,6 @@ end
 
 
 
---permtypes={
--- "castle",
--- "testhouse"
---}
 
 function itrect(it)
  r={}
@@ -1208,17 +1029,7 @@ function draw_overworld()
  
  map(0,0, 0,0 ,32,32)
  
--- --91
--- --78
--- herospr=66
--- spr(herospr, 64-4,64-4, 2,2)
- 
- 
  draw_things()
- 
- 
--- --small hero sprite eg
--- spr(153,13*8,5*8)
 
 end
 
@@ -1248,19 +1059,6 @@ end
 
 
 --a* pathfinding
---see redblobgames
---and @richy486
-
-
---this tab should be pretty  
---much self-contained now
---
---all a* processing has to be
---on 1d indices so we can use
---them as tables keys
---(tables make poor keys)
---(because they are pointers)
-
 
 --1d / 2d conversions
 --assumes 0-based tile grid now
@@ -1350,15 +1148,6 @@ function ineighbors(i)
  if (iclear(ri) or iclear(di)) then
   if (iclear(d4i)) add(res,{d4i,1.4}) end
   
- --not really needed if
- --we have actual diag options
--- --correct order bias to 
--- --prefer diagonal paths
--- local tx,ty=i2xy(i)
--- if (tx+ty)%2==0 then
---  reverse(res) 
--- end
- 
  return res
 end
 
@@ -1389,18 +1178,12 @@ function pathfind(start,goal,obj)
  
  if (si==gi) return {}
  
--- if (iwall(si)) return {}  --ok to start with solid
--- if (iwall(gi)) return {}  --special ignore handling now
- 
  --make a kind of ok-list
  --from optional passed in obj
  --(so we can walk over our)
  --(goal collider if needed)
  global_walkable_i={}
--- if iwall(gi) then
--- then
---  add(global_walkable_i,gi)
--- end
+ 
  if obj!=nil then
   c=obj.col
 	 for cx=0,c[3]-1 do
@@ -1630,19 +1413,6 @@ function update_move_cursor()
 	  if i2hot[i] then
 	   style="hot"
 	  end
-	  
-	  --wont ever get hero
-	  --in a zone now
---	  if obj.type=="hero" 
---	  and obj!=sel then
---	   style="trade"
---	  end
-
-	  --wont ever get mob
-	  --in a zone now
---   if i2danger[i] then
---	   style="attack"
---	  end
 
   end
 
@@ -1699,17 +1469,6 @@ function update_sel_cursor()
  end
  cur_spr=cur_sprs[style]
 end
-
---function old_square_sel()
--- curanim=(curanim+1)%20
--- curextra=flr(curanim/10)
--- curminus = 5+curextra
--- curplus = 5+curextra
--- spr(176, curx-curminus, cury-curminus)
--- spr(176, curx+curplus, cury-curminus, 1,1, true,false)
--- spr(176, curx-curminus, cury+curplus, 1,1, false,true)
--- spr(176, curx+curplus, cury+curplus, 1,1, true,true)
---end
 
 
 function update_cursor()
@@ -1991,17 +1750,8 @@ function draw_battle()
    
   --draw mob
   spr(big_mob_sprs[v[1]],sx,sy,1,2)
-  
--- 	  spr(big_mob_sprs[v[1]],sx-1,sy-1,1,2)
--- 	  spr(big_mob_sprs[v[1]],sx-1,sy,1,2)
--- 	  spr(big_mob_sprs[v[1]],sx-1,sy+1,1,2)
--- 	  spr(big_mob_sprs[v[1]],sx,sy-1,1,2)
--- 	  spr(big_mob_sprs[v[1]],sx,sy+1,1,2)
--- 	  spr(big_mob_sprs[v[1]],sx+1,sy-1,1,2)
--- 	  spr(big_mob_sprs[v[1]],sx+1,sy,1,2)
--- 	  spr(big_mob_sprs[v[1]],sx+1,sy+1,1,2)
- 	  pal(1,1)
---	  end
+  pal(1,1)
+ 	  
   end
   
   
@@ -2032,26 +1782,6 @@ function draw_battle()
 -- if (frame%10<5) c=10 ex=1 cw+=2 ch+=2
  rect2({sx-ex,sy-ex,cw,ch},c)
  
- 
--- --dot test
--- for m in all(moves) do
---  x,y=m[1],m[2]
---  sx,sy=gxy2sxy(x,y)
---  rectfill2(sx+4,sy+4,4,4,8)
--- end
- 
- 
- cursor()
-	
---	if (moves!=nil) then
---	 for m in all(moves) do 
---	  print2(m[1]..","..m[2])
---	 end
---	end
-	
---	for m in all(mobpath) do
--- 	print2(m[1]..","..m[2])
--- end
 	
 end
 
@@ -2436,19 +2166,13 @@ function draw_h_army(arm,cx,y)
  y+=1
  for mob in all(arm) do
   spr(mob_sprs[mob[1]],x,y)
---  print(mob[2],x,y+7,0)
---  print(mob[2],x+1,y+7,0)
---  print(mob[2],x,y+6,7)
---  rectfill2(x,y+6,7,5,7)
   local str=tostr(mob[2])
-  --todo: reduce token here
   local ofx=0
   if (#str<2) ofx=2
   if (#str>2) ofx=-3*(#str-2)
   print(str,x+ofx,y+8,0)
   x+=10
  end
-
 end
 
 __gfx__
