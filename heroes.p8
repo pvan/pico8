@@ -7,6 +7,7 @@ __lua__
 --walking thru open mob
 --sorting castles/etc (move pos to lowest point, eg -x,-y col)
 --item in front of castle blocks hero
+--black screen when switching players
 
 
 --notes:
@@ -54,7 +55,7 @@ function set_player(p)
  
  hud_menu_open=false
  actl_menu_y=0
- 
+
  open_dialog({
    colorstrings[cp.color].." player's turn",
    "  ok"
@@ -330,8 +331,11 @@ function _update()
 
  if (btnp(🅾️)) then
   hud_menu_open=not hud_menu_open
-  if (hud_menu_open) then sfx(63)
-  else sfx(61) end
+  if (hud_menu_open) then 
+   sfx(63)
+  else 
+   sfx(61) 
+  end
  end
  
  
@@ -480,6 +484,12 @@ end
 -->8
 --util 
 
+
+function indexof(t,n)
+ for k,v in pairs(t) do
+  if (v==n) return k
+ end
+end
 
 
 --recursive deep copy
@@ -789,6 +799,7 @@ archetypes={
  ["castle"]={
   ["type"]="castle",
   ["select"]=true,
+  ["port"]=202,
   ["spr"]=137,
   ["sprx"]=0,
   ["spry"]=0,
@@ -800,6 +811,7 @@ archetypes={
  ["hero"]={
   ["type"]="hero",
   ["select"]=true,
+  ["port"]=201,
   ["spr"]=66,
   ["sprx"]=-4,
   ["spry"]=-4,
@@ -857,12 +869,10 @@ archetypes={
   ["sprh"]=1,
   ["col"]={0,0,1,1},
   ["hot"]={0,0},
---  ["gold"]=rnd_bw(1,4)*50
  },
 }
 
 --dup some similar archetypes
---rather than typing them all out
 for r in all(resources) do
  if r!="gold" then
   archetypes[r]=copy(archetypes.gold)
@@ -953,7 +963,7 @@ function draw_things()
  
   sprt=i.spr
   if i.type=="treasure" then
-   sprt=resource_sprs[i.subtype]
+   sprt=res_spr(i.subtype)
   end
   
   spr(sprt,
@@ -1483,7 +1493,9 @@ function update_cursor()
 end
 
 function draw_cursor()
- spr(cur_spr, curx,cury)
+ bb=flashamt()
+ if (hud_menu_open) bb=0
+ spr(cur_spr, curx,cury+bb)
 end
 
 
@@ -1829,14 +1841,14 @@ function draw_dialog()
   for l in all(diag_txt) do
    if (#l>maxw) maxw=#l
   end
-  w=maxw*4+2
-  h=#diag_txt*7
-  x=63-w/2
-  y=63-h/2
+  w=maxw*4+2+6
+  h=#diag_txt*7+6
+  x=63-w/2-3
+  y=63-h/2-3
   rectfill2(x,y,w,h,6)
   rect2({x-1,y-1,w+2,h+2},0)
-  x+=1
-  y+=1
+  x+=1+3
+  y+=1+3
   for l in all(diag_txt) do
    print(l,x,y,1)
    y+=7
@@ -1864,6 +1876,7 @@ function select(obj)
 	 end
 	 camx,camy=curx-64,cury-64
 	 --update_camera()
+	 --update_move_cursor()
  end
  lsel=sel
 end
@@ -1873,19 +1886,20 @@ menuselx=0
 menusely=0
 targ_menu_y=0
 actl_menu_y=0
+ports={}
 function update_hud()
 
  if hud_menu_open then
-  actl_menu_y+=flr(10-actl_menu_y)/4
+  actl_menu_y+=flr(11-actl_menu_y)/3
  else 
-  actl_menu_y+=flr(0-actl_menu_y)/4
+  actl_menu_y+=flr(0-actl_menu_y)/3
  end
  
 
  ports={}
  i=1
- for h in all(cp.castles) do
-  add(ports,h)
+ for c in all(cp.castles) do
+  add(ports,c)
   if (sel==h) selport=i
   i+=1
  end
@@ -1908,7 +1922,7 @@ function update_hud()
 	  selport=mid(selport,1,#ports)
 	 end
 	 
-   select(ports[selport])
+  select(ports[selport])
  
   if btnp(❎) then
    if menusel==4 and menudown then
@@ -1949,24 +1963,9 @@ function draw_hud()
  pal(8,cp.color)
  spr(244,0,9)
  pal(8,8)
- --resource bar
- rectfill2(0,0, 128,9, 6)
- draw_resource("gold",
- 0,0)
- srt=25
- spc=17
- draw_resource("wood",
- srt+0*spc,0)
- draw_resource("ore",
- srt+1*spc,0)
- draw_resource("sulfur",
- srt+2*spc,0)
- draw_resource("crystal",
- srt+3*spc,0)
- draw_resource("gems",
- srt+4*spc,0)
- draw_resource("mercury",
- srt+5*spc,0)
+ 
+ 
+ d_res_bar()
  
  
  --map item description
@@ -1997,13 +1996,13 @@ function draw_hud()
   end
   
   local x=63-#map_desc*2
-  local y=128-(actl_menu_y+20)
+  local y=118
   local w=#map_desc*4+1
   
   if cur_obj.army then
-   y-=4 --army is taller than text
-   draw_h_army(cur_obj.army,63,y)
-   y-=10 --for text above
+   draw_h_army(
+    cur_obj.army,63,y-6)
+   y-=14 --move text up
   end
   rect2({x-1,y-1,w+2,9},1)
   rectfill2(x,y,w,7,6)
@@ -2012,57 +2011,39 @@ function draw_hud()
  
  
  --portrait bar
- 
- by=actl_menu_y
- 
- --castle portraits
- local x,y=63-10*4,128-10-by
- rectfill2(x,y,10*4,10,4)
- palt(0,false)
- for c in all(cp.castles) do
-  if (sel==c) then
-   rect2({x,y,10,10},12)
-   if (not menudown and hud_menu_open) then
-    rect2({x,y,10,10},10)
-   end
+ local w=#ports*10
+ local x,y=63-w/2,9
+ rectfill2(x,y,w,10,6)
+ for i=1,8 do
+  p=ports[i]
+  if p!=nil then
+   d_port(p,x,y)
+   
+   --flashing selection box
+			if p==sel then
+			 rect2({x,y,10,10},12)
+			 if hud_menu_open and 
+			    not menudown then
+			  bb=flashamt()
+			  rect2({x-bb,y-bb,10+bb*2,10+bb*2},10)
+			 end
+			end
+		
+   x+=10
   end
-  spr(202,x+1,y+1)
-  x+=10
  end
- palt(0,true)
- 
- --hero portraits
- local x,y=x+10*3,128-10-by
- rectfill2(x,y,10*4,10,4)
- palt(0,false)
- for h in all(cp.heroes) do
-  if (sel==h) then
-   rect2({x,y,10,10},12)
-   if (not menudown and hud_menu_open) then
-    rect2({x,y,10,10},10)
-   end
-  end
-  spr(201,x+1,y+1)
-  local lx=x+1
-  local ly=y+8
-  line(lx,ly,x+8,ly,6)
-  if h.move>0 then
-   line(lx,ly,lx+h.move/100*8,ly,11)
-  end
-  x+=10
- end
- palt(0,true)
  
  
  --menu
  
+ clip(0,0,128,18+actl_menu_y)
  mw=0
  for b in all(buttons) do 
   mw+=#b*4+4
  end
  mh=9
  mx=63-mw/2
- my=128-by
+ my=19--actl_menu_y
  rectfill2(mx,my,mw,mh,6)
 
  --bottom buttons
@@ -2072,22 +2053,30 @@ function draw_hud()
   bw=#b*4+2
   rectfill2(x,y,bw,7,13)
   print(b,x+1,y+1,0)
-  if menudown and menusel==count then
-   rect2({x-1,y-1,bw+2,9},10)   
+  if menudown and menusel==count then  
+   bb=flashamt()
+   rect2({x-1-bb,y-1-bb,bw+2+bb*2,9+bb*2},10)   
   end
   x+=bw+2
   count+=1
  end
+ clip()
  
  
  --right sidebar: army
  
- if actl_menu_y>0 then
-  draw_army(sel.army,
-   128-actl_menu_y,30)
- end
+ --if actl_menu_y>0 then
+ -- d_army(sel,128-actl_menu_y,21)
+ --end
+ d_army(sel,128-10,21)
  
 
+end
+
+
+function flashamt()
+ if (frame%10<5) return 0
+ return 1
 end
 
 
@@ -2099,20 +2088,42 @@ buttons={
  "end turn",
 }
 menusel=4
- 
- 
-resource_sprs={
- ["gold"]=242,
- ["wood"]=195,
- ["ore"]=211,
- ["sulfur"]=227,
- ["crystal"]=243,
- ["gems"]=196,
- ["mercury"]=212,
+
+
+res_names={
+ "gold",
+ "wood",
+ "ore",
+ "sulfur",
+ "crystal",
+ "gems",
+ "mercury",
 }
-function draw_resource(name,x,y)
- spr(resource_sprs[name],x,y)
- print(cp[name],x+9,y+2,0)
+res_sprs={
+ 242,
+ 195,
+ 211,
+ 227,
+ 243,
+ 196,
+ 212,
+}
+function res_spr(n)
+ return res_sprs[
+  indexof(res_names,n)]
+end
+function d_res_bar()
+
+ rectfill2(0,0, 128,9, 6)
+ 
+ for i=1,#res_names do
+  local name=res_names[i]
+  res_spr(name)
+	 local x = 17*i-9
+	 if (name=="gold") x=0
+	 spr(res_spr(name),x,0)
+	 print(cp[name],x+9,2,0)
+	end
 end
 
 
@@ -2137,11 +2148,41 @@ mob_sprs={
  ["elves"]=213,
  ["peasants"]=229,
 }
-function draw_army(arm,x,y)
 
- rectfill2(x,y,10,14*5,6)
+function d_port(p,x,y)
+ 
+	palt(0,false)
+	spr(p.port,x+1,y+1)
+	palt(0,true)
+	
+	--move bar
+	if p.type=="hero" then
+	 local lx=x+1
+	 local ly=y+8
+	 line(lx,ly,x+8,ly,6)
+	 if p.move>0 then
+	  line(lx,ly,lx+p.move/100*7,ly,11)
+	 end
+	end
+	
+	--blue border
+	if p==sel then
+	 rect2({x,y,10,10},12)
+	end
+   
+end
+
+function d_army(obj,x,y)
+
+ local arm=obj.army
+ 
+ rectfill2(x,y,10,14*6,6)
+ 
+ d_port(sel,x,y)
+
+ --army  
  x+=1
- y+=1
+ y+=10
  for mob in all(arm) do
   spr(mob_sprs[mob[1]],x,y)
 --  print(mob[2],x,y+7,0)
@@ -2160,8 +2201,10 @@ end
 
 function draw_h_army(arm,cx,y)
 
- x=cx-10*5/2
- rectfill2(x,y,10*5,14,6)
+ local w=10*5
+ x=cx-w/2
+ rect2({x-1,y-1,w+2,16},1)
+ rectfill2(x,y,w,14,6)
  x+=1
  y+=1
  for mob in all(arm) do
@@ -2288,11 +2331,11 @@ dddddddddddddddd0011110001111000000c000000000000335533353333333366ff66f600000001
 01111f1001f1ff101176611116d16dd11776661001331751000000000000000000000000219dddd0000000000000000000000000fbbbbbbf1ff1ff1111ff1111
 0000111001111110016161001dd1dd111666661001515111000000000000000000000000218d99d0000000000000000000000000fbbffbbf1111f1101ff11000
 0000000000001f1001616100111111101111111001515100000000000000000000000000228dddd0000000000000000000000000ffffffff0001110011110000
-011100000111000000000000000000000011111000111100000000000000000000000000000000000000000000000000ffffff0000fff0001111100011111111
-11f1111001f11000111111100011110000188811001ff100000000000000000000000000000000000000000000000000fbbbbf000ffbffff1fff10001ff11ff1
+011100000111000000000000000000000011110000111100000000000000000000000000000000000000000000000000ffffff0000fff0001111100011111111
+11f1111001f11000111111100011110000188111001ff100000000000000000000000000000000000000000000000000fbbbbf000ffbffff1fff10001ff11ff1
 1ff1ff1001ff11001aba2c110116a11000188881011ff100000000000000000000000000000000000000000000000000fbbbff00ffbbbbbf1f11100011ffff11
-11f1111101fff100118cb8a1116aa9110018881101411100000000000000000000000000000000000000000000000000fbbbbff0fbbbbbbf1f100000011ff110
-01111f1101ff11004111111119aaa9910011111001441000000000000000000000000000000000000000000000000000fbfbbbffffbbbbbf11100000011ff110
+11f1111101fff100118cb8a1116aa9110018811101411100000000000000000000000000000000000000000000000000fbbbbff0fbbbbbbf1f100000011ff110
+01111f1101ff11004111111119aaa9910011110001441000000000000000000000000000000000000000000000000000fbfbbbffffbbbbbf11100000011ff110
 01ff1ff101f1100044994491199999410011000001441100000000000000000000000000000000000000000000000000ffffbbbf0ffbffff0000000011ffff11
 01111f110111000014999991114444110011000001f1f100000000000000000000000000000000000000000000000000000ffbff00fff000000000001ff11ff1
 000011100000000011111111011111100011000001f1f1000000000000000000000000000000000000000000000000000000fff0000000000000000011111111
