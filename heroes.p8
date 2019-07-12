@@ -171,54 +171,7 @@ function hero_trade()
 end
 function battle(army,mob)
  in_battle=true
- grid={}
- x=0
- for i=1,5 do
-  y=i*2-2
-  grid[xy2i(x,y)]=army[i]
- end
- 
- x=8 --row for enemy movs
- if mob.type=="mob" then
-  battle_enemy_hero=nil
-  mobname=mob.group[1]
-  mobcount=mob.group[2]
-	 
-  split=flr(mobcount/5)
-  leftover=mobcount%5
-  starty=0
-  count=5
-  --force 3 split if group small
-  --also allow small chance of
-  --3 split if group not too big
-  if split<2 or 
-     (split<20 and rnd_bw(1,100)<20)
-  then 
-   split=flr(mobcount/3)
-	  leftover=mobcount%3
-	  starty=1
-	  count=3
-	 end
-	 
-	 for i=0,count-1 do
-	  y=(starty+i)*2
-	  gridi=xy2i(x,y)
-	  grid[gridi]={mobname,split}
-	  if (leftover>i) grid[gridi][2]=grid[gridi][2]+1
-	 end
- end
- 
- if mob.type=="hero" then
-  battle_enemy_hero=mob
-	 for i=0,4 do
-	  y=i*2
-	  grid[xy2i(x,y)]=mob.army[i+1]
-	 end
- end
- 
- -- do last, need grid set up
- init_battle()
- 
+ init_battle(army,mob)
 end
 
 resources={
@@ -1533,7 +1486,60 @@ function sort_by_speed(t)
  end
 end
 
-function init_battle()
+function from_army(x,army)
+ mobs={}
+ for i=1,5 do
+  if army[i]!=nil then
+   army[i].x=x
+   army[i].y=i*2-2
+   add(mobs,army[i])
+  end
+ end
+ return mobs
+end
+function init_battle(l_army,mob)
+
+ --setup armies
+ 
+ l_mobs=from_army(0,l_army)
+
+ 
+ if mob.type=="hero" then
+  r_hero_present=true
+  r_mobs=from_army(8,mob.r_army)
+ elseif mob.type=="mob" then
+  r_hero_present=false
+  
+  mobname=mob.group[1]
+  mobcount=mob.group[2]
+	 
+  split=flr(mobcount/5)
+  leftover=mobcount%5
+  starty=0
+  count=5
+  --force 3 split if group small
+  --also allow small chance of
+  --3 split if group not too big
+  if split<2 or 
+     (split<20 and rnd_bw(1,100)<20)
+  then 
+   split=flr(mobcount/3)
+	  leftover=mobcount%3
+	  starty=1
+	  count=3
+	 end
+	 
+  r_mobs={}
+	 for i=0,count-1 do
+ 	 thisamt=split
+ 	 if (leftover>i) thisamt+=1
+	  mobstack={mobname,thisamt}
+	  mobstack.x=8
+	  mobstack.y=(starty+i)*2
+   add(r_mobs,mobstack)
+	 end
+ end
+ 
 
  --battle cursor
  bcurx=0
@@ -1550,32 +1556,23 @@ function init_battle()
  --sort mobs for turn order
  moblist={}
  mobturn=1
- for k,v in pairs(grid) do
-  add(moblist,v)
+ for m in all(l_mobs) do
+  add(moblist,m)
  end
- sort_by_speed(moblist)
+ for m in all(r_mobs) do
+  add(moblist,m)
+ end
  
- --make list of player controlled
- playermobs={}
- for i,v in pairs(grid) do
-  x,y=i2xy(i)
-  if x==0 then
-   add(playermobs,v)
-  end
- end
+ --todo: make second list
+ --for display, sorted by y
+ sort_by_speed(moblist)
  
  mobstep=0
  
 end
 
---todo: consider just using
---list of mobs with added .x .y
---instead of grid.. would be
---easier to move, etc
-
---notes on grid:
---grid[i]={"mob name",amt}
---empty spots are nil
+--right now l_mobs is assumed player
+--hotseat battle support tbd
 
 grid_neighbors_e={
  {-1,0},
@@ -1602,37 +1599,40 @@ function open_neighbors(bx,by)
  
  for n in all(grid_neighbors) do
   local x,y=bx+n[1],by+n[2]
-  if grid[xy2i(x,y)]==nil and
-    x>=0 and x<9 and
-    y>=0 and y<10
+  if x>=0 and x<9 and
+     y>=0 and y<10
   then
    --reject y=9 on even rows
    if x%2==0 and y==9 then
    else
-    add(res,{x,y})
+    --check for obj in spot
+    mobalreadythere=false
+    for m in all(moblist) do
+ 	   if m.x==x and m.y==y then
+ 	    mobalreadythere=true
+ 	    break
+ 	   end    
+    end
+    if not mobalreadythere then
+     add(res,{x,y})
+    end
    end
   end
  end
  return res
 end
 
-function mob_pos(mob)
- for i,v in pairs(grid) do
-  if (mob==v) x,y=i2xy(i) return x,y
- end
-end
 
 function mob_move(mob,pos)
- mobx,moby=mob_pos(mob)
-	grid[xy2i(pos[1],pos[2])]=mob
-	grid[xy2i(mobx,moby)]=nil
+ mob.x=pos[1]
+ mob.y=pos[2]
 end
 
 function ai_path_mob(mob)
  
  mobpath={}
  
- local mobx,moby=mob_pos(mob)
+ local mobx,moby=mob.x,mob.y
  for c=1,mob_speeds[mob[1]] do
  
   moves=open_neighbors(mobx,moby)
@@ -1657,7 +1657,13 @@ function update_battle()
 
  activemob=moblist[mobturn]
 
- if has(playermobs,activemob) then
+ if has(l_mobs,activemob) then
+  
+  --if griddist(activemob,bcurx,bcury)
+  
+  if btnp(❎) then
+   mob_move(activemob,{bcurx,bcury})
+  end
   
  else
  
@@ -1687,7 +1693,7 @@ function update_battle()
  if (btnp(⬇️)) bcury+=1 sfx(58,-1,1,2)
  local maxx=8
  local maxy=8
- if (battle_enemy_hero) maxx=9
+ if (r_hero_present) maxx=9
  if (bcurx%2==1) maxy=9
  bcurx=mid(bcurx,-1,maxx)
  bcury=mid(bcury,0,maxy)
@@ -1726,28 +1732,27 @@ function draw_battle()
  end
  
  
+ --todo:draw based on portrait
  --heros
  spr(44,2,30,2,2)
  
- if (battle_enemy_hero) spr(44,111,30,2,2,true)
+ if (r_hero_present) spr(44,111,30,2,2,true)
  
  
  
  --draw armies
  
- for i,v in pairs(grid) do
-  x,y=i2xy(i)
-  sx,sy=gxy2sxy(x,y)
+ for m in all(moblist) do
+  sx,sy=gxy2sxy(m.x,m.y)
   sx+=2
   sy-=h-2
   
-  
   --draw mob
-  spr(big_mob_sprs[v[1]],sx,sy,1,2)
+  spr(big_mob_sprs[m[1]],sx,sy,1,2)
   
   
   --highlight active mob
-  if v==moblist[mobturn] then
+  if m==moblist[mobturn] then
    if frame%15<3 then
     pal(1,7)
    elseif frame%15<6 then
@@ -1760,22 +1765,22 @@ function draw_battle()
     pal(1,1)
    end
    
-  --draw mob
-  spr(big_mob_sprs[v[1]],sx,sy,1,2)
-  pal(1,1)
+	  --draw mob
+	  spr(big_mob_sprs[m[1]],sx,sy,1,2)
+	  pal(1,1)
  	  
   end
   
   
-  
-  --number
+  --mob number
   ofx=0
-  str=tostr(v[2])
+  str=tostr(m[2])
   if (#str<2) ofx=2
   if (#str>2) ofx=1-#str
   rectfill2(sx+ofx,sy+13,4*#str,6,1)
   print(str,sx+ofx,sy+13,7)
  end
+ 
  
  
  --cursor
