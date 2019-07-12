@@ -8,6 +8,7 @@ __lua__
 --sorting castles/etc (move pos to lowest point, eg -x,-y col)
 --item in front of castle blocks hero
 --black screen when switching players
+--hl selected hero in world
 
 
 --notes:
@@ -642,7 +643,6 @@ i2obj={}
 i2col={}    --all collisions
 i2hot={}    --building activation points
 i2danger={} --mob attack squares
-i2perm={}   --just structure and tiles
 end
 function create_i2tile()
  init_i2xxx()
@@ -689,10 +689,6 @@ function create_i2tile()
     then
      i2col[i]=nil
      i2obj[i]=nil
-    end
-    
-    if has(permtypes,it.type) then
-     i2perm[i]=i2col[i]
     end
     
     if it.type=="mob" then
@@ -1473,6 +1469,16 @@ mob_speeds={
  ["elves"]=3,
 }
 
+
+grid={}
+for x=0,8 do 
+ for y=0,8 do
+  add(grid,{x,y})
+  if (x%2==1) add(grid,{x,y+1})
+ end
+end
+
+
 function sort_by_speed(t)
  for n=2,#t do
   local i=n
@@ -1484,6 +1490,43 @@ function sort_by_speed(t)
    i-=1
   end
  end
+end
+
+function grid_dist(m1,m2)
+ local x1,y1=m1.x,m1.y
+ local x2,y2=m2.x,m2.y
+ if (x1==nil) x1=m1[1]
+ if (y1==nil) y1=m1[2]
+ if (x2==nil) x2=m2[1]
+ if (y2==nil) y2=m2[2]
+ local dx=abs(x1-x2)
+ local dy=abs(y1-y2)
+ if (dx==0) return dy
+ local res=0
+ while dx>0 do
+  dx-=1
+  res+=1
+  --on odd cols, moving down free
+  --on even, moving up is free
+  if y2<y1 and (x1+res)%2==0 then
+   dy-=1
+  end
+  if y1<y2 and (x1+res)%2==1 then
+   dy-=1
+  end
+ end
+ return res+dy
+end
+
+function valid_moves(mob)
+ result={}
+ speed=mob_speeds[mob[1]]
+ for spot in all(grid) do
+  if grid_dist(spot,mob)<speed then
+   add(result,spot)
+  end
+ end
+ return result
 end
 
 function from_army(x,army)
@@ -1649,20 +1692,38 @@ function ai_path_mob(mob)
  
 end
 
+function is_player_mob_turn()
+ return has(l_mobs,activemob)
+end
 
+function pos_in_grid(m,spots)
+ for spot in all(spots) do
+  if m.x==spot[1] 
+  and m.y==spot[2] then
+   return true
+  end
+ end
+ return false
+end
 
 function update_battle()
-
- moves={}
-
+ 
+ if (mobturn>#moblist) mobturn=1
+ 
  activemob=moblist[mobturn]
+ moves=valid_moves(moblist[mobturn]) 
 
- if has(l_mobs,activemob) then
+ if is_player_mob_turn() then
   
   --if griddist(activemob,bcurx,bcury)
   
   if btnp(❎) then
-   mob_move(activemob,{bcurx,bcury})
+   if grid_dist(activemob,{bcurx,bcury})
+      < mob_speeds[activemob[1]]
+   then
+    mob_move(activemob,{bcurx,bcury})
+    mobturn+=1
+   end
   end
   
  else
@@ -1683,7 +1744,7 @@ function update_battle()
    end
   end
   
-  mobwait+=1
+  mobwait+=10 --1
   
  end
  
@@ -1717,18 +1778,9 @@ function draw_battle()
  local bx=gsx
  local by=gsy
  
- for x=0,8 do 
-  for y=0,8 do
-   ofy=0
-   if x%2==1 then
-    ofy=h/2
-    --extra tile at bottom of odd cols
-    if y==8 then
-     rect2({bx+x*w,by+8*h+ofy,w+1,h+1},11)
-    end
-   end
-   rect2({bx+x*w,by+y*h-ofy,w+1,h+1},11)
-  end
+ for spot in all(grid) do
+  x,y=gxy2sxy(spot[1],spot[2])
+  rect2({x,y,w+1,h+1},11)
  end
  
  
@@ -1798,6 +1850,23 @@ function draw_battle()
  ex=0
 -- if (frame%10<5) c=10 ex=1 cw+=2 ch+=2
  rect2({sx-ex,sy-ex,cw,ch},c)
+
+ if is_player_mob_turn() then
+	 if moblist[mobturn]!=nil then 
+		 for spot in all(moves) do
+		  x,y=gxy2sxy(spot[1],spot[2])
+		  circfill(x+5,y+5,2)
+		 end
+	 end
+ end
+ 
+ if moblist[mobturn]!=nil then
+  val=grid_dist(moblist[mobturn],{bcurx,bcury})
+  cursor()
+  color()
+  print(bcurx..","..bcury)
+  print(val)
+ end
  
 	
 end
