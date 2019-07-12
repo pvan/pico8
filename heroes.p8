@@ -331,8 +331,7 @@ function _update()
 
  if (btnp(🅾️)) then
   hud_menu_open=not hud_menu_open
-  if (hud_menu_open) then
-   menusel=0
+  if (hud_menu_open) then 
    sfx(63)
   else 
    sfx(61) 
@@ -466,7 +465,7 @@ end
 
 
 function end_turn()
- --menudown=false
+ menudown=false
  path=nil
  i=1
  for p in all(plrs) do
@@ -1891,7 +1890,7 @@ ports={}
 function update_hud()
 
  if hud_menu_open then
-  actl_menu_y+=flr(#buttons*9+2-actl_menu_y)/3
+  actl_menu_y+=flr(12-actl_menu_y)/3
  else 
   actl_menu_y+=flr(0-actl_menu_y)/3
  end
@@ -1911,19 +1910,22 @@ function update_hud()
  end
 
  if hud_menu_open then
-  if (btnp(⬆️)) menusel-=1 sfx(60)
-  if (btnp(⬇️)) menusel+=1 sfx(60)
-  menusel=mid(menusel,0,#buttons)
-	 if menusel==0 then
+	 if (btnp(⬇️)) menudown=true sfx(60)
+	 if (btnp(⬆️)) menudown=false sfx(60)
+	 if menudown then
+	  if (btnp(⬅️)) menusel-=1 sfx(60)
+	  if (btnp(➡️)) menusel+=1 sfx(60)
+	  menusel=mid(menusel,1,#buttons)
+	 else
 	  if (btnp(⬅️)) selport-=1 sfx(60)
 	  if (btnp(➡️)) selport+=1 sfx(60)
 	  selport=mid(selport,1,#ports)
 	 end
-
+	 
   select(ports[selport])
-
+ 
   if btnp(❎) then
-   if menusel==4 then
+   if menusel==4 and menudown then
     sfx(59)
     local askturn=false
     for h in all(cp.heroes) do
@@ -2008,20 +2010,6 @@ function draw_hud()
  end
  
  
- --menu buttons
- clip(0,0,128,18+actl_menu_y)
- y=20
- for b in all(buttons) do
-  bw=#b*4+2
-  x=63-bw/2
-  rectfill2(x,y,bw,7,13)
-  rect2({x-1,y-1,bw+2,9},6)
-  print(b,x+1,y+1,0)
-  y+=9
- end
- clip()
- 
- 
  --portrait bar
  local w=#ports*10
  local x,y=63-w/2,9
@@ -2030,36 +2018,53 @@ function draw_hud()
   p=ports[i]
   if p!=nil then
    d_port(p,x,y)
-
+   
+   --flashing selection box
+			if p==sel then
+			 rect2({x,y,10,10},12)
+			 if hud_menu_open and 
+			    not menudown then
+			  bb=flashamt()
+			  rect2({x-bb,y-bb,10+bb*2,10+bb*2},10)
+			 end
+			end
+		
    x+=10
   end
  end
-
-
  
  
- --flashing sel box
- if hud_menu_open then
- if menusel>0 then
-  y=menusel*9+11
-  bw=#buttons[menusel]*4+2
-  x=63-bw/2
-  bb=flashamt()
-  rect2({x-1-bb,y-1-bb,bw+2+bb*2,9+bb*2},10)
- else
-  for i=1,8 do
-		 if ports[i]==sel then
-		  bb=flashamt()
-		  x=10*i+53-#ports*10/2
-		  rect2({x-bb,9-bb,10+bb*2,10+bb*2},10)
-		 end
-		end
-	end
-	end
+ --menu
+ 
+ clip(0,0,128,18+actl_menu_y)
+ mw=0
+ for b in all(buttons) do 
+  mw+=#b*4+4
+ end
+ mh=9
+ mx=63-mw/2
+ my=19--actl_menu_y
+ rectfill2(mx,my,mw,mh,6)
 
-
+ --bottom buttons
+ local x,y=mx+1,my+1
+ local count=1
+ for b in all(buttons) do
+  bw=#b*4+2
+  rectfill2(x,y,bw,7,13)
+  print(b,x+1,y+1,0)
+  if menudown and menusel==count then  
+   bb=flashamt()
+   rect2({x-1-bb,y-1-bb,bw+2+bb*2,9+bb*2},10)   
+  end
+  x+=bw+2
+  count+=1
+ end
+ clip()
+ 
+ 
  --right sidebar: army
-
+ 
  --if actl_menu_y>0 then
  -- d_army(sel,128-actl_menu_y,21)
  --end
@@ -2082,7 +2087,7 @@ buttons={
  "spell",
  "end turn",
 }
-menusel=0
+menusel=4
 
 
 res_names={
