@@ -49,6 +49,9 @@ lines={
  {2,3},
 }
 
+vframes={verts}
+lframes={lines}
+frame=1
 
 
 function _init()
@@ -56,9 +59,40 @@ function _init()
 end
 
 function _update()
+ 
+ -- keyboard input
+ if stat(30)==true then
+		c=stat(31)
+		
+		if c=="a" then
+			add(vframes,copy(vframes[frame]))
+			add(lframes,copy(lframes[frame]))
+		end
+		if c=="d" then
+			del(vframes,vframes[frame])
+			del(lframes,lframes[frame])
+		end
+		
+		if c=="z" then
+			frame-=1
+			if (frame<=0) frame=#vframes
+		end
+		if c=="x" then
+			frame+=1
+			if (frame>#vframes) frame=1
+		end
+		
+ end
+ 
+ --update vert/line lists
+	verts=vframes[frame]
+	lines=lframes[frame]
+	
+	
+	-- drag current frame verts
  mx,my=get_mouse()
  drag_verts()
- 
+	
  
  cache_mouse_state()
 end
@@ -79,6 +113,13 @@ function _draw()
  
  spr(mouse_cursor,mx-2,my)
  
+ 
+ for i=1,#vframes do
+  rectfill2(10+i*5,4, 4,4, 13)
+  if i==frame then
+   rectfill2(11+i*5,9, 2,2, 7)
+  end
+ end
 
 end
 -->8
@@ -183,6 +224,29 @@ end
 
 function line2(x,y,w,h,c)
  line(x,y,x+w,y+h,c)
+end
+
+
+function rectfill2(x,y,w,h,c)
+ if w>0 and h>0 then
+  rectfill(x,y,x+w-1,y+h-1,c)
+ end
+end
+
+
+--recursive deep copy
+--works on non-tables too
+function copy(o)
+ local c
+ if type(o) == 'table' then
+  c = {}
+  for k, v in pairs(o) do
+   c[k] = copy(v)
+  end
+  else
+   c = o
+ end
+ return c
 end
 __gfx__
 00000000007000000171000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
