@@ -38,24 +38,35 @@ function drag_verts()
 end
 
 
-verts={
- {66,64}, 
- {64,72}, 
- {66,80},
-}
-
-lines={
- {1,2}, 
- {2,3},
-}
-
-vframes={verts}
-lframes={lines}
-frame=1
+function init_default_data()
+	verts={
+	 {66,64}, 
+	 {64,72}, 
+	 {66,80},
+	}
+	lines={
+	 {1,2}, 
+	 {2,3},
+	}
+	vframes={verts}
+	lframes={lines}
+	frame=1
+end
 
 
 function _init()
  init_mouse()
+ 
+ 
+ --set before calling dset/dget
+ cartdata("pv_anim_tool")
+ 
+ if dget2(0)==0 then
+  init_default_data()
+ else
+  load_anim_data()
+ end
+ 
 end
 
 function _update()
@@ -63,6 +74,13 @@ function _update()
  -- keyboard input
  if stat(30)==true then
 		c=stat(31)
+		
+		if c=="s" then
+ 		save_anim_data()
+		end
+		if c=="r" then
+		 init_default_data()
+		end
 		
 		if c=="a" then
 			add(vframes,copy(vframes[frame]))
@@ -75,14 +93,15 @@ function _update()
 		
 		if c=="z" then
 			frame-=1
-			if (frame<=0) frame=#vframes
 		end
 		if c=="x" then
 			frame+=1
-			if (frame>#vframes) frame=1
 		end
 		
  end
+ if (not frame) frame=1
+	if (frame<=0) frame=#vframes
+	if (frame>#vframes) frame=1
  
  --update vert/line lists
 	verts=vframes[frame]
@@ -119,6 +138,13 @@ function _draw()
   if i==frame then
    rectfill2(11+i*5,9, 2,2, 7)
   end
+ end
+ 
+ --view saved data
+ for i=1,0x5eff-0x5e00 do
+  d=dget2(i)
+  if (d==0) d=15
+  pset(i%64,90+i/64,d)
  end
 
 end
@@ -247,6 +273,80 @@ function copy(o)
    c = o
  end
  return c
+end
+-->8
+--save/load anim data
+
+
+
+function dget2(index)
+ return peek(0x5e00+index)
+end
+function dset2(index,val)
+ poke(0x5e00+index,val)
+end
+
+
+function load_anim_data()
+ 
+ framecount = dget2(0)
+ vertcount = dget2(1)
+ linecount = dget2(2)
+ read=3
+ 
+ vframes={}
+ lframes={}
+ for f=1,framecount do
+ 
+  newverts={}
+  for v=1,vertcount do
+   x=dget2(read)
+   read+=1
+   y=dget2(read)
+   read+=1
+   add(newverts,{x,y})
+  end
+  add(vframes,newverts)
+  
+  newlines={}
+  for l=1,linecount do
+   x=dget2(read)
+   read+=1
+   y=dget2(read)
+   read+=1
+   add(newlines,{x,y})
+  end
+  add(lframes,newlines)
+  
+ end
+ 
+end
+
+
+function save_anim_data()
+ 
+ framecount = dset2(0,#vframes)
+ vertcount = dset2(1,#verts)
+ linecount = dset2(2,#lines)
+ write=3
+ 
+ for f=1,#vframes do
+  vframe=vframes[f]
+  for v in all(vframe) do
+   dset2(write,v[1])
+   write+=1
+   dset2(write,v[2])
+   write+=1
+  end
+  lframe=lframes[f]
+  for l in all(lframe) do
+   dset2(write,l[1])
+   write+=1
+   dset2(write,l[2])
+   write+=1
+  end
+ end
+ 
 end
 __gfx__
 00000000007000000171000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
