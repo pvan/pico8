@@ -259,8 +259,9 @@ function _draw()
    print(str,pmx,pmy+i*6,c)
   end
  end
-	 
-	 
+	
+	cursor()
+ print(justaskedport)	 
  
 end
 
@@ -776,19 +777,19 @@ function player_update(p)
  
 -- twistycontrols=false
  if debug("twisty") then
-	 local u = btnp(⬆️)
-	 local d = btnp(⬇️)
-	 local l = btnp(⬅️)
-	 local r = btnp(➡️)
+	 u = btnp(⬆️)
+	 d = btnp(⬇️)
+	 l = btnp(⬅️)
+	 r = btnp(➡️)
 	 
 	 if l then p.d+=1 end
 	 if r then p.d-=1 end
 	 p.d=(p.d+8)%8
  else
-	 local u = btn(⬆️)
-	 local d = btn(⬇️)
-	 local l = btn(⬅️)
-	 local r = btn(➡️)
+	 u = btn(⬆️)
+	 d = btn(⬇️)
+	 l = btn(⬅️)
+	 r = btn(➡️)
 	 
 	 if u then u_frames_released =0
 	      else u_frames_released+=1 end
@@ -886,9 +887,12 @@ function player_update(p)
      
      local wtx,wty=lt2wt(ntx,nty,cam.tx,cam.ty)
      xport=tis_port(wtx,wty)
-     if xport>0 then
+     if xport>0 and
+      (u or d or l or r)
+     then
       ask_dock(xport)
      end
+
      
     end
  	 end
@@ -1075,6 +1079,8 @@ function set_sail()
 end
 
 function dock_at(porti)
+ player.d=(player.d+4)%8--turn ship around
+ 
  popupmsg=ports[porti][3]
  docked_at = porti
  px=44
