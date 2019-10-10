@@ -56,6 +56,8 @@ function set_player(p)
  
  hud_menu_open=false
  actl_menu_y=0
+ 
+ blackout=true
 
  open_dialog({
    colorstrings[cp.color].." player's turn",
@@ -399,12 +401,27 @@ function _draw()
 	 draw_cursor()
 	 
 	 
+	 
+	 
 	 --hud elements
 	 color()
 	 cursor()
 	 camera()
 	 
 	 draw_hud()
+	 
+	 
+	 if blackout then
+ 	 cls()
+ 	 for x=1,128 do
+  	 for y=1,128 do
+  	  srand(x+1001*y)
+  	  if rnd(100)<1 then
+  	   pset(x,y,6)
+  	  end
+  	 end
+ 	 end
+	 end
 	 
 	 draw_dialog()
 	 
@@ -1889,6 +1906,7 @@ function open_dialog(txt,opts)
  diag_sel=1
 end
 function close_dialog()
+ blackout=false
  diag_open=false
 end
 
