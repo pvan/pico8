@@ -18,6 +18,17 @@ function _init()
  player.y=(pty)*tilesz
  
  
+ cam={
+  x=player.x,
+  y=player.y,
+ 	tx=ptx,
+  ty=pty,
+  subx=subpx,
+  suby=subpy,
+  trec=camtrec,
+  bigrec=bigrec}
+  
+ 
  init_mouse()
  
 end
@@ -166,6 +177,10 @@ function _draw()
 	 end
 	 
 	 
+	 if stat(1) > 1 then
+	  print("frame too slow!")
+	  stop()
+	 end
 	 
   color(0)
   if debug("fps") then
@@ -759,50 +774,61 @@ function player_update(p)
 
  local frames_of_forgiveness = 2
  
- local u = btn(⬆️)
- local d = btn(⬇️)
- local l = btn(⬅️)
- local r = btn(➡️)
- 
- if u then u_frames_released =0
-      else u_frames_released+=1 end
- if d then d_frames_released =0
-      else d_frames_released+=1 end 
- if l then l_frames_released =0
-      else l_frames_released+=1 end
- if r then r_frames_released =0
-      else r_frames_released+=1 end
-      
- u_frames_released=min(u_frames_released,frames_of_forgiveness)
- d_frames_released=min(d_frames_released,frames_of_forgiveness)
- l_frames_released=min(l_frames_released,frames_of_forgiveness)
- r_frames_released=min(r_frames_released,frames_of_forgiveness)
-      
+-- twistycontrols=false
+ if debug("twisty") then
+	 local u = btnp(⬆️)
+	 local d = btnp(⬇️)
+	 local l = btnp(⬅️)
+	 local r = btnp(➡️)
+	 
+	 if l then p.d+=1 end
+	 if r then p.d-=1 end
+	 p.d=(p.d+8)%8
+ else
+	 local u = btn(⬆️)
+	 local d = btn(⬇️)
+	 local l = btn(⬅️)
+	 local r = btn(➡️)
+	 
+	 if u then u_frames_released =0
+	      else u_frames_released+=1 end
+	 if d then d_frames_released =0
+	      else d_frames_released+=1 end 
+	 if l then l_frames_released =0
+	      else l_frames_released+=1 end
+	 if r then r_frames_released =0
+	      else r_frames_released+=1 end
+	      
+	 u_frames_released=min(u_frames_released,frames_of_forgiveness)
+	 d_frames_released=min(d_frames_released,frames_of_forgiveness)
+	 l_frames_released=min(l_frames_released,frames_of_forgiveness)
+	 r_frames_released=min(r_frames_released,frames_of_forgiveness)
+	      
+	
+	 -- desired direction
+	 if u and not l and not r then p.d = 0 end
+	 if u and     l and not r then p.d = 1 end
+	 if l and not u and not d then p.d = 2 end
+	 if l and     d and not u then p.d = 3 end
+	 if d and not l and not r then p.d = 4 end
+	 if d and     r and not l then p.d = 5 end
+	 if r and not u and not d then p.d = 6 end
+	 if r and     u and not d then p.d = 7 end
+	
+	 -- don't switch unless released button is up enough
+	 if (p.d == 0 and l_frames_released<frames_of_forgiveness) then p.d=1 end
+	 if (p.d == 0 and r_frames_released<frames_of_forgiveness) then p.d=7 end
+	 if (p.d == 2 and u_frames_released<frames_of_forgiveness) then p.d=1 end
+	 if (p.d == 2 and d_frames_released<frames_of_forgiveness) then p.d=3 end
+	 if (p.d == 4 and l_frames_released<frames_of_forgiveness) then p.d=3 end
+	 if (p.d == 4 and r_frames_released<frames_of_forgiveness) then p.d=5 end
+	 if (p.d == 6 and u_frames_released<frames_of_forgiveness) then p.d=7 end
+	 if (p.d == 6 and d_frames_released<frames_of_forgiveness) then p.d=5 end 
+ end
 
- -- desired direction
- if u and not l and not r then p.d = 0 end
- if u and     l and not r then p.d = 1 end
- if l and not u and not d then p.d = 2 end
- if l and     d and not u then p.d = 3 end
- if d and not l and not r then p.d = 4 end
- if d and     r and not l then p.d = 5 end
- if r and not u and not d then p.d = 6 end
- if r and     u and not d then p.d = 7 end
 
- -- don't switch unless released button is up enough
- if (p.d == 0 and l_frames_released<frames_of_forgiveness) then p.d=1 end
- if (p.d == 0 and r_frames_released<frames_of_forgiveness) then p.d=7 end
- if (p.d == 2 and u_frames_released<frames_of_forgiveness) then p.d=1 end
- if (p.d == 2 and d_frames_released<frames_of_forgiveness) then p.d=3 end
- if (p.d == 4 and l_frames_released<frames_of_forgiveness) then p.d=3 end
- if (p.d == 4 and r_frames_released<frames_of_forgiveness) then p.d=5 end
- if (p.d == 6 and u_frames_released<frames_of_forgiveness) then p.d=7 end
- if (p.d == 6 and d_frames_released<frames_of_forgiveness) then p.d=5 end 
-
-
-
- if u or d or l or r then
- --if true then --always move for now
+ --if u or d or l or r then
+ if true then --always move for now
  
  	if not playing_music then 
  	  music(4)
