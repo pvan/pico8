@@ -7,8 +7,9 @@ __lua__
 --walking thru open mob
 --sorting castles/etc (move pos to lowest point, eg -x,-y col)
 --item in front of castle blocks hero
---black screen when switching players
---hl selected hero in world
+--battle move dist is f'd
+--dont spawn items on mobs?
+--when selecting castle, popup text is for last cur pos
 
 
 --notes:
@@ -80,7 +81,7 @@ end
 function _init()
 -- music(0)
  
- 
+ blackout=true
  
  red_plr=create_player(8)
  green_plr=create_player(11)
@@ -938,6 +939,14 @@ function draw_things()
       i.sprw,i.sprh)
       
   if i.type=="hero" then
+  
+  	--flash border of selected
+   if sel.x==i.x and 
+      sel.y==i.y then
+    flashcols={1,1,1,13,12,13}
+    pal(1,flashcols[flash(#flashcols)])
+   end
+   
    local c=obj_owner(i).color
    pal(8,c)
    spr(228,
@@ -951,6 +960,8 @@ function draw_things()
 	      i.x*8+i.sprx,
 	      i.y*8+i.spry,
 	      i.sprw,i.sprh)
+   pal()
+   
   end
   
   if i.type=="castle" then
@@ -1765,6 +1776,8 @@ function update_battle()
   
  end
  
+ lastbcurx=bcurx
+ lastbcury=bcury
  if (btnp(⬅️)) bcurx-=1 sfx(58,-1,1,2)
  if (btnp(➡️)) bcurx+=1 sfx(58,-1,1,2)
  if (btnp(⬆️)) bcury-=1 sfx(58,-1,1,2)
@@ -1872,7 +1885,7 @@ function draw_battle()
 	 if moblist[mobturn]!=nil then 
 		 for spot in all(moves) do
 		  x,y=gxy2sxy(spot[1],spot[2])
-		  circfill(x+5,y+5,2)
+		  circfill(x+5,y+5,1)
 		 end
 	 end
  end
@@ -2157,10 +2170,10 @@ function draw_hud()
  
  --right sidebar: army
  
- --if actl_menu_y>0 then
- -- d_army(sel,128-actl_menu_y,21)
- --end
- d_army(sel,128-10,21)
+ if actl_menu_y>0 then
+  d_army(sel,130-actl_menu_y,21)
+ end
+-- d_army(sel,128-10,21)
  
 
 end
@@ -2169,6 +2182,13 @@ end
 function flashamt()
  if (frame%10<5) return 0
  return 1
+end
+
+--counts from 1 to amt, change every 5 frames
+function flash(amt)
+ for i=1,amt do
+  if (frame%(amt*5)<i*5) return i
+ end
 end
 
 
