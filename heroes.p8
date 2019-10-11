@@ -1578,17 +1578,14 @@ function sort_by_speed(t)
  end
 end
 
-function grid_dist(m1,m2)
+function grid_dist(c,t)
 
- --if m1/2 are mobs objects
- local cx,cy=m1.x,m1.y
- local tx,ty=m2.x,m2.y
- 
--- --if m1/2 are grid pos {x,y}
--- if (cx==nil) cx=m1[1]
--- if (cy==nil) cy=m1[2]
--- if (tx==nil) tx=m2[1]
--- if (ty==nil) ty=m2[2]
+ --saves tokens
+ --(though it's pretty close
+ --(could save here if we can
+ --(simplify the code below)
+ local cx,cy=c.x,c.y
+ local tx,ty=t.x,t.y
  
  count=0
  while cx!=tx do
@@ -1700,6 +1697,7 @@ function init_battle(l_army,mob)
  gw=10
  gh=10
  
+ --token: bake these
  --grid start x/y (margins)
  gsx=(128-10*9)/2
  gsy=(128-10*9)/2
@@ -1723,6 +1721,8 @@ function init_battle(l_army,mob)
 end
 
 
+--token: probably a better way
+-- to generate these
 grid_neighbors_e={
  pt(-1,0),
  pt(-1,1),
@@ -1758,39 +1758,44 @@ end
 function adjacent_enemies(mob)
  local res={}
  
- --first figure out what team this mob is on
- l_side=false
- r_side=false
- if (has(l_mobs,mob)) l_side=true
- if (has(r_mobs,mob)) r_side=true
- if not l_side and not r_side then
-  stop("mob not owned by either army??")
- end
- if l_side and r_side then
-  stop("mob owned by both armies??")
- end
+ --8029
+-- --first figure out what team this mob is on
+-- l_side=false
+-- r_side=false
+-- if (has(l_mobs,mob)) l_side=true
+-- if (has(r_mobs,mob)) r_side=true
+-- 
+-- --token: these are asserts
+-- if not l_side and not r_side then
+--  stop("mob not owned by either army??")
+-- end
+-- if l_side and r_side then
+--  stop("mob owned by both armies??")
+-- end
+-- 
+-- enemy_list=l_mobs
+-- if (l_side) enemy_list=r_mobs
  
+ --7978
  enemy_list=l_mobs
- if (l_side) enemy_list=r_mobs
- 
+ if (has(l_mobs,mob)) enemy_list=r_mobs
  
  
  grid_neighbors=get_neighbors(mob)
  
--- local mx,my=mob.x,mob.y
--- grid_neighbors=grid_neighbors_o
--- if (evencol(mx)) grid_neighbors=grid_neighbors_e
- 
  for n in all(grid_neighbors) do
---  local x,y=mx+n.x,my+n.y
---  local x,y=n[1],n[2]
   
-  --check for obj in spot 
+  --8035
+--  m=mob_at_pos(n)
+--  if m!=nil and has2(enemy_list,m) then
+--   add(res,m)
+--  end
+  
+  --8034
   for m in all(enemy_list) do
    if ptequ(m,n) then
---   if m.x==x and m.y==y then
     add(res,m)
-    break
+    break --token, could remove.. should only be in the list once anyway
    end    
   end
   
@@ -1804,33 +1809,35 @@ function open_neighbors(bx,by)
  local res={}
  
  grid_neighbors=get_neighbors(pt(bx,by))
--- grid_neighbors=grid_neighbors_o
--- if (evencol(bx)) grid_neighbors=grid_neighbors_e
- 
+  
  for n in all(grid_neighbors) do
---  local x,y=bx+n.x,by+n.y
-  local x,y=n.x,n.y
-  if x>=0 and x<9 and
-     y>=0 and y<10
-  then
-   --reject y=9 on even rows
-   if evencol(x) and y==9 then
-   else
-    --check for obj in spot
-    mobalreadythere=false
-    for m in all(moblist) do
- 	   if ptequ(m,n) then
--- 	   if m.x==x and m.y==y then
- 	    mobalreadythere=true
- 	    break
- 	   end    
-    end
-    if not mobalreadythere then
-     add(res,n)
---     add(res,pt(x,y))
-    end
+ 
+  --7950
+  --check point is on grid
+  if has2(grid,n) then
+   --check for obj in spot
+   if not has2(moblist,n) then
+ 	  add(res,n)
    end
   end
+   
+  --7978
+--  local x,y=n.x,n.y
+--  if x>=0 and x<9 and
+--     y>=0 and y<10
+--  then
+--   --reject y=9 on even rows
+--   if evencol(x) and y==9 then
+--   else
+--   
+--    --check for obj in spot
+--    if not has2(moblist,n) then
+-- 	   add(res,n)
+--    end
+--    
+--   end
+--  end
+  
  end
  return res
 end
@@ -1929,32 +1936,28 @@ end
 function mob_at_pos(pos)
  for m in all(moblist) do
   if ptequ(m,pos) then
---  if m.x==pos[1] and 
---     m.y==pos[2] then
    return m
   end
  end
 end
---function pos_in_grid(m,spots)
--- for spot in all(spots) do
---  if m.x==spot[1] 
---  and m.y==spot[2] then
---   return true
+
+
+--token: 
+-- for all these funcs that take
+-- points, check if called more
+-- as x,y or as pt.. 
+-- and change func to that
+function spot_empty(p)
+ --8023
+ return not has2(moblist,p)
+ 
+ --8034
+-- for m in all(moblist) do
+--  if ptequ(m,p) then
+--   return false
 --  end
 -- end
--- return false
---end
-
-
-function spot_empty(p)
- for m in all(moblist) do
-  if ptequ(m,p) then
---  if  m.x==p[1]
---  and m.y==p[2] then
-   return false
-  end
- end
- return true
+-- return true
 end
 
 function next_mob_turn()
@@ -2035,8 +2038,8 @@ function update_battle()
   
  end
  
- lastbcurx=bcurx
- lastbcury=bcury
+-- lastbcurx=bcurx
+-- lastbcury=bcury
  if (btnp(⬅️)) bcurx-=1 sfx(58,-1,1,2)
  if (btnp(➡️)) bcurx+=1 sfx(58,-1,1,2)
  if (btnp(⬆️)) bcury-=1 sfx(58,-1,1,2)
@@ -2092,6 +2095,7 @@ function draw_battle()
   spr(big_mob_sprs[m[1]],sx,sy,1,2)
   
   
+  --token: use flash()
   --highlight active mob
   if m==moblist[mobturn] then
    if frame%15<3 then
@@ -2172,8 +2176,7 @@ function draw_battle()
  
 
 
- --shortcut to skip mob turn
- --print("🅾️",30,120,0)
+ --instructions
  print("🅾️",10,121-flash(2,10),6)
  if display_skip_turn_msg then
   print("skip unit",21,120,6)
