@@ -1183,8 +1183,8 @@ function ineighbors(i)
 end
 
 
-if (pop!=nil) cls() stop("pop in a* already defined")
 
+--token: inline 
 function pop(t)
  local v=t[#t]
  del(t,t[#t])
@@ -1199,10 +1199,10 @@ end
 --also can pass in obj to ignore
 function pathfind(start,goal,obj)
  
- print("pathing from "..
-       start[1]..","..start[2]..
-       " to "..
-       goal[1]..","..goal[2])
+-- print("pathing from "..
+--       start[1]..","..start[2]..
+--       " to "..
+--       goal[1]..","..goal[2])
  
  si=v2i(start)
  gi=v2i(goal)
@@ -1689,9 +1689,6 @@ function init_battle(l_army,mob)
  end
  
 
- --battle cursor
- bcurx=0
- bcury=0
  
  --grid tile w/h (global)
  gw=10
@@ -1717,6 +1714,11 @@ function init_battle(l_army,mob)
  sort_by_speed(moblist)
  
  mobstep=0
+ 
+ 
+ --battle cursor
+ bcurx=moblist[1].x
+ bcury=moblist[1].y
  
 end
 
@@ -1848,26 +1850,23 @@ end
 
 function mob_move(m,p)
 
--- dist=grid_dist(m,p)
--- while dist>0 do
-----  grid_neighbors=grid_neighbors_o
-----  if (evencol(m.x)) grid_neighbors=grid_neighbors_e
+ dist=grid_dist(m,p)
+ while dist>0 do
 --  grid_neighbors=get_neighbors(m)
--- 
---  for n in all(grid_neighbors) do
-----   local x,y=m.x+n[1],m.y+n[2]
-----   local x,y=n[1],n[2]
---   if grid_dist(n,p)<dist then
---    m.x,m.y=n[1],n[2]
---    wait(10)
---   end
---  end
---  
---  dist=grid_dist(m,p)
--- end
+  grid_neighbors=open_neighbors(m.x,m.y)
+ 
+  for n in all(grid_neighbors) do
+   if grid_dist(n,p)<dist then
+    m.x,m.y=n.x,n.y
+    wait(10)
+   end
+  end
+  
+  dist=grid_dist(m,p)
+ end
 
- m.x=p.x
- m.y=p.y
+-- m.x=p.x
+-- m.y=p.y
 end
 
 function mob_die(mob)
