@@ -155,7 +155,7 @@ end
 
 
 function create_player(c)
- res={}
+ local res={}
  res["color"]=c
  res["gold"]=200
  res["wood"]=10
@@ -457,6 +457,28 @@ end
 --util 
 
 
+--8206
+function ptequ(a,b)
+ return a.x==b.x and a.y==b.y
+end
+
+function pt(x,y)
+ local res={}
+ res.x=x
+ res.y=y
+ return res
+end
+
+function wait(ticks)
+ while ticks>0 do
+  ticks-=1
+  draw_battle()
+  flip()
+ end
+end
+
+
+
 function indexof(t,n)
  for k,v in pairs(t) do
   if (v==n) return k
@@ -531,22 +553,15 @@ end
 
 
 --simple expansion over has()
---that allows for vector elements
+--that allows for pts
 function has2(arr, val)
  if type(arr)=='table' then
   for i=1,#arr do
    if (arr[i]==val) return true
    
-   --include case of {x,y} type
-   --elements in the list
-   local x1=arr[i][1]
-   local y1=arr[i][2]
-   local x2=val[1]
-   local y2=val[2]
-   if x1!=nil and y1!=nil and
-      x2!=nil and y2!=nil 
-   then
-    if (x1==x2 and y1==y2) return true
+   --check pts
+   if ptequ(arr[i],val) then
+    return true
    end
    
   end
@@ -654,7 +669,7 @@ function objzones(obj)
  if (obj==nil) return {}
  local x,y=obj.x,obj.y
  local i=xy2i(x,y)
- res={}
+ local res={}
  local lz=i2zone[iaddxy(i,-1,0)]
  local rz=i2zone[iaddxy(i,1,0)]
  local uz=i2zone[iaddxy(i,0,-1)]
@@ -888,7 +903,7 @@ end
 things={}
 
 function spawn(name,tx,ty)
- res={}
+ local res={}
  at=archetypes[name]
  for k,v in pairs(at) do
   res[k]=v
@@ -966,8 +981,9 @@ function draw_things()
   if i.type=="hero" then
   
   	--flash border of selected
-   if sel.x==i.x and 
-      sel.y==i.y then
+--   if sel.x==i.x and 
+--      sel.y==i.y then
+   if ptequ(sel,i) then
     flashcols={1,1,1,13,12,13}
     pal(1,flashcols[flash(#flashcols)])
    end
@@ -1540,8 +1556,8 @@ mob_hps={
 grid={}
 for x=0,8 do 
  for y=0,8 do
-  add(grid,{x,y})
-  if (x%2==1) add(grid,{x,y+1})
+  add(grid,pt(x,y))
+  if (x%2==1) add(grid,pt(x,y+1))
  end
 end
 
@@ -1565,11 +1581,11 @@ function grid_dist(m1,m2)
  local cx,cy=m1.x,m1.y
  local tx,ty=m2.x,m2.y
  
- --if m1/2 are grid pos {x,y}
- if (cx==nil) cx=m1[1]
- if (cy==nil) cy=m1[2]
- if (tx==nil) tx=m2[1]
- if (ty==nil) ty=m2[2]
+-- --if m1/2 are grid pos {x,y}
+-- if (cx==nil) cx=m1[1]
+-- if (cy==nil) cy=m1[2]
+-- if (tx==nil) tx=m2[1]
+-- if (ty==nil) ty=m2[2]
  
  count=0
  while cx!=tx do
@@ -1580,11 +1596,11 @@ function grid_dist(m1,m2)
    cx-=1
   end
   --moving down
-  if cy<ty and cx%2==1 then
+  if cy<ty and not evencol(cx) then
    cy+=1
   end
   --moving up
-  if cy>ty and cx%2==0 then
+  if cy>ty and evencol(cx) then
    cy-=1
   end
  end
@@ -1592,14 +1608,6 @@ function grid_dist(m1,m2)
 end
 
 
-function valid_attacks(mob)
- enemies=adjacent_enemies(mob)
- res={}
- for enem in all(enemies) do
-  add(res,{enem.x,enem.y})
- end
- return res
-end
 
 function valid_moves(mob)
  result={}
@@ -1634,6 +1642,10 @@ function init_battle(l_army,mob)
 
  --2 part turns: move, attack
  attack_portion=false
+
+ 
+ corpses={}
+ 
  
  --setup armies
  
@@ -1709,25 +1721,39 @@ end
 
 
 grid_neighbors_e={
- {-1,0},
- {-1,1},
- {0,-1},
- {0,1},
- {1,0},
- {1,1},
+ pt(-1,0),
+ pt(-1,1),
+ pt(0,-1),
+ pt(0,1),
+ pt(1,0),
+ pt(1,1),
 }
 grid_neighbors_o={
- {-1,-1},
- {-1,0},
- {0,-1},
- {0,1},
- {1,-1},
- {1,0},
+ pt(-1,-1),
+ pt(-1,0),
+ pt(0,-1),
+ pt(0,1),
+ pt(1,-1),
+ pt(1,0),
 }
 
 
+--8206
+--function get_neighbors(morp)
+-- local x=morp.x or morp[1]
+-- local y=morp.y or morp[2]
+-- grid_neighbors=grid_neighbors_o
+-- if (evencol(x)) grid_neighbors=grid_neighbors_e
+-- res=copy(grid_neighbors)
+-- for n in all(res) do
+--  n[1]+=x
+--  n[2]+=y
+-- end
+-- return res
+--end
+
 function adjacent_enemies(mob)
- res={}
+ local res={}
  
  --first figure out what team this mob is on
  l_side=false
@@ -1746,63 +1772,57 @@ function adjacent_enemies(mob)
  
  
  local mx,my=mob.x,mob.y
-  
+ 
+-- grid_neighbors=get_neighbors(mob)
  grid_neighbors=grid_neighbors_o
- if (mx%2==0) grid_neighbors=grid_neighbors_e
+ if (evencol(mx)) grid_neighbors=grid_neighbors_e
  
  for n in all(grid_neighbors) do
-  local x,y=mx+n[1],my+n[2]
+  local x,y=mx+n.x,my+n.y
+--  local x,y=n[1],n[2]
   
-  --no need to check bounds here
---  if x>=0 and x<9 and
---     y>=0 and y<10
---  then
---   --reject y=9 on even rows
---   if x%2==0 and y==9 then
---   else
-
-  --check for obj in spot    
---  enemythere=false
+  --check for obj in spot 
   for m in all(enemy_list) do
+--   if ptequ(m,n) then
    if m.x==x and m.y==y then
     add(res,m)
     break
    end    
   end
-    
---  if enemythere then
---   add(res,{x,y})
---  end
---  end
---  end
+  
  end
  return res
 end
 
+
+
 function open_neighbors(bx,by)
- res={}
+ local res={}
  
+-- grid_neighbors=get_neighbors({bx,by})
  grid_neighbors=grid_neighbors_o
- if (bx%2==0) grid_neighbors=grid_neighbors_e
+ if (evencol(bx)) grid_neighbors=grid_neighbors_e
  
  for n in all(grid_neighbors) do
-  local x,y=bx+n[1],by+n[2]
+  local x,y=bx+n.x,by+n.y
+--  local x,y=n[1],n[2]
   if x>=0 and x<9 and
      y>=0 and y<10
   then
    --reject y=9 on even rows
-   if x%2==0 and y==9 then
+   if evencol(x) and y==9 then
    else
     --check for obj in spot
     mobalreadythere=false
     for m in all(moblist) do
+-- 	   if ptequ(m,n) then
  	   if m.x==x and m.y==y then
  	    mobalreadythere=true
  	    break
  	   end    
     end
     if not mobalreadythere then
-     add(res,{x,y})
+     add(res,pt(x,y))
     end
    end
   end
@@ -1810,15 +1830,43 @@ function open_neighbors(bx,by)
  return res
 end
 
+function evencol(x)
+ return x%2==0
+end
 
-function mob_move(mob,pos)
- mob.x=pos[1]
- mob.y=pos[2]
+function mob_move(m,p)
+
+-- dist=grid_dist(m,p)
+-- while dist>0 do
+----  grid_neighbors=grid_neighbors_o
+----  if (evencol(m.x)) grid_neighbors=grid_neighbors_e
+--  grid_neighbors=get_neighbors(m)
+-- 
+--  for n in all(grid_neighbors) do
+----   local x,y=m.x+n[1],m.y+n[2]
+----   local x,y=n[1],n[2]
+--   if grid_dist(n,p)<dist then
+--    m.x,m.y=n[1],n[2]
+--    wait(10)
+--   end
+--  end
+--  
+--  dist=grid_dist(m,p)
+-- end
+
+ m.x=p.x
+ m.y=p.y
 end
 
 function mob_die(mob)
  die_anim=30
  anim_death=mob
+ 
+ all(corpses,mob)
+ 
+ del(l_mobs,mob)
+ del(r_mobs,mob)
+ del(moblist,mob)
 end
 
 function mob_attack(mob,pos)
@@ -1856,8 +1904,8 @@ function ai_path_mob(mob)
   moves=open_neighbors(mobx,moby)
   
 	 mi=rnd_bw(1,#moves)
-	 newx,newy=moves[mi][1],moves[mi][2]
-  add(mobpath,{newx,newy})
+	 newx,newy=moves[mi].x,moves[mi].y
+  add(mobpath,pt(newx,newy))
   mobx,moby=newx,newy
 	 
  end
@@ -1875,8 +1923,9 @@ end
 
 function mob_at_pos(pos)
  for m in all(moblist) do
-  if m.x==pos[1] and 
-     m.y==pos[2] then
+  if ptequ(m,pos) then
+--  if m.x==pos[1] and 
+--     m.y==pos[2] then
    return m
   end
  end
@@ -1894,8 +1943,9 @@ end
 
 function spot_empty(p)
  for m in all(moblist) do
-  if  m.x==p[1]
-  and m.y==p[2] then
+  if ptequ(m,p) then
+--  if  m.x==p[1]
+--  and m.y==p[2] then
    return false
   end
  end
@@ -1919,7 +1969,7 @@ function update_battle()
  
  activemob=moblist[mobturn]
  
- attacks=valid_attacks(activemob)
+ attacks=adjacent_enemies(activemob)
  moves=valid_moves(activemob) 
 
  options=moves
@@ -1928,31 +1978,31 @@ function update_battle()
  if is_player_mob_turn() then
   
   if btnp(❎) then
-   if has2(options,{bcurx,bcury}) then
+   if has2(options,pt(bcurx,bcury)) then
     if not attack_portion then
-	    mob_move(activemob,{bcurx,bcury})
+	    mob_move(activemob,pt(bcurx,bcury))
      attack_portion=true
  
      --todo: move this check to mob_move?
  		  --skip attack portion if impossible    
-			  attacks=valid_attacks(activemob)
+			  attacks=adjacent_enemies(activemob)
 			  if #attacks==0 then
  			  next_mob_turn()
 			  end
  
     else
-     mob_attack(activemob,{bcurx,bcury})
+     mob_attack(activemob,pt(bcurx,bcury))
  			 next_mob_turn()
 	   end
    end
    
   elseif btnp(🅾️) then
-   if spot_empty({bcurx,bcury}) then
+   if spot_empty(pt(bcurx,bcury)) then
  	  next_mob_turn()
 	  end
 	 end
 	 
-	 if spot_empty({bcurx,bcury}) then
+	 if spot_empty(pt(bcurx,bcury)) then
    display_skip_turn_msg=true
 	 else
 	  display_skip_turn_msg=false
@@ -2013,7 +2063,7 @@ function draw_battle()
  local by=gsy
  
  for spot in all(grid) do
-  x,y=gxy2sxy(spot[1],spot[2])
+  x,y=gxy2sxy(spot.x,spot.y)
   rect2({x,y,w+1,h+1},11)
  end
  
@@ -2107,7 +2157,7 @@ function draw_battle()
  rect2({sx-ex,sy-ex,cw,ch},c)
  
  --draw cursor symbol
- if has2(options,{bcurx,bcury}) then
+ if has2(options,pt(bcurx,bcury)) then
   if attack_portion then
    spr(43,sx+2,sy+2)
   else
@@ -2124,7 +2174,7 @@ function draw_battle()
   print("skip unit",21,120,6)
  else
   print("view unit",21,120,6)
-  hl=mob_at_pos({bcurx,bcury})
+  hl=mob_at_pos(pt(bcurx,bcury))
   if hl!=nil then
    print(hl.damage,21,112,7)
   end
@@ -2143,7 +2193,7 @@ function draw_battle()
  if is_player_mob_turn() then
 	 if activemob!=nil then
 		 for spot in all(options) do
-		  x,y=gxy2sxy(spot[1],spot[2])
+		  x,y=gxy2sxy(spot.x,spot.y)
 		  circfill(x+5,y+5,1,6)
 		 end
 	 end
@@ -2161,19 +2211,20 @@ function draw_battle()
  
  --debug draw cursor coords
  if moblist[mobturn]!=nil then
-  val=grid_dist(moblist[mobturn],{bcurx,bcury})
+  val=grid_dist(moblist[mobturn],pt(bcurx,bcury))
   cursor()
   color()
   print(bcurx..","..bcury)
   print(val)
  end
  
-	
+
+ 	
 end
 
 --grid to screen
 function gxy2sxy(x,y)
- if (x%2==0) return gsx+x*gw,gsy+y*gh
+ if (evencol(x)) return gsx+x*gw,gsy+y*gh
  return gsx+x*gw,gsy+y*gh-gh/2
 end
 -->8
