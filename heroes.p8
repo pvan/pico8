@@ -1520,37 +1520,67 @@ function sort_by_speed(t)
  end
 end
 
-function grid_dist(m1,m2)
- local x1,y1=m1.x,m1.y
- local x2,y2=m2.x,m2.y
- if (x1==nil) x1=m1[1]
- if (y1==nil) y1=m1[2]
- if (x2==nil) x2=m2[1]
- if (y2==nil) y2=m2[2]
- local dx=abs(x1-x2)
- local dy=abs(y1-y2)
- if (dx==0) return dy
- local res=0
- while dx>0 do
-  dx-=1
-  res+=1
-  --on odd cols, moving down free
-  --on even, moving up is free
-  if y2<y1 and (x1+res)%2==0 then
-   dy-=1
+function grid_dist2(m1,m2)
+
+ local cx,cy=m1.x,m1.y
+ local tx,ty=m2.x,m2.y
+ if (cx==nil) cx=m1[1]
+ if (cy==nil) cy=m1[2]
+ if (tx==nil) tx=m2[1]
+ if (ty==nil) ty=m2[2]
+ 
+ count=0
+ while cx!=tx do
+  count+=1
+  if cx<tx then
+   cx+=1
+  else
+   cx-=1
   end
-  if y1<y2 and (x1+res)%2==1 then
-   dy-=1
+  --moving down
+  if cy<ty and cx%2==1 then
+   cy+=1
+  end
+  --moving up
+  if cy>ty and cx%2==0 then
+   cy-=1
   end
  end
- return res+dy
+ return count+abs(ty-cy)
 end
+
+--old method, had bug
+--function grid_dist(m1,m2)
+-- local x1,y1=m1.x,m1.y
+-- local x2,y2=m2.x,m2.y
+-- if (x1==nil) x1=m1[1]
+-- if (y1==nil) y1=m1[2]
+-- if (x2==nil) x2=m2[1]
+-- if (y2==nil) y2=m2[2]
+-- local dx=abs(x1-x2)
+-- local dy=abs(y1-y2)
+-- if (dx==0) return dy
+-- local res=0
+-- while dx>0 do
+--  dx-=1
+--  res+=1
+--  --on odd cols, moving down free
+--  --on even, moving up is free
+--  if y2<y1 and (x1+res)%2==0 then
+--   dy-=1
+--  end
+--  if y1<y2 and (x1+res)%2==1 then
+--   dy-=1
+--  end
+-- end
+-- return res+dy
+--end
 
 function valid_moves(mob)
  result={}
  speed=mob_speeds[mob[1]]
  for spot in all(grid) do
-  if grid_dist(spot,mob)<speed then
+  if grid_dist2(spot,mob)<speed then
    add(result,spot)
   end
  end
@@ -1746,7 +1776,7 @@ function update_battle()
   --if griddist(activemob,bcurx,bcury)
   
   if btnp(❎) then
-   if grid_dist(activemob,{bcurx,bcury})
+   if grid_dist2(activemob,{bcurx,bcury})
       < mob_speeds[activemob[1]]
    then
     mob_move(activemob,{bcurx,bcury})
@@ -1891,7 +1921,7 @@ function draw_battle()
  end
  
  if moblist[mobturn]!=nil then
-  val=grid_dist(moblist[mobturn],{bcurx,bcury})
+  val=grid_dist2(moblist[mobturn],{bcurx,bcury})
   cursor()
   color()
   print(bcurx..","..bcury)
