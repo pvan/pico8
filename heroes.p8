@@ -1773,16 +1773,28 @@ function update_battle()
 
  if is_player_mob_turn() then
   
-  --if griddist(activemob,bcurx,bcury)
-  
-  if btnp(❎) then
-   if grid_dist2(activemob,{bcurx,bcury})
-      < mob_speeds[activemob[1]]
-   then
-    mob_move(activemob,{bcurx,bcury})
-    mobturn+=1
-   end
+  --is cursor on empty spot
+  spot_open=true
+  for m in all(moblist) do
+   if (m.x==bcurx and m.y==bcury) spot_open=false
   end
+    
+  if spot_open then
+	  if btnp(❎) then
+	   if grid_dist2(activemob,{bcurx,bcury})
+	      < mob_speeds[activemob[1]]
+	   then
+	    mob_move(activemob,{bcurx,bcury})
+	    mobturn+=1
+	   end
+	  elseif btnp(🅾️) then
+	   mobturn+=1
+	  else
+	   display_skip_turn_msg=true
+	  end
+	 else
+	  display_skip_turn_msg=false
+	 end
   
  else
  
@@ -1911,6 +1923,21 @@ function draw_battle()
 -- if (frame%10<5) c=10 ex=1 cw+=2 ch+=2
  rect2({sx-ex,sy-ex,cw,ch},c)
 
+
+ --shortcut to skip mob turn
+ --print("🅾️",30,120,0)
+ print("🅾️",10,121-flash(2,10),6)
+ if display_skip_turn_msg then
+  print("skip unit",21,120,6)
+ else
+  print("view unit",21,120,6)
+ end
+ 
+ print("❎",70,121-flash(2,10),6)
+ print("move here",81,120,6)
+ 
+
+ --draw debug valid move spots
  if is_player_mob_turn() then
 	 if moblist[mobturn]!=nil then 
 		 for spot in all(moves) do
@@ -1920,6 +1947,8 @@ function draw_battle()
 	 end
  end
  
+ 
+ --debug draw cursor coords
  if moblist[mobturn]!=nil then
   val=grid_dist2(moblist[mobturn],{bcurx,bcury})
   cursor()
@@ -2210,14 +2239,15 @@ end
 
 
 function flashamt()
- if (frame%10<5) return 0
- return 1
+-- if (frame%10<5) return 0
+ return flash(2,5)-1
 end
 
---counts from 1 to amt, change every 5 frames
-function flash(amt)
+--counts from 1 to amt, change every f frames
+function flash(amt,f)
+ f = f or 5 --default value
  for i=1,amt do
-  if (frame%(amt*5)<i*5) return i
+  if (frame%(amt*f)<i*f) return i
  end
 end
 
