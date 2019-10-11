@@ -10,6 +10,7 @@ __lua__
 --battle move dist is f'd
 --dont spawn items on mobs?
 --when selecting castle, popup text is for last cur pos
+--allow attack during move phase (eg starting next to mob)
 
 
 --notes:
@@ -457,7 +458,9 @@ end
 --util 
 
 
---8206
+--function ptinc(a,b)
+-- return pt(a.x+b.x,a.y+b.y)
+--end
 function ptequ(a,b)
  return a.x==b.x and a.y==b.y
 end
@@ -1738,19 +1741,19 @@ grid_neighbors_o={
 }
 
 
---8206
---function get_neighbors(morp)
--- local x=morp.x or morp[1]
--- local y=morp.y or morp[2]
--- grid_neighbors=grid_neighbors_o
--- if (evencol(x)) grid_neighbors=grid_neighbors_e
--- res=copy(grid_neighbors)
--- for n in all(res) do
---  n[1]+=x
---  n[2]+=y
--- end
--- return res
---end
+--8055 8051 
+--saved a whole 4.. 
+function get_neighbors(p)
+ grid_neighbors=grid_neighbors_o
+ if (evencol(p.x)) grid_neighbors=grid_neighbors_e
+ local res=copy(grid_neighbors)
+ for n in all(res) do
+--  ptinc(n,p)
+  n.x+=p.x
+  n.y+=p.y
+ end
+ return res
+end
 
 function adjacent_enemies(mob)
  local res={}
@@ -1771,20 +1774,21 @@ function adjacent_enemies(mob)
  if (l_side) enemy_list=r_mobs
  
  
- local mx,my=mob.x,mob.y
  
--- grid_neighbors=get_neighbors(mob)
- grid_neighbors=grid_neighbors_o
- if (evencol(mx)) grid_neighbors=grid_neighbors_e
+ grid_neighbors=get_neighbors(mob)
+ 
+-- local mx,my=mob.x,mob.y
+-- grid_neighbors=grid_neighbors_o
+-- if (evencol(mx)) grid_neighbors=grid_neighbors_e
  
  for n in all(grid_neighbors) do
-  local x,y=mx+n.x,my+n.y
+--  local x,y=mx+n.x,my+n.y
 --  local x,y=n[1],n[2]
   
   --check for obj in spot 
   for m in all(enemy_list) do
---   if ptequ(m,n) then
-   if m.x==x and m.y==y then
+   if ptequ(m,n) then
+--   if m.x==x and m.y==y then
     add(res,m)
     break
    end    
@@ -1799,13 +1803,13 @@ end
 function open_neighbors(bx,by)
  local res={}
  
--- grid_neighbors=get_neighbors({bx,by})
- grid_neighbors=grid_neighbors_o
- if (evencol(bx)) grid_neighbors=grid_neighbors_e
+ grid_neighbors=get_neighbors(pt(bx,by))
+-- grid_neighbors=grid_neighbors_o
+-- if (evencol(bx)) grid_neighbors=grid_neighbors_e
  
  for n in all(grid_neighbors) do
-  local x,y=bx+n.x,by+n.y
---  local x,y=n[1],n[2]
+--  local x,y=bx+n.x,by+n.y
+  local x,y=n.x,n.y
   if x>=0 and x<9 and
      y>=0 and y<10
   then
@@ -1815,14 +1819,15 @@ function open_neighbors(bx,by)
     --check for obj in spot
     mobalreadythere=false
     for m in all(moblist) do
--- 	   if ptequ(m,n) then
- 	   if m.x==x and m.y==y then
+ 	   if ptequ(m,n) then
+-- 	   if m.x==x and m.y==y then
  	    mobalreadythere=true
  	    break
  	   end    
     end
     if not mobalreadythere then
-     add(res,pt(x,y))
+     add(res,n)
+--     add(res,pt(x,y))
     end
    end
   end
