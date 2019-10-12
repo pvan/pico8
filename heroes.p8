@@ -2,15 +2,14 @@ pico-8 cartridge // http://www.pico-8.com
 version 18
 __lua__
 
-
 --todo:
 --walking thru open mob
 --sorting castles/etc (move pos to lowest point, eg -x,-y col)
 --item in front of castle blocks hero
---battle move dist is f'd
 --dont spawn items on mobs?
 --when selecting castle, popup text is for last cur pos
 --allow attack during move phase (eg starting next to mob)
+--use a* for battle? current algo hangs if obstacle in way
 
 
 --notes:
@@ -30,15 +29,7 @@ __lua__
 camx=0
 camy=0
 
-mvx=-100
-mvy=-100
 
-colorstrings={
- [8]="red",
- [10]="yellow",
- [11]="green",
- [12]="blue",
-}
 function set_player(p)
  cp=p
  if cp.heroes[1]!=nil then
@@ -81,6 +72,10 @@ end
 
 function _init()
 -- music(0)
+
+ init_data()
+ init_cursor()
+
  
  blackout=true
  
@@ -161,10 +156,10 @@ function create_player(c)
  res["gold"]=200
  res["wood"]=10
  res["ore"]=10
- res["gems"]=45
- res["sulfur"]=88
- res["mercury"]=99
- res["crystal"]=24
+ res["gems"]=5
+ res["sulfur"]=5
+ res["mercury"]=5
+ res["crystal"]=5
  
  res["heroes"]={}
  res["castles"]={}
@@ -179,15 +174,7 @@ function battle(army,mob)
  init_battle(army,mob)
 end
 
-resources={
- "gold",
- "wood",
- "ore",
- "gems",
- "sulfur",
- "mercury",
- "crystal",
-}
+
 function pickup(obj)
  --should only get here 
  --with type==treasure
@@ -414,15 +401,24 @@ function _draw()
 	 
 	 
 	 if blackout then
- 	 cls()
- 	 for x=1,128 do
-  	 for y=1,128 do
-  	  srand(x+1001*y)
-  	  if rnd(100)<1 then
-  	   pset(x,y,6)
-  	  end
-  	 end
+ 	 
+-- 	 --7943
+ 	 for x=0,15 do
+ 	  for y=0,15 do
+ 	   spr(121,x*8,y*8) 
+ 	  end 
  	 end
+ 	 
+ 	 --7955
+-- 	 cls()
+-- 	 for x=1,128 do
+--  	 for y=1,128 do
+--  	  srand(x+1001*y)
+--  	  if rnd(100)<1 then
+--  	   pset(x,y,6)
+--  	  end
+--  	 end
+-- 	 end
 	 end
 	 
 	 draw_dialog()
@@ -700,10 +696,10 @@ end
 --reverse lookups
 --maps tile xy to obj,col,hot,etc
 function init_i2xxx()
-i2obj={}
-i2col={}    --all collisions
-i2hot={}    --building activation points
-i2danger={} --mob attack squares
+	i2obj={}
+	i2col={}    --all collisions
+	i2hot={}    --building activation points
+	i2danger={} --mob attack squares
 end
 function create_i2tile()
  init_i2xxx()
@@ -800,95 +796,6 @@ function tile_is_solid(x,y)
  return false
 end
 
-
-
-// note activation spot (hot)
-// is relative to the x,y pos
-// not the collider (col) pos
-archetypes={
- ["castle"]={
-  ["type"]="castle",
-  ["select"]=true,
-  ["port"]=202,
-  ["spr"]=137,
-  ["sprx"]=0,
-  ["spry"]=0,
-  ["sprw"]=5,
-  ["sprh"]=4,
-  ["col"]={0,1,5,3},
-  ["hot"]={2,3},
- },
- ["hero"]={
-  ["type"]="hero",
-  ["select"]=true,
-  ["port"]=201,
-  ["spr"]=66,
-  ["sprx"]=-4,
-  ["spry"]=-4,
-  ["sprw"]=2,
-  ["sprh"]=2,
-  ["col"]={0,0,1,1},
-  ["hot"]={-100,-100},
-  ["move"]=100,
-  ["army"]={
-   {"calavry",20},
-   {"elves",40},
-   {"peasants",250}
-  },
- },
- ["testhouse"]={
-  ["type"]="testhouse",
-  ["spr"]=142,
-  ["sprx"]=0,
-  ["spry"]=0,
-  ["sprw"]=2,
-  ["sprh"]=2,
-  ["col"]={0,0,2,2},
-  ["hot"]={1,1},
- },
- ["mob"]={
-  ["type"]="mob",
-  ["spr"]=194,
-  ["sprx"]=0,
-  ["spry"]=0,
-  ["sprw"]=1,
-  ["sprh"]=1,
-  ["col"]={-1,-1,3,3},
-  ["hot"]={0,0},
-  ["group"]={"goblins",40}
- },
- ["mob2"]={
-  ["type"]="mob",
-  ["spr"]=210,
-  ["sprx"]=0,
-  ["spry"]=0,
-  ["sprw"]=1,
-  ["sprh"]=1,
-  ["col"]={-1,-1,3,3},
-  ["hot"]={0,0},
-  ["group"]={"skeletons",15}
- },
- ["gold"]={
-  ["type"]="treasure",
-  ["subtype"]="gold",
-  ["amount"]=rnd_bw(1,4)*50,
-  ["spr"]=242,
-  ["sprx"]=0,
-  ["spry"]=0,
-  ["sprw"]=1,
-  ["sprh"]=1,
-  ["col"]={0,0,1,1},
-  ["hot"]={0,0},
- },
-}
-
---dup some similar archetypes
-for r in all(resources) do
- if r!="gold" then
-  archetypes[r]=copy(archetypes.gold)
-  archetypes[r].subtype=r
- end
-end
 
 
 
@@ -1370,20 +1277,12 @@ function selat(x,y)
 end
 
 
-curx=64
-cury=64
-curanim=0
---cur sprites
-cur_sprs={
- ["castle"]=145,
- ["hero"]=161,
- ["arrow"]=208,
- ["horse"]=177,
- ["hot"]=192,
- ["trade"]=224,
- ["attack"]=240,
-}
-cur_spr=cur_sprs.arrow --updated each frame
+function init_cursor()
+	curx=64
+	cury=64
+	curanim=0
+	cur_spr=cur_sprs.arrow --updated each frame
+end
 
 function update_move_cursor()
  local tx,ty=flr(curx/8),flr(cury/8)
@@ -1526,34 +1425,6 @@ end
 --battle
 
 
-
-big_mob_sprs={
- ["goblins"]=34,
- ["skeletons"]=1,
- ["peasants"]=33,
- ["elves"]=2,
-}
-
-mob_speeds={
- ["goblins"]=4,
- ["skeletons"]=4,
- ["peasants"]=2,
- ["elves"]=5,
-}
-
-mob_attacks={
- ["goblins"]=4,
- ["skeletons"]=4,
- ["peasants"]=2,
- ["elves"]=5,
-}
-
-mob_hps={
- ["goblins"]=4,
- ["skeletons"]=6,
- ["peasants"]=1,
- ["elves"]=7,
-}
 
 
 grid={}
@@ -1722,25 +1593,6 @@ function init_battle(l_army,mob)
  
 end
 
-
---token: probably a better way
--- to generate these
-grid_neighbors_e={
- pt(-1,0),
- pt(-1,1),
- pt(0,-1),
- pt(0,1),
- pt(1,0),
- pt(1,1),
-}
-grid_neighbors_o={
- pt(-1,-1),
- pt(-1,0),
- pt(0,-1),
- pt(0,1),
- pt(1,-1),
- pt(1,0),
-}
 
 
 --8055 8051 
@@ -2521,34 +2373,6 @@ function flash(amt,f)
 end
 
 
---menu buttons 
-buttons={
- "map",
- "dig",
- "spell",
- "end turn",
-}
-menusel=4
-
-
-res_names={
- "gold",
- "wood",
- "ore",
- "sulfur",
- "crystal",
- "gems",
- "mercury",
-}
-res_sprs={
- 242,
- 195,
- 211,
- 227,
- 243,
- 196,
- 212,
-}
 function res_spr(n)
  return res_sprs[
   indexof(res_names,n)]
@@ -2570,25 +2394,26 @@ end
 
 
 function vague_number(amt)
- if (amt<5) return "a few"
- if (amt<10) return "several"
- if (amt<20) return "a pack of"
- if (amt<50) return "lots of"
- if (amt<100) return "a horde of"
- if (amt<250) return "a throng of"
- if (amt<500) return "a swarm of"
- if (amt<1000) return "zounds... "
+ --7936 (inc data)
+ for i=1,8 do
+  if amt<group_numbers[i] then
+   return group_names[i]
+  end
+ end
  return "a legion of"
+
+ --7953
+-- if (amt<5) return "a few"
+-- if (amt<10) return "several"
+-- if (amt<20) return "a pack of"
+-- if (amt<50) return "lots of"
+-- if (amt<100) return "a horde of"
+-- if (amt<250) return "a throng of"
+-- if (amt<500) return "a swarm of"
+-- if (amt<1000) return "zounds... "
+-- return "a legion of"
 end
 
-
-mob_sprs={
- ["goblins"]=194,
- ["skeletons"]=210,
- ["calavry"]=197,
- ["elves"]=213,
- ["peasants"]=229,
-}
 
 function d_port(p,x,y)
  
@@ -2659,6 +2484,240 @@ function draw_h_army(arm,cx,y)
  end
 end
 
+-->8
+--data
+
+
+function init_data()
+
+	
+	group_numbers={
+	 5,10,20,50,100,250,500,1000
+	}
+	group_names={
+		"a few",
+		"several",
+		"a pack of",
+		"lots of",
+		"a horde of",
+		"a throng of",
+		"a swarm of",
+		"zounds... ",
+	}
+
+	mob_sprs={
+	 ["goblins"]=194,
+	 ["skeletons"]=210,
+	 ["calavry"]=197,
+	 ["elves"]=213,
+	 ["peasants"]=229,
+	}
+
+ --menu
+ 
+	--menu buttons 
+	buttons={
+	 "map",
+	 "dig",
+	 "spell",
+	 "end turn",
+	}
+	menusel=4
+	
+	
+	res_names={
+	 "gold",
+	 "wood",
+	 "ore",
+	 "sulfur",
+	 "crystal",
+	 "gems",
+	 "mercury",
+	}
+	res_sprs={
+	 242,
+	 195,
+	 211,
+	 227,
+	 243,
+	 196,
+	 212,
+	}
+
+	--token: probably a better way
+	-- to generate these
+	grid_neighbors_e={
+	 pt(-1,0),
+	 pt(-1,1),
+	 pt(0,-1),
+	 pt(0,1),
+	 pt(1,0),
+	 pt(1,1),
+	}
+	grid_neighbors_o={
+	 pt(-1,-1),
+	 pt(-1,0),
+	 pt(0,-1),
+	 pt(0,1),
+	 pt(1,-1),
+	 pt(1,0),
+	}
+
+
+
+	--cur sprites
+	cur_sprs={
+	 ["castle"]=145,
+	 ["hero"]=161,
+	 ["arrow"]=208,
+	 ["horse"]=177,
+	 ["hot"]=192,
+	 ["trade"]=224,
+	 ["attack"]=240,
+	}
+	
+	--mob stats
+	
+	big_mob_sprs={
+	 ["goblins"]=34,
+	 ["skeletons"]=1,
+	 ["peasants"]=33,
+	 ["elves"]=2,
+	}
+	
+	mob_speeds={
+	 ["goblins"]=4,
+	 ["skeletons"]=4,
+	 ["peasants"]=2,
+	 ["elves"]=5,
+	}
+	
+	mob_attacks={
+	 ["goblins"]=4,
+	 ["skeletons"]=4,
+	 ["peasants"]=2,
+	 ["elves"]=5,
+	}
+	
+	mob_hps={
+	 ["goblins"]=4,
+	 ["skeletons"]=6,
+	 ["peasants"]=1,
+	 ["elves"]=7,
+	}
+
+
+ --other
+	
+	resources={
+	 "gold",
+	 "wood",
+	 "ore",
+	 "gems",
+	 "sulfur",
+	 "mercury",
+	 "crystal",
+	}
+	
+	
+	colorstrings={
+	 [8]="red",
+	 [10]="yellow",
+	 [11]="green",
+	 [12]="blue",
+	}
+	
+	// note activation spot (hot)
+	// is relative to the x,y pos
+	// not the collider (col) pos
+	archetypes={
+	 ["castle"]={
+	  ["type"]="castle",
+	  ["select"]=true,
+	  ["port"]=202,
+	  ["spr"]=137,
+	  ["sprx"]=0,
+	  ["spry"]=0,
+	  ["sprw"]=5,
+	  ["sprh"]=4,
+	  ["col"]={0,1,5,3},
+	  ["hot"]={2,3},
+	 },
+	 ["hero"]={
+	  ["type"]="hero",
+	  ["select"]=true,
+	  ["port"]=201,
+	  ["spr"]=66,
+	  ["sprx"]=-4,
+	  ["spry"]=-4,
+	  ["sprw"]=2,
+	  ["sprh"]=2,
+	  ["col"]={0,0,1,1},
+	  ["hot"]={-100,-100},
+	  ["move"]=100,
+	  ["army"]={
+	   {"calavry",20},
+	   {"elves",40},
+	   {"peasants",250}
+	  },
+	 },
+	 ["testhouse"]={
+	  ["type"]="testhouse",
+	  ["spr"]=142,
+	  ["sprx"]=0,
+	  ["spry"]=0,
+	  ["sprw"]=2,
+	  ["sprh"]=2,
+	  ["col"]={0,0,2,2},
+	  ["hot"]={1,1},
+	 },
+	 ["mob"]={
+	  ["type"]="mob",
+	  ["spr"]=194,
+	  ["sprx"]=0,
+	  ["spry"]=0,
+	  ["sprw"]=1,
+	  ["sprh"]=1,
+	  ["col"]={-1,-1,3,3},
+	  ["hot"]={0,0},
+	  ["group"]={"goblins",40}
+	 },
+	 ["mob2"]={
+	  ["type"]="mob",
+	  ["spr"]=210,
+	  ["sprx"]=0,
+	  ["spry"]=0,
+	  ["sprw"]=1,
+	  ["sprh"]=1,
+	  ["col"]={-1,-1,3,3},
+	  ["hot"]={0,0},
+	  ["group"]={"skeletons",15}
+	 },
+	 ["gold"]={
+	  ["type"]="treasure",
+	  ["subtype"]="gold",
+	  ["amount"]=rnd_bw(1,4)*50,
+	  ["spr"]=242,
+	  ["sprx"]=0,
+	  ["spry"]=0,
+	  ["sprw"]=1,
+	  ["sprh"]=1,
+	  ["col"]={0,0,1,1},
+	  ["hot"]={0,0},
+	 },
+	}
+	
+	--dup some similar archetypes
+	for r in all(resources) do
+	 if r!="gold" then
+	  archetypes[r]=copy(archetypes.gold)
+	  archetypes[r].subtype=r
+	 end
+	end
+	
+	
+
+end
 __gfx__
 00000000000000001111000000000000001d11110011110000000000000000000000000000000000000000008800008800000011110000000000000000000000
 0000000011111000133111000000000000199121011bb10000000000000000000000000000000000000000000880088000000117711111100000000000000000
@@ -2707,7 +2766,7 @@ __gfx__
 66666666666666660001771117711000017711177110000000bbbbbbbbbbbb001d6ff66ff66ff6d10000000000266625117111111171000011171d111171d110
 66666666666666660000111011110000001110111100000000bbbbbbbbbbbb001d66ff66ff66ffd10000000000222220017110000171100000171dd10171dd10
 66666666666666660000000000000000000000000000000000000000000000001dddddddddddddd1000000000121112101771000017710000017711101771110
-66666666666666660000000000000000000000000000000000000000000000001111111111111111000000010111111101111000011110000011110001111000
+66666666666666660000000000000000000000000000000000000000000000001111111111111111000000000111111101111000011110000011110001111000
 66666d11666666660000001111000000000000000000c00033999933333333331d6ff6d1111111110000000033b333b33b3b3b3bb333b3333b333b3377cccc77
 66666d11666666660000011771000000000077000000c00033999993333333331d66ffd1dddddddd000000003b3b3b3bbbbb3bbb3b333b33b3b3b3b37cc7777c
 66666d11666666660000017551011110000755000000c00039999993333999931df66fd16ff66ff600000000b333b3b33b3b3b3b33b333b33b3b3b3b7777cc77
@@ -2716,14 +2775,14 @@ __gfx__
 66666d11dddddddd000001cc61771761000cc6677777c00033354444bbb399931d66ffd1ff66ff66000000003b3b3b3b3bbbbbbb3b333b33b3b3b3b37cc7777c
 66666d1111111111011111cc6677117167ccc6677667c00033154444bbb444431df66fd1dddddddd00000000b3b3b3333b3b3b3b33b333b33b3b3b3b7777cc77
 66666d111111111111771ccc6676661167cccc766600c00033114444bbb444431dff66d111111111000000003b3b3b3bbbbbbbbb333b333b33b333b3ccc77ccc
-ddddd61ddddddddd16771cccc6667110677ccc77d000c000333339999b344443f66ff6660000000000000000b3b3b3b3b3b3b3b3b333b333b333b333cccccccc
-dd66d11ddddddddd167711ccc777d10067d0cc07d000c00c3333999999224233ff66ff6600000000000000003b3b3b3b3333b3333b333b3333b333b377cc77cc
-d611ddddddd66ddd161771ccc771d10007dd0c07dd00c0c033229999992222336ff66ff60000000000000000b3b3b3b3b3b3b3b3333b333b33333333cc77cc77
-d1dddddddddd11dd1617711cc171d100077000077000cc003222229b3322223366ff66ff00000000000000003b3b3b3b3333333333b333b333333333cccccccc
-ddddd1dddddddddd11171d111171d110ccccccccccccc000322223bbb3322333f66ff66f0000000000000000b3b3b3b3b3b3b3b3b333b333b333b333cccccccc
-ddd661ddd666dddd00171dd10171dd100c00000000000000322233bbbb353333ff66ff6600000000000000003b3b3b3bb33333333b333b3333b333b377cc77cc
-dd111dddd111dddd001771110177111000c00000000000003355333bb33533336ff66ff60000000000000000b3b3b3b3b3b3b3b3333b333b33333333cc77cc77
-dddddddddddddddd0011110001111000000c000000000000335533353333333366ff66f600000001000000003b3b3b3b3333333333b333b333333333cccccccc
+ddddd61ddddddddd16771cccc6667110677ccc77d000c000333339999b344443f66ff6661111111100000000b3b3b3b3b3b3b3b3b333b333b333b333cccccccc
+dd66d11ddddddddd167711ccc777d10067d0cc07d000c00c3333999999224233ff66ff661d111111000000003b3b3b3b3333b3333b333b3333b333b377cc77cc
+d611ddddddd66ddd161771ccc771d10007dd0c07dd00c0c033229999992222336ff66ff6111111d100000000b3b3b3b3b3b3b3b3333b333b33333333cc77cc77
+d1dddddddddd11dd1617711cc171d100077000077000cc003222229b3322223366ff66ff11111111000000003b3b3b3b3333333333b333b333333333cccccccc
+ddddd1dddddddddd11171d111171d110ccccccccccccc000322223bbb3322333f66ff66f1111d11100000000b3b3b3b3b3b3b3b3b333b333b333b333cccccccc
+ddd661ddd666dddd00171dd10171dd100c00000000000000322233bbbb353333ff66ff661d111111000000003b3b3b3bb33333333b333b3333b333b377cc77cc
+dd111dddd111dddd001771110177111000c00000000000003355333bb33533336ff66ff61111111100000000b3b3b3b3b3b3b3b3333b333b33333333cc77cc77
+dddddddddddddddd0011110001111000000c000000000000335533353333333366ff66f6111111d1000000003b3b3b3b3333333333b333b333333333cccccccc
 00000000b333b333b333b3333333bbb334debbb3333a9a9333bbbb33b333b3333333333300000000000000000000110000000000000000000000000000000000
 0111111033b333b333b333b33ddbbb6bddedd3bb339999a93b3b3bb3333333b33333333300000000000000000001111000000000000000000000000000000000
 01f11f103333333333333333ddbbbbb64dddeb3b3399a9993b3b3b3b336333333333333300000000000000000011111100000000000000000000009999000000
