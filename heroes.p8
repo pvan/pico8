@@ -1235,9 +1235,13 @@ function pathfind(start,goal,obj,
   --[1] drops the priority
   local c=pop(frontier)[1]
 
+--visualize search
 if in_battle then
  x,y=gxy2sxy(c.x,c.y)
  circfill(x+5,y+5,1,12)
+ 
+ x,y=gxy2sxy(goal.x,goal.y)
+ circfill(x+5,y+5,1,8)
  flip()
 end
 
@@ -1972,23 +1976,26 @@ function update_battle()
 	 end
   
  else
-  next_mob_turn()
+ 
   --npc controlled mob
   
---  closest_dist=1000
---  closest_spot=nil
---  enemies=get_enemies(activemob)
---  for op in all(options) do
---   for en in all(enemies) do
---    dist=grid_dist(activemob,en)
---    if dist<closest_dist then
---     closest_dist=dist
---     closest_spot=en
---    end
---   end
---  end
---  if (closest_spot==nil) stop()
---  mob_move(activemob,closest_spot)
+  --replace with general 
+  --prioratizing function
+  --that can be used on map too?  
+  closest_dist=1000
+  closest_spot=nil
+  enemies=get_enemies(activemob)
+  for p in all(options) do
+   for en in all(enemies) do
+    dist=grid_dist(p,en)
+    if dist<closest_dist then
+     closest_dist=dist
+     closest_spot=p
+    end
+   end
+  end
+  if (closest_spot==nil) stop()
+  mob_move(activemob,closest_spot)
   
   
 --  if mobstep==0 then
@@ -2147,12 +2154,12 @@ function draw_battle()
   end
  end
  
- --draw neighborts of cursor
- local temp=open_neighbors(bcurx,bcury)
- for n in all(temp) do
-  x,y=gxy2sxy(n.x,n.y)
-  circfill(x+5,y+5,1,8)
- end
+-- --draw neighborts of cursor
+-- local temp=open_neighbors(bcurx,bcury)
+-- for n in all(temp) do
+--  x,y=gxy2sxy(n.x,n.y)
+--  circfill(x+5,y+5,1,8)
+-- end
  
 
 
@@ -2187,16 +2194,15 @@ function draw_battle()
 	 end
  end
  
- if path then
-  for p in all(path) do
-		  x,y=gxy2sxy(p.x,p.y)
-		  circfill(x+5,y+5,1,10)
-  end
- end
- print(dist,64,64,0)
- print(hereasdf,64,72,0)
- print(here2,64,80,0)
- 
+-- if path then
+--  for p in all(path) do
+--		  x,y=gxy2sxy(p.x,p.y)
+--		  circfill(x+5,y+5,1,10)
+--  end
+-- end
+-- print(dist,64,64,0)
+-- print(hereasdf,64,72,0)
+-- print(here2,64,80,0)
  
  
 -- if activemob!=nil then
