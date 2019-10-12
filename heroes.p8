@@ -340,7 +340,12 @@ function _update()
 	   then
 	    ignore=targ
 	   end
-	   path=pathfind(pt(x1,y1),pt(x2,y2),ignore)
+	   path=pathfind(
+	    pt(x1,y1),
+	    pt(x2,y2),
+	    ignore,
+	    map_neighbors,
+	    map_dist)
 	   del(path,path[1])
    end
   end
@@ -1178,8 +1183,8 @@ function pathfind(start,goal,obj,
  func_nei,
  func_dist)
  
- func_nei=func_nei or map_neighbors
- func_dist=func_dist or map_dist
+-- func_nei=func_nei or map_neighbors
+-- func_dist=func_dist or map_dist
  
 -- print("pathing from "..
 --       start[1]..","..start[2]..
@@ -1225,10 +1230,16 @@ function pathfind(start,goal,obj,
  found_goal = false
  
  while #frontier>0 do
-  if (#frontier>1000) stop("a* frontier explosion")
+  if (#frontier>100) stop("a* frontier explosion")
 
   --[1] drops the priority
   local c=pop(frontier)[1]
+
+if in_battle then
+ x,y=gxy2sxy(c.x,c.y)
+ circfill(x+5,y+5,1,12)
+ flip()
+end
 
   if ptequ(c,goal) then
    found_goal=true
@@ -1674,6 +1685,11 @@ function init_battle(l_army,mob)
 end
 
 
+function get_enemies(mob)
+ if (has(l_mobs,mob)) return r_mobs
+ return l_mobs 
+end
+
 
 --8055 8051 
 --saved a whole 4.. 
@@ -1711,9 +1727,7 @@ function adjacent_enemies(mob)
 -- if (l_side) enemy_list=r_mobs
  
  --7978
- enemy_list=l_mobs
- if (has(l_mobs,mob)) enemy_list=r_mobs
- 
+ enemy_list=get_enemies(mob)
  
  grid_neighbors=get_neighbors(mob)
  
@@ -1738,7 +1752,7 @@ function adjacent_enemies(mob)
 end
 
 
-
+--tokens: change args to (p)
 function open_neighbors(bx,by)
  local res={}
  
@@ -1781,7 +1795,7 @@ function evencol(x)
 end
 
 function mob_move(m,p)
-
+here2=true
  dist=grid_dist(m,p)
  while dist>0 do
 --  grid_neighbors=get_neighbors(m)
@@ -1793,7 +1807,9 @@ function mob_move(m,p)
    b_dist)
   for step in all(path) do
    m.x,m.y=step.x,step.y
+   hereasdf=true
    wait(10)
+   hereasdf=false
   end
 --  for n in all(grid_neighbors) do
 --   if grid_dist(n,p)<dist then
@@ -1804,9 +1820,18 @@ function mob_move(m,p)
   
   dist=grid_dist(m,p)
  end
-
--- m.x=p.x
--- m.y=p.y
+ 
+ next_mob_turn()
+here2=false
+-- attack_portion=true
+-- 
+-- --todo: move this check to mob_move?
+-- --skip attack portion if impossible    
+-- attacks=adjacent_enemies(activemob)
+-- if #attacks==0 then
+--  next_mob_turn()
+-- end
+ 
 end
 
 function mob_die(mob)
@@ -1848,18 +1873,18 @@ end
 function ai_path_mob(mob)
  
  mobpath={}
+
+-- moves=valid_moves(asdf
  
- local mobx,moby=mob.x,mob.y
- for c=1,mob_speeds[mob[1]] do
- 
-  moves=open_neighbors(mobx,moby)
-  
-	 mi=rnd_bw(1,#moves)
-	 newx,newy=moves[mi].x,moves[mi].y
-  add(mobpath,pt(newx,newy))
-  mobx,moby=newx,newy
-	 
- end
+-- local mobx,moby=mob.x,mob.y
+-- for c=1,mob_speeds[mob[1]] do
+--  moves=open_neighbors(mobx,moby)
+--  
+--	 mi=rnd_bw(1,#moves)
+--	 newx,newy=moves[mi].x,moves[mi].y
+--  add(mobpath,pt(newx,newy))
+--  mobx,moby=newx,newy
+-- end
  
  --mobturn+=1
  return mobpath
@@ -1928,15 +1953,6 @@ function update_battle()
    if has2(options,pt(bcurx,bcury)) then
     if not attack_portion then
 	    mob_move(activemob,pt(bcurx,bcury))
-     attack_portion=true
- 
-     --todo: move this check to mob_move?
- 		  --skip attack portion if impossible    
-			  attacks=adjacent_enemies(activemob)
-			  if #attacks==0 then
- 			  next_mob_turn()
-			  end
- 
     else
      mob_attack(activemob,pt(bcurx,bcury))
  			 next_mob_turn()
@@ -1956,24 +1972,42 @@ function update_battle()
 	 end
   
  else
- 
-  if mobstep==0 then
-   mobpath=ai_path_mob(activemob)
-   mobwait=0
-   mobstep+=1
-  end
+  next_mob_turn()
+  --npc controlled mob
   
-  if mobwait%10==0 then
-   if mobstep>#mobpath then
-    mobturn+=1
-    mobstep=0
-   else
-    mob_move(activemob,mobpath[mobstep])
-    mobstep+=1
-   end
-  end
+--  closest_dist=1000
+--  closest_spot=nil
+--  enemies=get_enemies(activemob)
+--  for op in all(options) do
+--   for en in all(enemies) do
+--    dist=grid_dist(activemob,en)
+--    if dist<closest_dist then
+--     closest_dist=dist
+--     closest_spot=en
+--    end
+--   end
+--  end
+--  if (closest_spot==nil) stop()
+--  mob_move(activemob,closest_spot)
   
-  mobwait+=10 --1
+  
+--  if mobstep==0 then
+--   mobpath=ai_path_mob(activemob)
+--   mobwait=0
+--   mobstep+=1
+--  end
+--  
+--  if mobwait%10==0 then
+--   if mobstep>#mobpath then
+--    mobturn+=1
+--    mobstep=0
+--   else
+--    mob_move(activemob,mobpath[mobstep])
+--    mobstep+=1
+--   end
+--  end
+--  
+--  mobwait+=10 --1
   
  end
  
@@ -2113,6 +2147,13 @@ function draw_battle()
   end
  end
  
+ --draw neighborts of cursor
+ local temp=open_neighbors(bcurx,bcury)
+ for n in all(temp) do
+  x,y=gxy2sxy(n.x,n.y)
+  circfill(x+5,y+5,1,8)
+ end
+ 
 
 
  --instructions
@@ -2145,6 +2186,18 @@ function draw_battle()
 		 end
 	 end
  end
+ 
+ if path then
+  for p in all(path) do
+		  x,y=gxy2sxy(p.x,p.y)
+		  circfill(x+5,y+5,1,10)
+  end
+ end
+ print(dist,64,64,0)
+ print(hereasdf,64,72,0)
+ print(here2,64,80,0)
+ 
+ 
  
 -- if activemob!=nil then
 --  eny=adjacent_enemies(activemob)
@@ -2183,8 +2236,8 @@ end
 
 --find all non-wall neighbours
 --now returning table with 
---cost included {i,cost}
-function b_ineighbors(p)
+--cost included {p,cost}
+function b_neighbors(p)
  local ns=open_neighbors(p.x,p.y)
  local res={}
  for n in all(ns) do
