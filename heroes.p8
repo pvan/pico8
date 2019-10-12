@@ -1666,7 +1666,6 @@ function init_battle(l_army,mob)
  
  --sort mobs for turn order
  moblist={}
- mobturn=1
  for m in all(l_mobs) do
   add(moblist,m)
  end
@@ -1677,6 +1676,8 @@ function init_battle(l_army,mob)
  --todo: make second list
  --for display, sorted by y
  sort_by_speed(moblist)
+ 
+ activemob=moblist[1]
  
  mobstep=0
  
@@ -1807,7 +1808,7 @@ function mob_move(p)
   mpos=pt(m.x,m.y)
   path=pathfind(mpos,p,nil,
    b_neighbors,
-   b_dist)
+   grid_dist)
   for step in all(path) do
    m.x,m.y=step.x,step.y
    wait(5)
@@ -1832,13 +1833,6 @@ function mob_die(mob)
  anim_death=mob
  
  all(corpses,mob)
- 
- 
- --consider dropping mobturn
- --and just use activemob?
- if indexof(moblist,mob)>mobturn then
-  mobturn-=1
- end
  
  del(l_mobs,mob)
  del(r_mobs,mob)
@@ -1931,7 +1925,11 @@ function spot_empty(p)
 end
 
 function next_mob_turn()
- mobturn+=1
+
+ nexti=indexof(moblist,activemob)+1
+ if (nexti>#moblist) nexti=1
+ activemob=moblist[nexti]
+ 
  attack_portion=false
 end
 
@@ -1942,10 +1940,6 @@ function update_battle()
  then
   return
  end
- 
- if (mobturn>#moblist) mobturn=1
- 
- activemob=moblist[mobturn]
  
  attacks=adjacent_enemies(activemob)
  moves=valid_moves(activemob) 
@@ -2078,30 +2072,18 @@ function draw_battle()
   sx+=2
   sy-=h-2
   
+  
+  --highlight active mob
+  if m==activemob then
+   flashcols={7,6,10,13,1}
+   pal(1,flashcols[
+    flash(#flashcols,3)])
+  end   
+  
   --draw mob
   spr(big_mob_sprs[m[1]],sx,sy,1,2)
-  
-  
-  --token: use flash()
-  --highlight active mob
-  if m==moblist[mobturn] then
-   if frame%15<3 then
-    pal(1,7)
-   elseif frame%15<6 then
-    pal(1,6)
-   elseif frame%15<9 then
-    pal(1,10)
-   elseif frame%15<12 then
-    pal(1,13)
-   else
-    pal(1,1)
-   end
-   
-	  --draw mob
-	  spr(big_mob_sprs[m[1]],sx,sy,1,2)
-	  pal(1,1)
+  pal(1,1)
  	  
-  end
   
   
   --mob number
@@ -2220,20 +2202,14 @@ function draw_battle()
 -- end
  
  --debug draw cursor coords
- if moblist[mobturn]!=nil then
-  val=grid_dist(moblist[mobturn],pt(bcurx,bcury))
+ if activemob!=nil then
+  val=grid_dist(activemob,pt(bcurx,bcury))
   cursor()
   color()
   print(bcurx..","..bcury)
   print(val)
  end
  
--- i=0
--- for m in all(moblist) do
---  i+=1
---  print(m[1].." "..m[2],110,30+i*8)
---  if (mobturn==i) print("->",104,30+i*8)
--- end
  	
 end
 
@@ -2261,9 +2237,6 @@ function b_neighbors(p)
  return res
 end
 
-function b_dist(a,b)
- return grid_dist(a,b)
-end
 -->8
 --dialog / hud
 
