@@ -1235,15 +1235,14 @@ function pathfind(start,goal,obj,
   --[1] drops the priority
   local c=pop(frontier)[1]
 
---visualize search
-if in_battle then
- x,y=gxy2sxy(c.x,c.y)
- circfill(x+5,y+5,1,12)
- 
- x,y=gxy2sxy(goal.x,goal.y)
- circfill(x+5,y+5,1,8)
- flip()
-end
+----visualize search
+--if in_battle then
+-- x,y=gxy2sxy(c.x,c.y)
+-- circfill(x+5,y+5,1,12)
+-- x,y=gxy2sxy(goal.x,goal.y)
+-- circfill(x+5,y+5,1,8)
+-- flip()
+--end
 
   if ptequ(c,goal) then
    found_goal=true
@@ -1798,11 +1797,11 @@ function evencol(x)
  return x%2==0
 end
 
-function mob_move(m,p)
-here2=true
+function mob_move(p)
+
+ local m=activemob
  dist=grid_dist(m,p)
  while dist>0 do
---  grid_neighbors=get_neighbors(m)
   grid_neighbors=open_neighbors(m.x,m.y)
  
   mpos=pt(m.x,m.y)
@@ -1811,30 +1810,20 @@ here2=true
    b_dist)
   for step in all(path) do
    m.x,m.y=step.x,step.y
-   hereasdf=true
-   wait(10)
-   hereasdf=false
+   wait(5)
   end
---  for n in all(grid_neighbors) do
---   if grid_dist(n,p)<dist then
---    m.x,m.y=n.x,n.y
---    wait(10)
---   end
---  end
   
   dist=grid_dist(m,p)
  end
  
- next_mob_turn()
-here2=false
--- attack_portion=true
--- 
--- --todo: move this check to mob_move?
--- --skip attack portion if impossible    
--- attacks=adjacent_enemies(activemob)
--- if #attacks==0 then
---  next_mob_turn()
--- end
+ attack_portion=true
+ 
+ --todo: move this check to mob_move?
+ --skip attack portion if impossible    
+ attacks=adjacent_enemies(activemob)
+ if #attacks==0 then
+  next_mob_turn()
+ end
  
 end
 
@@ -1844,12 +1833,23 @@ function mob_die(mob)
  
  all(corpses,mob)
  
+ 
+ --consider dropping mobturn
+ --and just use activemob?
+ if indexof(moblist,mob)>mobturn then
+  mobturn-=1
+ end
+ 
  del(l_mobs,mob)
  del(r_mobs,mob)
  del(moblist,mob)
+ 
+ --resort (todo: needed??)
+ sort_by_speed(moblist)
 end
 
-function mob_attack(mob,pos)
+function mob_attack(pos)
+ local mob=activemob
  enemy=mob_at_pos(pos)
  
  attack_anim=30
@@ -1870,6 +1870,8 @@ function mob_attack(mob,pos)
  if enemy[2]<=0 then
   mob_die(enemy)
  end
+ 
+ next_mob_turn()
  
 end
 
@@ -1956,9 +1958,9 @@ function update_battle()
   if btnp(❎) then
    if has2(options,pt(bcurx,bcury)) then
     if not attack_portion then
-	    mob_move(activemob,pt(bcurx,bcury))
+	    mob_move(pt(bcurx,bcury))
     else
-     mob_attack(activemob,pt(bcurx,bcury))
+     mob_attack(pt(bcurx,bcury))
  			 next_mob_turn()
 	   end
    end
@@ -1979,24 +1981,29 @@ function update_battle()
  
   --npc controlled mob
   
-  --replace with general 
-  --prioratizing function
-  --that can be used on map too?  
-  closest_dist=1000
-  closest_spot=nil
-  enemies=get_enemies(activemob)
-  for p in all(options) do
-   for en in all(enemies) do
-    dist=grid_dist(p,en)
-    if dist<closest_dist then
-     closest_dist=dist
-     closest_spot=p
-    end
+  if attack_portion then
+   for p in all(options) do
+    mob_attack(p)
    end
+  else
+	  --replace with general 
+	  --prioratizing function
+	  --that can be used on map too?  
+	  closest_dist=1000
+	  closest_spot=nil
+	  enemies=get_enemies(activemob)
+	  for p in all(options) do
+	   for en in all(enemies) do
+	    dist=grid_dist(p,en)
+	    if dist<closest_dist then
+	     closest_dist=dist
+	     closest_spot=p
+	    end
+	   end
+	  end
+	  if (closest_spot==nil) stop()
+	  mob_move(closest_spot)
   end
-  if (closest_spot==nil) stop()
-  mob_move(activemob,closest_spot)
-  
   
 --  if mobstep==0 then
 --   mobpath=ai_path_mob(activemob)
@@ -2201,9 +2208,6 @@ function draw_battle()
 --  end
 -- end
 -- print(dist,64,64,0)
--- print(hereasdf,64,72,0)
--- print(here2,64,80,0)
- 
  
 -- if activemob!=nil then
 --  eny=adjacent_enemies(activemob)
@@ -2224,7 +2228,12 @@ function draw_battle()
   print(val)
  end
  
-
+-- i=0
+-- for m in all(moblist) do
+--  i+=1
+--  print(m[1].." "..m[2],110,30+i*8)
+--  if (mobturn==i) print("->",104,30+i*8)
+-- end
  	
 end
 
