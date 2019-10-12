@@ -224,7 +224,7 @@ function _update()
   else
    movingdelay=movespeed
   end
-  local x,y=path[1][1],path[1][2]
+  local x,y=path[1].x,path[1].y
   local i=xy2i(x,y)
   local obj=i2obj[i]
   if sel.move>0 then
@@ -302,8 +302,8 @@ function _update()
   if btnp(❎) 
      and path!=nil 
      and #path>0 
-     and (path[#path][1]==ctx and
-          path[#path][2]==cty)
+     and (path[#path].x==ctx and
+          path[#path].y==cty)
   then
    move_hero()
   else
@@ -340,7 +340,7 @@ function _update()
 	   then
 	    ignore=targ
 	   end
-	   path=pathfind({x1,y1},{x2,y2},ignore)
+	   path=pathfind(pt(x1,y1),pt(x2,y2),ignore)
 	   del(path,path[1])
    end
   end
@@ -357,7 +357,7 @@ end
 
 
 function _draw()
-	
+ 
 	if in_battle then
   draw_battle()
  else
@@ -371,7 +371,7 @@ function _draw()
 	 if path!=nil and #path>1 then
 	  lx,ly=sel.x,sel.y
 		 for i=1,#path do
-		  nx,ny=path[i][1],path[i][2]
+		  nx,ny=path[i].x,path[i].y
 		  dx,dy=nx-lx,ny-ly
 		  if dx==0 then
 		   if (dy<0) sprt=144 yflip=false
@@ -461,12 +461,36 @@ function ptequ(a,b)
  return a.x==b.x and a.y==b.y
 end
 
+function ptadd(a,b)
+ return pt(a.x+b.x, a.y+b.y)
+end
+
 function pt(x,y)
  local res={}
  res.x=x
  res.y=y
  return res
 end
+
+
+
+--hash pt for use as keys
+--assumes x,y are <255 (1 byte)
+--packs y into the higher bits
+--could also use the 16 bits decimal
+--recall pico numbers are stored
+--like so: 1:15:16 sign:whole:decimal
+function pt2i(p)
+ return bor(p.x,shl(p.y,8))
+end
+function i2pt(i)
+ local x=band(i,0b11111111)
+ local y=band(i,0b1111111100000000)
+ y=shr(y,8)
+ return pt(x,y)
+end
+
+
 
 function wait(ticks)
  while ticks>0 do
@@ -1032,60 +1056,96 @@ function iaddxy(i,x,y)
 end
 
 
---wrapper around our main
---collision function
---so we can specially ignore
---a list of tile i
-function iwall(i)
- if has(global_walkable_i,i) then
+----wrapper around our main
+----collision function
+----so we can specially ignore
+----a list of tile i
+--function iwall(i)
+-- if has(global_walkable_i,i) then
+--  return false
+-- end
+-- x,y=i2xy(i)
+-- if (tile_is_solid(x,y)) return true
+-- if (i2danger[i]) return true
+--end
+--function iclear(i)
+-- return not iwall(i)
+--end
+
+function map_iswall(p)
+ if has2(global_walkable,p) then
   return false
  end
- x,y=i2xy(i)
- if (tile_is_solid(x,y)) return true
- if (i2danger[i]) return true
+ if (tile_is_solid(p.x,p.y)) return true
+ if (i2danger[xy2i(p.x,p.y)]) return true
 end
-function iclear(i)
- return not iwall(i)
+function clear(p)
+ return not map_iswall(p)
 end
 
 
 --manhattan distance
-function idist(ai,bi)
- local ax,ay=i2xy(ai)
- local bx,by=i2xy(bi)
- return abs(ax-bx)+abs(ay-by)
+function map_dist(a,b)
+ return abs(a.x-b.x)+abs(a.y-b.y)
 end
 
+
+cardinal={
+	pt(-1,0),
+	pt( 1,0),
+	pt(0,-1),
+	pt(0, 1),
+}
+diagonal={
+	pt(-1,-1),
+	pt( 1,-1),
+	pt(-1, 1),
+	pt( 1, 1),
+}
 
 --find all non-wall neighbours
 --now returning table with 
 --cost included {i,cost}
-function ineighbors(i)
+function map_neighbors(p)
  local res={}
  
- local li=iaddxy(i, -1,0)
- local ri=iaddxy(i, 1,0)
- local ui=iaddxy(i, 0,-1)
- local di=iaddxy(i, 0,1)
- if (iclear(li)) add(res,{li,1})
- if (iclear(ri)) add(res,{ri,1})
- if (iclear(ui)) add(res,{ui,1})
- if (iclear(di)) add(res,{di,1})
+ for step in all(cardinal) do
+  local newp=ptadd(p,step)
+  if clear(newp) then
+   add(res,{newp,1})
+  end
+ end
+-- local li=ptadd(i, -1,0)
+-- local ri=iaddxy(i, 1,0)
+-- local ui=iaddxy(i, 0,-1)
+-- local di=iaddxy(i, 0,1)
+-- if (iclear(li)) add(res,{li,1})
+-- if (iclear(ri)) add(res,{ri,1})
+-- if (iclear(ui)) add(res,{ui,1})
+-- if (iclear(di)) add(res,{di,1})
  
- --diag (no sneaking thru tho)
- local d1i=iaddxy(i, -1,-1)
- local d2i=iaddxy(i, 1,-1)
- local d3i=iaddxy(i, -1,1)
- local d4i=iaddxy(i, 1,1)
- if (iclear(li) or iclear(ui)) then
-  if (iclear(d1i)) add(res,{d1i,1.4}) end
- if (iclear(ri) or iclear(ui)) then
-  if (iclear(d2i)) add(res,{d2i,1.4}) end
- if (iclear(li) or iclear(di)) then
-  if (iclear(d3i)) add(res,{d3i,1.4}) end
- if (iclear(ri) or iclear(di)) then
-  if (iclear(d4i)) add(res,{d4i,1.4}) end
-  
+ for step in all(diagonal) do
+  local newp=ptadd(p,step)
+  if clear(newp) then
+   add(res,{newp,1.4})
+  end
+  --todo:prevent sneaking thru
+ end
+ 
+-- --diag (no sneaking thru tho)
+-- local d1i=iaddxy(i, -1,-1)
+-- local d2i=iaddxy(i, 1,-1)
+-- local d3i=iaddxy(i, -1,1)
+-- local d4i=iaddxy(i, 1,1)
+-- if (iclear(li) or iclear(ui)) then
+--  if (iclear(d1i)) add(res,{d1i,1.4}) end
+-- if (iclear(ri) or iclear(ui)) then
+--  if (iclear(d2i)) add(res,{d2i,1.4}) end
+-- if (iclear(li) or iclear(di)) then
+--  if (iclear(d3i)) add(res,{d3i,1.4}) end
+-- if (iclear(ri) or iclear(di)) then
+--  if (iclear(d4i)) add(res,{d4i,1.4}) end
+--  
  return res
 end
 
@@ -1099,28 +1159,44 @@ function pop(t)
 end
 
 
---input: {x,y} tile indices
---returns: path as list of {x,y}
+--get/set from arr using pt key
+--basically associative arrays
+function g(arr,p)
+ return arr[pt2i(p)]
+end
+function s(arr,p,val)
+ arr[pt2i(p)]=val
+end
+
+
+--input: pt(x,y) tile indices
+--returns: path as list of pts
 --caller should check for failure
 --by checking if path=={}
 --also can pass in obj to ignore
-function pathfind(start,goal,obj)
+function pathfind(start,goal,obj,
+ func_nei,
+ func_dist)
+ 
+ func_nei=func_nei or map_neighbors
+ func_dist=func_dist or map_dist
  
 -- print("pathing from "..
 --       start[1]..","..start[2]..
 --       " to "..
 --       goal[1]..","..goal[2])
  
- si=v2i(start)
- gi=v2i(goal)
- 
- if (si==gi) return {}
+ if (ptequ(start,goal)) return {}
+-- si=v2i(start)
+-- gi=v2i(goal)
+-- 
+-- if (si==gi) return {}
  
  --make a kind of ok-list
  --from optional passed in obj
  --(so we can walk over our)
  --(goal collider if needed)
- global_walkable_i={}
+ global_walkable={}
  
  if obj!=nil then
   c=obj.col
@@ -1128,23 +1204,23 @@ function pathfind(start,goal,obj)
 	  for cy=0,c[4]-1 do
 	   x=obj.x+c[1]+cx
 	   y=obj.y+c[2]+cy
-	   i=xy2i(x,y)
-    add(global_walkable_i,i)
+	   p=pt(x,y)
+    add(global_walkable,p)
    end
   end
  end
  
 
  --list of tuples of 
- --{index,priority}
+ --{position,priority}
  --kept in order of priority
- frontier = {{si,0}}
+ frontier = {{start,0}}
 
- --these are tables with
- --1d index as keys
- came_from = {}
+ --hashtables that take pts
+ --set/get with s( g(
+ prev_pos = {}
  cost_so_far = {}
- cost_so_far[si]=0
+ s(cost_so_far,start,0)
 
  found_goal = false
  
@@ -1152,31 +1228,35 @@ function pathfind(start,goal,obj)
   if (#frontier>1000) stop("a* frontier explosion")
 
   --[1] drops the priority
-  ci=pop(frontier)[1]
+  local c=pop(frontier)[1]
 
-  if ci==gi then
+  if ptequ(c,goal) then
    found_goal=true
    break
   end
 
-  local nearby=ineighbors(ci)
-  for neb in all(nearby) do
+  local nearby=func_nei(c)
+  for neighbor in all(nearby) do
  
-   ni=neb[1]
-   ncost=neb[2]
+   n=neighbor[1]
+   ncost=neighbor[2]
  
-   local new_cost=
-    cost_so_far[ci]+ncost
+   local proposed_cost=
+    g(cost_so_far,c) +
+    ncost
 
-   if (cost_so_far[ni]==nil)
-   or (new_cost<cost_so_far[ni])
+   existing_cost=g(cost_so_far,n)
+   
+   if existing_cost==nil
+   or proposed_cost < existing_cost
    then
-    cost_so_far[ni]=new_cost
+    s(cost_so_far,n,proposed_cost)
     local priority= 
-     new_cost+idist(ni,gi)
-    queue(frontier,ni,priority)
+     proposed_cost + 
+     func_dist(n,goal)
+    queue(frontier,n,priority)
     
-    came_from[ni]=ci
+    s(prev_pos,n,c)
 
    end 
   end
@@ -1186,10 +1266,10 @@ function pathfind(start,goal,obj)
  --see if successful path found
  path={} 
  if found_goal then
-  ci=came_from[gi]
-  while ci!=si do
-   add(path,{i2xy(ci)})
-   ci=came_from[ci]
+  c=g(prev_pos,goal)
+  while not ptequ(c,start) do
+   add(path,c)
+   c=g(prev_pos,c)
   end
   add(path,start)
   reverse(path)
@@ -2085,6 +2165,24 @@ end
 function gxy2sxy(x,y)
  if (evencol(x)) return gsx+x*gw,gsy+y*gh
  return gsx+x*gw,gsy+y*gh-gh/2
+end
+
+
+
+--7975 before convert to x,y
+--pass to pathfinding
+--wip - untested/unused
+
+--find all non-wall neighbours
+--now returning table with 
+--cost included {i,cost}
+function b_ineighbors(x,y)
+ local ns=open_neighbors(bx,by)
+ local res={}
+ for n in all(ns) do
+  add(res,{ns,1})
+ end
+ return res
 end
 -->8
 --dialog / hud
