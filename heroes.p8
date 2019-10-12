@@ -1787,12 +1787,20 @@ function mob_move(m,p)
 --  grid_neighbors=get_neighbors(m)
   grid_neighbors=open_neighbors(m.x,m.y)
  
-  for n in all(grid_neighbors) do
-   if grid_dist(n,p)<dist then
-    m.x,m.y=n.x,n.y
-    wait(10)
-   end
+  mpos=pt(m.x,m.y)
+  path=pathfind(mpos,p,nil,
+   b_neighbors,
+   b_dist)
+  for step in all(path) do
+   m.x,m.y=step.x,step.y
+   wait(10)
   end
+--  for n in all(grid_neighbors) do
+--   if grid_dist(n,p)<dist then
+--    m.x,m.y=n.x,n.y
+--    wait(10)
+--   end
+--  end
   
   dist=grid_dist(m,p)
  end
@@ -2176,13 +2184,17 @@ end
 --find all non-wall neighbours
 --now returning table with 
 --cost included {i,cost}
-function b_ineighbors(x,y)
- local ns=open_neighbors(bx,by)
+function b_ineighbors(p)
+ local ns=open_neighbors(p.x,p.y)
  local res={}
  for n in all(ns) do
-  add(res,{ns,1})
+  add(res,{n,1})
  end
  return res
+end
+
+function b_dist(a,b)
+ return grid_dist(a,b)
 end
 -->8
 --dialog / hud
