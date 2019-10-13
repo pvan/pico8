@@ -1683,8 +1683,9 @@ function init_battle(l_army,mob)
  
  
  --battle cursor
- bcurx=moblist[1].x
- bcury=moblist[1].y
+ bcurx=activemob.x
+ bcury=activemob.y
+ bcur=pt(bcurx,bcury)
  
 end
 
@@ -1694,15 +1695,12 @@ function get_enemies(mob)
  return l_mobs 
 end
 
-
---8055 8051 
---saved a whole 4.. 
+ 
 function get_neighbors(p)
  grid_neighbors=grid_neighbors_o
  if (evencol(p.x)) grid_neighbors=grid_neighbors_e
  local res=copy(grid_neighbors)
  for n in all(res) do
---  ptinc(n,p)
   n.x+=p.x
   n.y+=p.y
  end
@@ -1712,45 +1710,17 @@ end
 function adjacent_enemies(mob)
  local res={}
  
- --8029
--- --first figure out what team this mob is on
--- l_side=false
--- r_side=false
--- if (has(l_mobs,mob)) l_side=true
--- if (has(r_mobs,mob)) r_side=true
--- 
--- --token: these are asserts
--- if not l_side and not r_side then
---  stop("mob not owned by either army??")
--- end
--- if l_side and r_side then
---  stop("mob owned by both armies??")
--- end
--- 
--- enemy_list=l_mobs
--- if (l_side) enemy_list=r_mobs
- 
- --7978
  enemy_list=get_enemies(mob)
  
  grid_neighbors=get_neighbors(mob)
  
  for n in all(grid_neighbors) do
-  
-  --8035
---  m=mob_at_pos(n)
---  if m!=nil and has2(enemy_list,m) then
---   add(res,m)
---  end
-  
-  --8034
   for m in all(enemy_list) do
    if ptequ(m,n) then
     add(res,m)
-    break --token, could remove.. should only be in the list once anyway
+    break
    end    
   end
-  
  end
  return res
 end
@@ -1811,7 +1781,7 @@ function mob_move(p)
    grid_dist)
   for step in all(path) do
    m.x,m.y=step.x,step.y
-   wait(5)
+   wait(3)
   end
   
   dist=grid_dist(m,p)
@@ -1832,7 +1802,7 @@ function mob_die(mob)
  die_anim=30
  anim_death=mob
  
- all(corpses,mob)
+ add(corpses,mob)
  
  del(l_mobs,mob)
  del(r_mobs,mob)
@@ -1870,27 +1840,6 @@ function mob_attack(pos)
 end
 
 
-function ai_path_mob(mob)
- 
- mobpath={}
-
--- moves=valid_moves(asdf
- 
--- local mobx,moby=mob.x,mob.y
--- for c=1,mob_speeds[mob[1]] do
---  moves=open_neighbors(mobx,moby)
---  
---	 mi=rnd_bw(1,#moves)
---	 newx,newy=moves[mi].x,moves[mi].y
---  add(mobpath,pt(newx,newy))
---  mobx,moby=newx,newy
--- end
- 
- --mobturn+=1
- return mobpath
- 
-end
-
 --right now l_mobs is assumed player
 --hotseat battle support tbd
 function is_player_mob_turn()
@@ -1898,6 +1847,7 @@ function is_player_mob_turn()
 end
 
 function mob_at_pos(pos)
+-- if (pos==nil) return nil --tood: could move this to ptequ?
  for m in all(moblist) do
   if ptequ(m,pos) then
    return m
@@ -1912,16 +1862,7 @@ end
 -- as x,y or as pt.. 
 -- and change func to that
 function spot_empty(p)
- --8023
  return not has2(moblist,p)
- 
- --8034
--- for m in all(moblist) do
---  if ptequ(m,p) then
---   return false
---  end
--- end
--- return true
 end
 
 function next_mob_turn()
@@ -1941,31 +1882,38 @@ function update_battle()
   return
  end
  
+ bcur=pt(bcurx,bcury)
+   
  attacks=adjacent_enemies(activemob)
  moves=valid_moves(activemob) 
 
- options=moves
+ options=copy(moves)
+ --if move mode, still allow 
+ --attacks if there are any
+ for a in all(attacks) do
+  add(options,a)
+ end
  if (attack_portion) options=attacks
 
  if is_player_mob_turn() then
   
   if btnp(❎) then
-   if has2(options,pt(bcurx,bcury)) then
-    if not attack_portion then
-	    mob_move(pt(bcurx,bcury))
+   if has2(options,bcur) then
+--    if not attack_portion then
+    if has2(moves,bcur) then
+	    mob_move(bcur)
     else
-     mob_attack(pt(bcurx,bcury))
- 			 next_mob_turn()
+     mob_attack(bcur)
 	   end
    end
    
   elseif btnp(🅾️) then
-   if spot_empty(pt(bcurx,bcury)) then
+   if spot_empty(bcur) then
  	  next_mob_turn()
 	  end
 	 end
 	 
-	 if spot_empty(pt(bcurx,bcury)) then
+	 if spot_empty(bcur) then
    display_skip_turn_msg=true
 	 else
 	  display_skip_turn_msg=false
@@ -1975,8 +1923,9 @@ function update_battle()
  
   --npc controlled mob
   
-  if attack_portion then
-   for p in all(options) do
+  if attack_portion
+  or #attacks>0 then
+   for p in all(attacks) do
     mob_attack(p)
    end
   else
@@ -1995,7 +1944,7 @@ function update_battle()
 	    end
 	   end
 	  end
-	  if (closest_spot==nil) stop()
+	  if (closest_spot==nil) stop() --todo: remove
 	  mob_move(closest_spot)
   end
   
@@ -2063,6 +2012,14 @@ function draw_battle()
  
  if (r_hero_present) spr(44,111,30,2,2,true)
  
+ 
+ --draw corpses
+ for c in all(corpses) do
+  local sx,sy=gxy2sxy(c.x,c.y)
+  pal(8,0)
+  spr(11,sx+1,sy+1)
+  pal(8,8)
+ end
  
  
  --draw armies
@@ -2135,8 +2092,8 @@ function draw_battle()
  rect2({sx-ex,sy-ex,cw,ch},c)
  
  --draw cursor symbol
- if has2(options,pt(bcurx,bcury)) then
-  if attack_portion then
+ if has2(options,bcur) then
+  if has2(attacks,bcur) then
    spr(43,sx+2,sy+2)
   else
    spr(27,sx+2,sy+2)
@@ -2158,10 +2115,10 @@ function draw_battle()
   print("skip unit",21,120,6)
  else
   print("view unit",21,120,6)
-  hl=mob_at_pos(pt(bcurx,bcury))
-  if hl!=nil then
-   print(hl.damage,21,112,7)
-  end
+--  hl=mob_at_pos(bcur)
+--  if hl!=nil then
+--   print(hl.damage,21,112,7)
+--  end
  end
  
  print("❎",70,121-flash(2,10),6)
@@ -2201,14 +2158,14 @@ function draw_battle()
 --  end
 -- end
  
- --debug draw cursor coords
- if activemob!=nil then
-  val=grid_dist(activemob,pt(bcurx,bcury))
-  cursor()
-  color()
-  print(bcurx..","..bcury)
-  print(val)
- end
+-- --debug draw cursor coords
+-- if activemob!=nil then
+--  val=grid_dist(activemob,bcur)
+--  cursor()
+--  color()
+--  print(bcurx..","..bcury)
+--  print(val)
+-- end
  
  	
 end
