@@ -169,10 +169,6 @@ end
 
 function hero_trade()
 end
-function battle(army,mob)
- in_battle=true
- init_battle(army,mob)
-end
 
 
 function pickup(obj)
@@ -238,11 +234,11 @@ function _update()
 	    if obj_owner(obj)==pc then
  	    hero_trade()
  	   else
-	     battle(sel.army,obj)
+	     start_battle(sel.army,obj)
 	    end
 	   end
 	   if obj.type=="mob" then
-	    battle(sel.army,obj)
+	    start_battle(sel.army,obj)
 	   end
 	   if obj.type=="treasure" then
 	    pickup(obj)
@@ -1519,6 +1515,62 @@ end
 --battle
 
 
+function start_battle(army,mob)
+ in_battle=true
+ init_battle(army,mob)
+end
+
+function end_battle()
+ in_battle=false
+end
+
+function army_is_empty(army)
+ for m in all(army) do
+  if (m[2]>0) return false
+ end
+ return true
+end
+
+function cas_from_army(army)
+ local res=copy(army)
+ for m in all(res) do
+  m[2]=m.casualties
+  if m.casualties==0 then
+   del(m,res)
+  end
+ end
+ return res
+end
+
+function battle_end_screen()
+ 
+	l_cas=cas_from_army(l_mobs)
+	r_cas=cas_from_army(r_mobs)
+ 
+ 
+ diag_open=true
+ diag_txt={
+  "battle end",
+  "",
+  "casualties",
+  "",
+  "done"}
+ while true do
+  draw_dialog()
+  draw_h_army(
+    l_cas,60,70)
+  draw_h_army(
+    r_cas,60,90)
+  flip()
+  if btn(❎) then
+   break
+  end
+ end
+ 
+ diag_open=false
+ end_battle()
+ 
+end
 
 
 grid={}
@@ -1668,9 +1720,11 @@ function init_battle(l_army,mob)
  moblist={}
  for m in all(l_mobs) do
   add(moblist,m)
+  m.casualties=0
  end
  for m in all(r_mobs) do
   add(moblist,m)
+  m.casualties=0
  end
  
  --todo: make second list
@@ -1804,8 +1858,9 @@ function mob_die(mob)
  
  add(corpses,mob)
  
- del(l_mobs,mob)
- del(r_mobs,mob)
+ --keep in l_mobs to track casualties
+-- del(l_mobs,mob)
+-- del(r_mobs,mob)
  del(moblist,mob)
  
  --resort (todo: needed??)
@@ -1815,6 +1870,14 @@ end
 function mob_attack(pos)
  local mob=activemob
  enemy=mob_at_pos(pos)
+ if enemy==nil then
+  x,y=gxy2sxy(mob.x,mob.y)
+  circfill(x+5,y+5,1,1)
+  x,y=gxy2sxy(pos.x,pos.y)
+  circfill(x+5,y+5,1,8)
+  flip()
+  stop()
+ end
  
  attack_anim=30
  anim_attacker=mob
@@ -1829,6 +1892,7 @@ function mob_attack(pos)
  while enemy.damage>enemy_hp do
   enemy.damage-=enemy_hp
   enemy[2]-=1
+  enemy["casualties"]+=1
  end
  
  if enemy[2]<=0 then
@@ -1880,6 +1944,19 @@ function update_battle()
  or die_anim>0 
  then
   return
+ end
+ 
+ if army_is_empty(l_mobs)
+ or army_is_empty(r_mobs)
+ then
+-- if #l_mobs<1 or #r_mobs<1 then
+  --todo: add check if
+  --player won or lost
+  --(map color to player/cpu)
+  
+  battle_end_screen()
+  return
+      
  end
  
  bcur=pt(bcurx,bcury)
