@@ -29,18 +29,24 @@ __lua__
 camx=0
 camy=0
 
+function set_sel()
 
-function set_player(p)
- cp=p
- if cp.heroes[1]!=nil then
-  select(cp.heroes[1])
- elseif cp.castles[1]!=nil then
+ select(cp.heroes[1])
+ if sel==nil then
   select(cp.castles[1])
- else
+ end
+ if sel==nil then
+  --todo: remove players until winner
   stop("player "..
    colorstrings[cp.color].. 
    " has no castles or heroes")
  end
+end
+
+function set_player(p)
+ cp=p
+ 
+ set_sel()
  
  --reset for this turn
  for h in all(cp.heroes) do
@@ -875,7 +881,11 @@ function del_obj(obj)
 --  else
 --   stop("huh???")
 --  end
+ create_i2tile()
  build_i2zone()
+ 
+ set_sel()
+ 
 end
 
 function obj_owner(obj)
@@ -2362,6 +2372,7 @@ end
 lsel="no obj"
 function select(obj)
  sel=obj
+ if (obj==nil) return
  if sel!=lsel then
 	 curx,cury=sel.x*8,sel.y*8
 	 if sel.type=="castle" then
