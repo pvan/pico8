@@ -934,16 +934,14 @@ function draw_things()
       i.y*8+i.spry,
       i.sprw,i.sprh)
       
+  --flash border of selected
+  if ptequ(sel,i) then
+   flashcols={1,1,1,13,12,13}
+   pal(1,flashcols[flash(#flashcols)])
+  end
+      
   if i.type=="hero" then
   
-  	--flash border of selected
---   if sel.x==i.x and 
---      sel.y==i.y then
-   if ptequ(sel,i) then
-    flashcols={1,1,1,13,12,13}
-    pal(1,flashcols[flash(#flashcols)])
-   end
-   
    local c=obj_owner(i).color
    pal(8,c)
    spr(228,
@@ -952,12 +950,14 @@ function draw_things()
       1,1,true)
    pal(8,8)
    
+   --if we don't want hero hl
+--   pal(1,1)
+   
    --draw hero over flag
 	  spr(i.spr,
 	      i.x*8+i.sprx,
 	      i.y*8+i.spry,
 	      i.sprw,i.sprh)
-   pal()
    
   end
   
@@ -974,6 +974,9 @@ function draw_things()
    pal(8,8)
   end
   
+  --reset border hl
+  pal()
+   
  end
 end
 
