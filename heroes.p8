@@ -2538,22 +2538,26 @@ function draw_hud()
  mh=9
  mx=63-mw/2
  my=19--actl_menu_y
- rectfill2(mx,my,mw,mh,6)
+-- rectfill2(mx,my,mw,mh,6)
 
  --bottom buttons
  local x,y=mx+1,my+1
  local count=1
- for b in all(buttons) do
-  bw=#b*4+2
-  rectfill2(x,y,bw,7,13)
-  print(b,x+1,y+1,0)
-  if menudown and menusel==count then  
-   bb=flashamt()
-   rect2({x-1-bb,y-1-bb,bw+2+bb*2,9+bb*2},10)   
-  end
-  x+=bw+2
-  count+=1
- end
+ 
+ draw_btn_list(buttons,y)
+ 
+-- for b in all(buttons) do
+--  bw=#b*4+2
+--  rectfill2(x,y,bw,7,13)
+--  print(b,x+1,y+1,0)
+--  if menudown and menusel==count then  
+--   bb=flashamt()
+--   rect2({x-1-bb,y-1-bb,bw+2+bb*2,9+bb*2},10)   
+--  end
+--  x+=bw+2
+--  count+=1
+-- end
+ 
  clip()
  
  
@@ -2569,11 +2573,24 @@ end
 
 
 
+
+function draw_btn_list(list,y)
+ local w=0
+ for text in all(list) do
+	 w+=text_box(text,200,0)
+	end
+	x=63-w/2
+ for text in all(list) do
+	 x+=text_box(text,x,y)
+	end
+end
+
 function text_box(text,x,y)
- local w=#text*4+1
- rect2({x-1,y-1,w+2,9},1)
- rectfill2(x,y,w,7,6)
+ local w=#text*4+3
+ rect2({x-1,y-1,w,9},1)
+ rectfill2(x,y,w-2,7,6)
  print(text,x+1,y+1,1)
+ return w
 end
 
 
@@ -2688,15 +2705,22 @@ end
 --
 --end
 
+function draw_window(x,y,w,h)
+ rectfill2(x+1,y+1,w-2,h-2,6)
+ rect2({x,y,w,h},1)
+end
+
 
 function draw_big_army(hero,y)
 
- rectfill2(9,y,110,24,6)
+-- rectfill2(9,y,110,24,6)
+ draw_window(9,y,110,24)
  
  sx=11
  sy=y+2
  
- rectfill2(sx,sy,16,20,14)
+-- rectfill2(sx,sy,16,20,14)
+ draw_window(sx,sy,16,20)
  spr(hero_big_portrait_sprs
   [hero.id],
   sx+4,sy+5,1,1)
@@ -2704,7 +2728,8 @@ function draw_big_army(hero,y)
  
  for i=1,5 do
  
-  rectfill2(sx,sy,16,20,14)
+--  rectfill2(sx,sy,16,20,14)
+  draw_window(sx,sy,16,20)
   
   m=hero.army[i]
 	 if m!=nil then
