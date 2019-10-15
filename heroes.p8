@@ -10,6 +10,10 @@ __lua__
 --add is_plr_ai list or something?
 --make battle skip turn menu option
 --cannot trade with adjacent hero
+--replace hero selection with menu in battle
+--remove cursor in battle during animation
+--...and remove control instructions??
+
 
 
 --notes:
@@ -1697,8 +1701,10 @@ function start_battle(l,r)
  
  --token: bake these
  --grid start x/y (margins)
- gsx=(128-10*9)/2
- gsy=(128-10*9)/2
+ gstart=pt(19,19)
+ gsx,gsy=gstart.x,gstart.y
+-- gsx=(128-10*9)/2
+-- gsy=(128-10*9)/2
  
  --sort mobs for turn order
  moblist={}
@@ -1724,9 +1730,11 @@ function start_battle(l,r)
  
  
  --battle cursor
- bcurx=activemob.x
- bcury=activemob.y
- bcur=pt(bcurx,bcury)
+ --we really only want x/y 
+ --from mob but it's less tokens 
+ --to just copy the whole thing
+ bcur=copy(activemob)
+-- bcur=pt(activemob.x,activemob.y)
  
 end
 
@@ -1825,7 +1833,7 @@ function mob_die(mob)
 
  for i=1,30 do
   local m=mob
-  local sx,sy=gxy2sxy(m.x,m.y)
+  local sx,sy=bgrid2screen(m)
   pal(8,0)
   spr(11,sx,sy)
   pal()
@@ -1873,11 +1881,11 @@ function mob_attack(pos)
  
  for i=1,30 do
   local a=mob
-  local sx,sy=gxy2sxy(a.x,a.y)
+  local sx,sy=bgrid2screen(a)
   spr(43,sx,sy)
   
   local d=enemy
-  local sx,sy=gxy2sxy(d.x,d.y)
+  local sx,sy=bgrid2screen(d)
   spr(11,sx,sy)
   flip()
  end
@@ -1960,7 +1968,7 @@ function update_battle()
   return
  end
  
- bcur=pt(bcurx,bcury)
+-- bcur=pt(bcurx,bcury)
    
  attacks=adjacent_enemies(activemob)
  moves=valid_moves(activemob) 
@@ -2035,7 +2043,7 @@ function update_battle()
  end
  
  
- bcur=pt(bcurx,bcury)
+-- bcur=pt(bcurx,bcury)
  
  move_cursor(bcur, 0,8, 0,9)
  if evencol(bcur.x) 
@@ -2043,7 +2051,7 @@ function update_battle()
  then
   bcur.y=8
  end
- bcurx,bcury=bcur.x,bcur.y
+-- bcurx,bcury=bcur.x,bcur.y
 -- if (btnp(⬅️)) bcurx-=1 sfx(58,-1,1,2)
 -- if (btnp(➡️)) bcurx+=1 sfx(58,-1,1,2)
 -- if (btnp(⬆️)) bcury-=1 sfx(58,-1,1,2)
@@ -2075,7 +2083,7 @@ function draw_battle()
  local by=gsy
  
  for spot in all(grid) do
-  x,y=gxy2sxy(spot.x,spot.y)
+  x,y=bgrid2screen(spot)
   rect2({x,y,w+1,h+1},11)
  end
  
@@ -2089,7 +2097,7 @@ function draw_battle()
  
  --draw corpses
  for c in all(corpses) do
-  local sx,sy=gxy2sxy(c.x,c.y)
+  local sx,sy=bgrid2screen(c)
   pal(8,0)
   spr(11,sx+1,sy+1)
   pal(8,8)
@@ -2099,7 +2107,7 @@ function draw_battle()
  --draw armies
  
  for m in all(moblist) do
-  sx,sy=gxy2sxy(m.x,m.y)
+  sx,sy=bgrid2screen(m)
   sx+=2
   sy-=h-2
   
@@ -2129,27 +2137,21 @@ function draw_battle()
  
  
  --cursor
- cw,ch=gw+1,gh+1
- sx,sy=gsx+bcurx*gw,gsy+bcury*gh
- if bcurx==-1 or bcurx==9 then
-  if (bcurx==-1) sx-=8
-  sy=32 --hero position
-  cw=18
-  ch=22
-  if (bcurx==9) sx+=1 cw-=1
- end
- if (bcurx%2==1) sy-=gh/2
- c=10
- ex=0
+ sx,sy=bgrid2screen(bcur)
+ rect2({sx,sy,gw+1,gh+1},10)
+ 
+ --bounce?
+-- cw,ch=gw+1,gh+1
+-- ex=0
 -- if (frame%10<5) c=10 ex=1 cw+=2 ch+=2
- rect2({sx-ex,sy-ex,cw,ch},c)
+-- rect2({sx-ex,sy-ex,cw,ch},10)
  
  --draw cursor symbol
  if has2(options,bcur) then
   if has2(attacks,bcur) then
-   spr(43,sx+2,sy+2)
+   spr(43,sx+2,sy+1+flashamt())
   else
-   spr(27,sx+2,sy+2)
+   spr(27,sx+2,sy+1+flashamt())
   end
  end
  
@@ -2176,7 +2178,7 @@ function draw_battle()
  if is_player_mob_turn() then
 	 if activemob!=nil then
 		 for spot in all(options) do
-		  x,y=gxy2sxy(spot.x,spot.y)
+		  x,y=bgrid2screen(spot)
 		  circfill(x+5,y+5,1,6)
 		 end
 	 end
@@ -2221,11 +2223,20 @@ function draw_battle()
  	
 end
 
---grid to screen
-function gxy2sxy(x,y)
- if (evencol(x)) return gsx+x*gw,gsy+y*gh
- return gsx+x*gw,gsy+y*gh-gh/2
+function bgrid2screen(p)
+ local res=pt(gsx+p.x*gw,
+              gsy+p.y*gh)
+ if not evencol(p.x) then
+  res.y-=gh/2
+ end
+ return res.x,res.y
 end
+
+----grid to screen
+--function gxy2sxy(x,y)
+-- if (evencol(x)) return gsx+x*gw,gsy+y*gh
+-- return gsx+x*gw,gsy+y*gh-gh/2
+--end
 
 
 
