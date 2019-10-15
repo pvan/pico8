@@ -129,16 +129,22 @@ function _init()
 	spawn("gold",8,16)
 	spawn("gold",6,10)
 	
+	--block grove
+	spawn("ore",22,20)
+
+	--block hero in castle test
+--	spawn("ore",5,9)
+	
  
  --do once here so we don't
  --randomly spawn anything
  --over anything else
  create_i2tile()
- build_i2zone()
+-- build_i2zone()
  
 	for x=0,tilesw do
  	for y=0,tilesh do
- 	 if not tile_is_solid(x,y) then
+ 	 if not tile_is_solid(pt(x,y)) then
  	  if rnd_bw(1,100)<4 then
  	   r=rnd_bw(1,#resources)
  	   spawn(resources[r],x,y)
@@ -151,7 +157,7 @@ function _init()
  --after populating map
  --(and whenever anything moves)
  create_i2tile()
- build_i2zone()
+-- build_i2zone()
 	
 end
 
@@ -226,11 +232,13 @@ function _update()
   else
    movingdelay=movespeed
   end
-  local x,y=path[1].x,path[1].y
-  local i=xy2i(x,y)
-  local obj=i2obj[i]
+  local p=path[1]
+--  local x,y=path[1].x,path[1].y
+--  local i=xy2i(x,y)
+--  local obj=i2obj[i]
+  local obj=g(mapobj,p)
   if sel.move>0 then
-	  del(path,path[1])
+	  del(path,p)
 	  if obj!=nil and
 		  (obj.type=="hero" or
 		   obj.type=="mob" or
@@ -251,8 +259,9 @@ function _update()
 	   end
 	  else
  	  sfx(58,-1,1,1)
-	   sel.x=x
-	   sel.y=y
+ 	  --token:ptset()?
+	   sel.x=p.x
+	   sel.y=p.y
 	   sel.move-=5
 	   if (sel.move<0) sel.move=0
 	   --lock cam to hero?
@@ -264,13 +273,13 @@ function _update()
 	   moving=false
 	   --rebuild zones after move!
 			 create_i2tile()
-			 build_i2zone()
+--			 build_i2zone()
 	  end
 	 else
    moving=false
    --rebuild zones after move!
 		 create_i2tile()
-		 build_i2zone()
+--		 build_i2zone()
 	 end
  end
 
@@ -333,7 +342,8 @@ function _update()
       sel.movey!=lselmvy then
 	   x1,y1=sel.x,sel.y
 	   x2,y2=sel.movex,sel.movey
-	   targ=i2obj[xy2i(x2,y2)]
+--	   targ=i2obj[xy2i(x2,y2)]
+	   targ=g(mapobj,pt(x2,y2))
 	   ignore=nil
 	   if targ!=nil and
 	      (targ.type=="mob" or
@@ -397,6 +407,10 @@ function _draw()
 	 draw_cursor()
 	 
 	 
+--	 drawdebug_zones()
+--	 drawdebug_layer(i2danger,8)
+--	 drawdebug_layer(i2hot,11)
+--	 drawdebug_layer(i2col,10)
 	 
 	 
 	 --hud elements
@@ -405,6 +419,13 @@ function _draw()
 	 camera()
 	 
 	 draw_hud()
+	 
+	 
+--	 zones=objzones(sel)
+--	 for z in all(zones) do
+--	  print(z,0,64,0)
+--	 end
+--	 print("here",0,64,0)
 	 
 	 
 	 if blackout then
@@ -614,15 +635,19 @@ worldh=(tilesh-1)*8
 worldborder=8
 
 
---returns if tile i
+--returns if tile p
 --is adjacent to any zone in zones
-function inearzones(i,zones)
+function pnearzones(p,zones)
  for z in all(zones) do
-	 if i2zone[iaddxy(i,-1,0)]==z 
-	 or i2zone[iaddxy(i,1,0)]==z 
-	 or i2zone[iaddxy(i,0,-1)]==z 
-	 or i2zone[iaddxy(i,0,1)]==z
-	 then return true end
+  for d in all(cardinal) do
+   if g(i2zone,ptadd(p,d))==z
+   then return true end
+  end
+--	 if i2zone[iaddxy(i,-1,0)]==z 
+--	 or i2zone[iaddxy(i,1,0)]==z 
+--	 or i2zone[iaddxy(i,0,-1)]==z 
+--	 or i2zone[iaddxy(i,0,1)]==z
+--	 then return true end
  end
  return false 
 end
@@ -640,9 +665,9 @@ function objnearzones(obj,zones)
   for cy=0,c[4]-1 do
    local x=obj.x+c[1]+cx
    local y=obj.y+c[2]+cy
-   local i=xy2i(x,y)
-   if not tile_is_solid(x,y) then
-    if inearzones(i,zones) then
+   local p=pt(x,y)
+   if not tile_is_solid(p) then
+    if pnearzones(p,zones) then
      return true
     end
    end
@@ -653,40 +678,31 @@ end
 
 --return region tile belongs to
 --(for pathfinding)
-i2zone={}
-zonecount=10
-function build_i2zone()
- i2zone={}
- zonecount=10
- for x=0,tilesw-1 do
-  for y=0,tilesh-1 do
-   local i=xy2i(x,y)
-   if ok_to_zone(i2zone,x,y) then
-    --start new region (floodfill it)
-    floodfill(i2zone,i,zonecount)
-    zonecount+=1
-   end
-  end
- end
-end
-function ok_to_zone(res,x,y)
- local i=xy2i(x,y)
+--i2zone={}
+--zonecount=10
+--function build_i2zone()
+--end
+function ok_to_zone(res,p)
+ local i=pt2i(p)
  return res[i]==nil and
-        not tile_is_solid(x,y) and
+        not tile_is_solid(p) and
         not i2danger[i]
 end
-function floodfill(res,i,v)
- local x,y=i2xy(i)
- if (not ok_to_zone(res,x,y)) return
- res[i]=v
- floodfill(res,iaddxy(i,-1,0),v)
- floodfill(res,iaddxy(i,1,0),v)
- floodfill(res,iaddxy(i,0,-1),v)
-	floodfill(res,iaddxy(i,0,1),v)
+function floodfill(res,p,v)
+-- local x,y=i2xy(i)
+ if (not ok_to_zone(res,p)) return
+ s(res,p,v)
+ for d in all(cardinal) do
+  floodfill(res,ptadd(p,d),v)
+ end
+-- floodfill(res,iaddxy(i,1,0),v)
+-- floodfill(res,iaddxy(i,0,-1),v)
+--	floodfill(res,iaddxy(i,0,1),v)
 end
 function drawdebug_zones()
  for i,z in pairs(i2zone) do
-  local x,y=i2xy(i)
+  p=i2pt(i)
+  local x,y=p.x,p.y
   rectfill2(x*8+2,y*8+2,4,4,0)
   rectfill2(x*8+3,y*8+3,2,2,z)
  end
@@ -697,21 +713,44 @@ end
 --(basically just for heroes atm)
 function objzones(obj)
  if (obj==nil) return {}
- local x,y=obj.x,obj.y
- local i=xy2i(x,y)
+-- local x,y=obj.x,obj.y
+-- local i=pt2i(obj)
  local res={}
- local lz=i2zone[iaddxy(i,-1,0)]
- local rz=i2zone[iaddxy(i,1,0)]
- local uz=i2zone[iaddxy(i,0,-1)]
- local dz=i2zone[iaddxy(i,0,1)]
- if lz!=nil and not has(res,lz) then
-  add(res,lz) end
- if rz!=nil and not has(res,rz) then
-  add(res,rz) end
- if uz!=nil and not has(res,uz) then
-  add(res,uz) end
- if dz!=nil and not has(res,dz) then
-  add(res,dz) end
+ i=0
+ for d in all(cardinal) do
+  local vv=ptadd(obj,d)
+--  local vv=obj
+--  print(vv.x,i*5,80)
+--  print(vv.y,i*5,88)
+--  i+=1
+  local z=g(i2zone,ptadd(obj,d))
+  print(z,i*5,88)
+  i+=1
+  if z!=nil and not has(res,z)
+   then add(res,z) end
+ end
+-- local lz=cardzone[1]
+-- local rz=cardzone[2]
+-- local uz=cardzone[3]
+-- local dz=cardzone[4]
+---- local lz=i2zone[iaddxy(i,-1,0)]
+---- local rz=i2zone[iaddxy(i,1,0)]
+---- local uz=i2zone[iaddxy(i,0,-1)]
+---- local dz=i2zone[iaddxy(i,0,1)]
+-- if lz!=nil and not has(res,lz) then
+--  add(res,lz) end
+-- if rz!=nil and not has(res,rz) then
+--  add(res,rz) end
+-- if uz!=nil and not has(res,uz) then
+--  add(res,uz) end
+-- if dz!=nil and not has(res,dz) then
+--  add(res,dz) end
+  
+ --add zone of hero too
+ local z=g(i2zone,obj)
+ if z!=nil and not has(res,z)
+  then add(res,z) end
+ 
  return res
 end
 
@@ -719,21 +758,22 @@ end
 --for i2xxx arrays
 function drawdebug_layer(lyr,c)
  for k,v in pairs(lyr) do
-  local x,y=i2xy(k)
+  p=i2pt(k)
+  local x,y=p.x,p.y
   rect2({x*8+1,y*8+1,6,6},c)
  end
 end
 
 --reverse lookups
 --maps tile xy to obj,col,hot,etc
-function init_i2xxx()
-	i2obj={}
+function create_i2tile()
+
+ mapobj={}
+--	i2obj={}
 	i2col={}    --all collisions
 	i2hot={}    --building activation points
 	i2danger={} --mob attack squares
-end
-function create_i2tile()
- init_i2xxx()
+
  for i=1,#things do
   it=things[i]
   c=it.col
@@ -741,14 +781,17 @@ function create_i2tile()
    for cy=0,c[4]-1 do
     x=it.x+c[1]+cx
     y=it.y+c[2]+cy
-    i=xy2i(x,y)
+    p=pt(x,y)
+    i=pt2i(p)
     
     is_hotspot=
       x==it.x+it.hot[1] and 
       y==it.y+it.hot[2] 
       
     --map of objects
-    i2obj[i]=it
+--    i2obj[i]=it
+    --8133
+    s(mapobj,p,it)
       
     --map of hot spots
     if is_hotspot then
@@ -776,7 +819,8 @@ function create_i2tile()
        (cx==4 and cy==0))
     then
      i2col[i]=nil
-     i2obj[i]=nil
+--     i2obj[i]=nil
+     s(mapobj,p,nil)
     end
     
     if it.type=="mob" then
@@ -786,6 +830,36 @@ function create_i2tile()
    end
   end
  end
+ 
+ 
+ --create i2zone
+ 
+ i2zone={}
+ zonecount=10
+ for x=0,tilesw-1 do
+  for y=0,tilesh-1 do
+--   local i=xy2i(x,y)
+   local p=pt(x,y)
+   if ok_to_zone(i2zone,p) then
+    --start new region (floodfill it)
+    floodfill(i2zone,p,zonecount)
+    zonecount+=1
+   end
+  end
+ end
+ 
+ --make each hero their own zone too
+ for plr in all(plrs) do
+  for h in all(plr.heroes) do
+   
+   --token
+		 local i=pt2i(h)
+		 i2zone[i]=zonecount
+ 
+   zonecount+=1
+  end
+ end
+ 
 end
 
 
@@ -793,22 +867,24 @@ end
 function drawdebug_tilecol()
  for x=0,tilesw-1 do
   for y=0,tilesh-1 do
-   if tmap_solid(x,y) then
+   if tmap_solid(pt(x,y)) then
     rect2({x*8+2,y*8+2,4,4},6)
    end
   end
  end
 end
 
-function drawdebug_i(list)
- for i in all(list) do
-  x,y=i2xy(i)
-  rectfill2(x*8+3,y*8+3,2,2,12)
- end
-end
+--function drawdebug_i(list)
+-- for i in all(list) do
+--  x,y=i2xy(i)
+--  rectfill2(x*8+3,y*8+3,2,2,12)
+-- end
+--end
 
 --basically just for debug
-function tmap_solid(x,y)
+--wrong, also for tile_is_solid
+function tmap_solid(p)
+ local x,y=p.x,p.y
  if x<0 or x>tilesw-1 or
     y<0 or y>tilesh-1 
  then
@@ -821,9 +897,9 @@ function tmap_solid(x,y)
 end
 
 
-function tile_is_solid(x,y)
- if (tmap_solid(x,y)) return true
- if (i2col[xy2i(x,y)]) return true
+function tile_is_solid(p)
+ if (tmap_solid(p)) return true
+ if (g(i2col,p)) return true
  return false
 end
 
@@ -882,7 +958,7 @@ function del_obj(obj)
 --   stop("huh???")
 --  end
  create_i2tile()
- build_i2zone()
+-- build_i2zone()
  
  set_sel()
  
@@ -1047,38 +1123,38 @@ end
 
 --a* pathfinding
 
---1d / 2d conversions
---assumes 0-based tile grid now
-function i2xy(i) 
- local y=flr(i/tilesw)
- local x=i-y*tilesw
- return x,y
-end
-function xy2i(x,y)
- return x+y*tilesw
-end
-function v2i(pos)
- return xy2i(pos[1],pos[2])
-end
+----1d / 2d conversions
+----assumes 0-based tile grid now
+--function i2xy(i) 
+-- local y=flr(i/tilesw)
+-- local x=i-y*tilesw
+-- return x,y
+--end
+--function xy2i(x,y)
+-- return x+y*tilesw
+--end
+--function v2i(pos)
+-- return xy2i(pos[1],pos[2])
+--end
 
 
---add tile x,y to tile index 
-function iaddxy(i,x,y)
- --for now limit by map size
- --fix should be elsewhere
- nx,ny=i2xy(i)
- nx+=x
- ny+=y
- if nx<0 or nx>tilesw-1 or
-    ny<0 or nx>tilesh-1 
- then
-  return -1 --some junk value that will always return as solid tile
- end
- return xy2i(nx,ny)
--- i+=x
--- i+=y*tilesw
--- return i
-end
+----add tile x,y to tile index 
+--function iaddxy(i,x,y)
+-- --for now limit by map size
+-- --fix should be elsewhere
+-- nx,ny=i2xy(i)
+-- nx+=x
+-- ny+=y
+-- if nx<0 or nx>tilesw-1 or
+--    ny<0 or nx>tilesh-1 
+-- then
+--  return -1 --some junk value that will always return as solid tile
+-- end
+-- return xy2i(nx,ny)
+---- i+=x
+---- i+=y*tilesw
+---- return i
+--end
 
 
 ----wrapper around our main
@@ -1101,8 +1177,9 @@ function map_iswall(p)
  if has2(global_walkable,p) then
   return false
  end
- if (tile_is_solid(p.x,p.y)) return true
- if (i2danger[xy2i(p.x,p.y)]) return true
+ if (tile_is_solid(p)) return true
+-- if (i2danger[pt2i(p)]) return true
+ if (g(i2danger,p)) return true
 end
 function clear(p)
  return not map_iswall(p)
@@ -1185,7 +1262,8 @@ end
 
 
 --get/set from arr using pt key
---basically associative arrays
+--just hashing p to i
+--by limiting x,y to <255
 function g(arr,p)
  return arr[pt2i(p)]
 end
@@ -1364,15 +1442,18 @@ function build_valid_spots(obj)
 	flood_path(valid_i,di)
  return valid_i
 end
-function flood_path(res,i)
- if (has(res,i)) return
- x,y=i2xy(i)
- if (tile_is_solid(x,y)) return
- add(res,i)
- flood_path(res,iaddxy(i,-1,0))
- flood_path(res,iaddxy(i,1,0))
- flood_path(res,iaddxy(i,0,-1))
- flood_path(res,iaddxy(i,0,1))
+function flood_path(res,p)
+ if (has2(res,p)) return
+-- x,y=i2xy(i)
+ if (tile_is_solid(p)) return
+ add(res,p)
+ for d in all(cardinal) do
+  flood_path(res,ptadd(p,d))
+ end
+-- flood_path(res,iaddxy(i,-1,0))
+-- flood_path(res,iaddxy(i,1,0))
+-- flood_path(res,iaddxy(i,0,-1))
+-- flood_path(res,iaddxy(i,0,1))
 end
 
 function ivalid(i)
@@ -1400,8 +1481,10 @@ end
 
 function update_move_cursor()
  local tx,ty=flr(curx/8),flr(cury/8)
- local i=xy2i(tx,ty)
- local obj=i2obj[i]
+ local p=pt(tx,ty)
+ local i=pt2i(p)
+-- local obj=i2obj[i]
+ local obj=g(mapobj,p)
  local selzones=objzones(sel)
  
  --note the fall-thru effect here
@@ -1416,7 +1499,7 @@ function update_move_cursor()
   
 	  if obj.type=="mob" then
     if objnearzones(obj,selzones) then
-     if inearzones(i,selzones)
+     if pnearzones(p,selzones)
      or obj.x==tx and obj.y==ty
      then
    	  style="attack"
@@ -1448,7 +1531,7 @@ function update_move_cursor()
   --default to walkable
   style="horse"
   
-  if tile_is_solid(tx,ty) then
+  if tile_is_solid(p) then
    style="arrow"
   end
   
@@ -1500,7 +1583,8 @@ end
 
 function update_sel_cursor()
  local tx,ty=flr(curx/8),flr(cury/8)
- obj=i2obj[xy2i(tx,ty)]
+ --local obj=i2obj[xy2i(tx,ty)]
+ local obj=g(mapobj,pt(tx,ty))
  if obj!=nil and obj.select then
   style=obj.type
 	 if (btnp(❎)) then
