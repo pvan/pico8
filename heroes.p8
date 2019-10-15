@@ -5,11 +5,12 @@ __lua__
 --todo:
 --walking thru open mob
 --sorting castles/etc (move pos to lowest point, eg -x,-y col)
---item in front of castle blocks hero
 --dont spawn items on mobs?
 --when selecting castle, popup text is for last cur pos
 --allow attack during move phase (eg starting next to mob)
 --use a* for battle? current algo hangs if obstacle in way
+--remove casualties from winner
+--add is_plr_ai list or something?
 
 
 --notes:
@@ -133,7 +134,7 @@ function _init()
 	spawn("ore",22,20)
 
 	--block hero in castle test
---	spawn("ore",5,9)
+	spawn("ore",5,9)
 	
  
  --do once here so we don't
@@ -421,6 +422,7 @@ function _draw()
 	 draw_hud()
 	 
 	 
+	  	 
 --	 zones=objzones(sel)
 --	 for z in all(zones) do
 --	  print(z,0,64,0)
