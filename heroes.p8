@@ -937,7 +937,7 @@ function spawn(name,tx,ty)
  end
  
  if res.type=="mob" then
-  res.group[2]=rnd_bw(5,25)
+  res.group[2]=rnd_bw(5,9)
  end
  
  if res.type=="treasure" then
@@ -1333,14 +1333,14 @@ function pathfind(start,goal,obj,
   --[1] drops the priority
   local c=pop(frontier)[1]
 
-----visualize search
---if in_battle then
--- x,y=gxy2sxy(c.x,c.y)
--- circfill(x+5,y+5,1,12)
--- x,y=gxy2sxy(goal.x,goal.y)
--- circfill(x+5,y+5,1,8)
--- flip()
---end
+--visualize search
+if in_battle then
+ x,y=gxy2sxy(c.x,c.y)
+ circfill(x+5,y+5,1,12)
+ x,y=gxy2sxy(goal.x,goal.y)
+ circfill(x+5,y+5,1,8)
+ flip()
+end
 
   if ptequ(c,goal) then
    found_goal=true
@@ -1968,7 +1968,6 @@ function mob_move(p)
  
  attack_portion=true
  
- --todo: move this check to mob_move?
  --skip attack portion if impossible    
  attacks=adjacent_enemies(activemob)
  if #attacks==0 then
@@ -1982,6 +1981,17 @@ function mob_die(mob)
  anim_death=mob
  
  add(corpses,mob)
+ 
+ if mob==activemob then
+  --set activemob back one
+  --so when we delete it and
+  --call next_mob later, it
+  --correctly goes to next mob
+  --(feels like a kludge)
+	 previ=indexof(moblist,activemob)-1
+	 if (previ<1) previ=#moblist
+	 activemob=moblist[previ]
+ end
  
  del(l_mobs,mob)
  del(r_mobs,mob)
@@ -2055,6 +2065,7 @@ function spot_empty(p)
  return not has2(moblist,p)
 end
 
+
 function next_mob_turn()
 
  nexti=indexof(moblist,activemob)+1
@@ -2062,6 +2073,12 @@ function next_mob_turn()
  activemob=moblist[nexti]
  
  attack_portion=false
+ 
+-- for i=1,50 do
+-- print("now mob "..nexti,64,64,1)
+-- flip()
+-- end
+ 
 end
 
 function update_battle()
@@ -2139,6 +2156,13 @@ function update_battle()
 	  enemies=get_enemies(activemob)
 	  for p in all(options) do
 	   for en in all(enemies) do
+	   
+			  x,y=gxy2sxy(p.x,p.y)
+			  circfill(x+5,y+5,1,11)
+			  x,y=gxy2sxy(en.x,en.y)
+			  circfill(x+5,y+5,1,14)
+	    flip()
+	    
 	    dist=grid_dist(p,en)
 	    if dist<closest_dist then
 	     closest_dist=dist
@@ -2369,6 +2393,15 @@ function draw_battle()
 --  print(val)
 -- end
  
+ --debug display mob + turn
+ i=0
+ for m in all(moblist) do
+  print(m[1],4,60+i*8,1)
+  if m==activemob then
+   print("-",0,60+i*8,10)
+  end
+  i+=1
+ end
  	
 end
 
