@@ -1694,15 +1694,12 @@ function start_battle(l,r)
  end
  
 
- 
+ --token: bake these
  --grid tile w/h (global)
  gw=10
  gh=10
- 
- --token: bake these
  --grid start x/y (margins)
  gstart=pt(19,19)
- gsx,gsy=gstart.x,gstart.y
 -- gsx=(128-10*9)/2
 -- gsy=(128-10*9)/2
  
@@ -1746,13 +1743,13 @@ end
 
  
 function get_neighbors(p)
- grid_neighbors=grid_neighbors_o
- if (evencol(p.x)) grid_neighbors=grid_neighbors_e
- local res=copy(grid_neighbors)
+ local neighbors=grid_neighbors_o
+ if evencol(p.x) then
+  neighbors=grid_neighbors_e
+ end
+ local res=copy(neighbors)
  for n in all(res) do
   ptinc(n,p)
---  n.x+=p.x
---  n.y+=p.y
  end
  return res
 end
@@ -1762,9 +1759,8 @@ function adjacent_enemies(mob)
  
  enemy_list=get_enemies(mob)
  
- grid_neighbors=get_neighbors(mob)
- 
- for n in all(grid_neighbors) do
+ neighbors=get_neighbors(mob)
+ for n in all(neighbors) do
   for m in all(enemy_list) do
    if ptequ(m,n) then
     add(res,m)
@@ -1776,13 +1772,12 @@ function adjacent_enemies(mob)
 end
 
 
---tokens: change args to (p)
-function open_neighbors(bx,by)
+--token: inline (only called once?)
+function open_neighbors(p)
  local res={}
  
- grid_neighbors=get_neighbors(pt(bx,by))
-  
- for n in all(grid_neighbors) do
+ neighbors=get_neighbors(p) 
+ for n in all(neighbors) do
  
   --check point is on grid
   if has2(grid,n) then
@@ -1799,19 +1794,23 @@ end
 function evencol(x)
  return x%2==0
 end
+--doesn't save until we use
+--"not evencol(x)" like 9 times?
+--function oddcol(x)
+-- return not evencol(x)
+--end
 
 function mob_move(p)
 
  local m=activemob
  dist=grid_dist(m,p)
  while dist>0 do
-  grid_neighbors=open_neighbors(m.x,m.y)
  
-  mpos=pt(m.x,m.y)
-  path=pathfind(mpos,p,nil,
+  path=pathfind(m,p,nil,
    b_neighbors,
    grid_dist)
   for step in all(path) do
+   --token: ptset
    m.x,m.y=step.x,step.y
    wait(3)
   end
@@ -1967,8 +1966,6 @@ function update_battle()
   battle_end_screen(true)
   return
  end
- 
--- bcur=pt(bcurx,bcury)
    
  attacks=adjacent_enemies(activemob)
  moves=valid_moves(activemob) 
@@ -1998,11 +1995,13 @@ function update_battle()
 	  end
 	 end
 	 
-	 if spot_empty(bcur) then
-   display_skip_turn_msg=true
-	 else
-	  display_skip_turn_msg=false
-	 end
+--	 if spot_empty(bcur) then
+--   display_skip_turn_msg=true
+--	 else
+--	  display_skip_turn_msg=false
+--	 end
+	 display_skip_turn_msg=
+	  spot_empty(bcur)
   
  else
  
@@ -2051,19 +2050,6 @@ function update_battle()
  then
   bcur.y=8
  end
--- bcurx,bcury=bcur.x,bcur.y
--- if (btnp(⬅️)) bcurx-=1 sfx(58,-1,1,2)
--- if (btnp(➡️)) bcurx+=1 sfx(58,-1,1,2)
--- if (btnp(⬆️)) bcury-=1 sfx(58,-1,1,2)
--- if (btnp(⬇️)) bcury+=1 sfx(58,-1,1,2)
--- local maxx=8
--- local maxy=8
--- if (r_hero_present) maxx=9
--- if (bcurx%2==1) maxy=9
--- bcurx=mid(bcurx,-1,maxx)
--- bcury=mid(bcury,0,maxy)
--- if (bcurx==-1 or bcurx==9) bcury=2
-
 
 end
 
@@ -2073,18 +2059,16 @@ function draw_battle()
 
 	cls(3)
 	
+	--todo: token:
+	--consider a spr2() that takes
+	--a pt instead of x,y?
+
 
  --draw grid
  
- local w=gw
- local h=gh
-
- local bx=gsx
- local by=gsy
- 
  for spot in all(grid) do
   x,y=bgrid2screen(spot)
-  rect2({x,y,w+1,h+1},11)
+  rect2({x,y,gw+1,gh+1},11)
  end
  
  
@@ -2139,7 +2123,6 @@ function draw_battle()
  --cursor
  sx,sy=bgrid2screen(bcur)
  rect2({sx,sy,gw+1,gh+1},10)
- 
  --bounce?
 -- cw,ch=gw+1,gh+1
 -- ex=0
@@ -2224,8 +2207,10 @@ function draw_battle()
 end
 
 function bgrid2screen(p)
- local res=pt(gsx+p.x*gw,
-              gsy+p.y*gh)
+ local res=pt(p.x*gw,p.y*gh)
+ ptinc(res,gstart)
+-- local res=pt(gsx+p.x*gw,
+--              gsy+p.y*gh)
  if not evencol(p.x) then
   res.y-=gh/2
  end
@@ -2244,7 +2229,7 @@ end
 --now returning table with 
 --cost included {p,cost}
 function b_neighbors(p)
- local ns=open_neighbors(p.x,p.y)
+ local ns=open_neighbors(p)
  local res={}
  for n in all(ns) do
   add(res,{n,1})
