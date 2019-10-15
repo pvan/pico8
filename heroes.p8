@@ -186,31 +186,43 @@ end
 --token:inline?
 function hero_trade(a,b)
 
- omg=pt(1,1)
+ tcur=pt(1,1)
+ 
+ --basically to hide 
+ --cursor pop-up info
+ cur_obj=nil
  
  while true do
  
   --draw / update trade window
   
   
-  move_cursor(omg, 1,5, 1,2)
+  move_cursor(tcur, 1,5, 1,3)
+  
+	 if tcur.y==3 then
+	  tcur.y=2.5
+	  tcur.x=2.5
+	 end
 
-
-  if btn(❎) then
+  if btn(❎) and tcur.y==2.5 then
    break
   end
  
   
   
-  draw_big_army(a,75)
+  draw_big_army(a,60)
   
-  draw_big_army(b,103)
+  draw_big_army(b,85)
+  
+  
+  text_box("done",58,110)
+  
   
   frame+=1
   --draw cursor
   spr(208,
-      omg.x*16+10+16,
-      omg.y*16+75+flashamt())
+      tcur.x*18+22,
+      tcur.y*28+46+flashamt())
   
   
   --draw controls
@@ -221,6 +233,7 @@ function hero_trade(a,b)
   
   flip()
   
+  _draw()
   
  end
  
@@ -460,7 +473,8 @@ function _draw()
 	 cursor()
 	 camera()
 	 
-	 draw_hud()
+	 
+ 	draw_hud()
 	 
 	 
 	 if blackout then
@@ -2554,6 +2568,16 @@ function draw_hud()
 end
 
 
+
+function text_box(text,x,y)
+ local w=#text*4+1
+ rect2({x-1,y-1,w+2,9},1)
+ rectfill2(x,y,w,7,6)
+ print(text,x+1,y+1,1)
+end
+
+
+
 function flashamt()
 -- if (frame%10<5) return 0
  return flash(2,5)-1
@@ -2659,11 +2683,17 @@ function d_army(obj,x,y)
 end
 
 
+--todo: implement this
+--function draw_list(x,y,sprs)
+--
+--end
+
+
 function draw_big_army(hero,y)
 
- rectfill2(10,y,108,24,6)
+ rectfill2(9,y,110,24,6)
  
- sx=12
+ sx=11
  sy=y+2
  
  rectfill2(sx,sy,16,20,14)
@@ -2672,20 +2702,23 @@ function draw_big_army(hero,y)
   sx+4,sy+5,1,1)
  sx+=18
  
- for m in all(hero.army) do
+ for i=1,5 do
  
   rectfill2(sx,sy,16,20,14)
   
-  spr(big_mob_sprs[m[1]],
-      sx+4,sy+2,1,2)
-      
-  ofx=0
-  str=tostr(m[2])
-  if (#str<2) ofx=2
-  if (#str>2) ofx=1-#str
-  rectfill2(sx+4+ofx,sy+2+13,4*#str,6,1)
-  print(str,sx+4+ofx,sy+2+13,7)
-  
+  m=hero.army[i]
+	 if m!=nil then
+	  
+	  spr(big_mob_sprs[m[1]],
+	      sx+4,sy+2,1,2)
+	      
+	  ofx=0
+	  str=tostr(m[2])
+	  if (#str<2) ofx=2
+	  if (#str>2) ofx=1-#str
+	  rectfill2(sx+4+ofx,sy+2+13,4*#str,6,1)
+	  print(str,sx+4+ofx,sy+2+13,7)
+  end
   sx+=18
   
  end
