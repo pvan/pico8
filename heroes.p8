@@ -199,14 +199,55 @@ function hero_trade(a,b)
   
   move_cursor(tcur, 1,5, 1,3)
   
+  tcur.x=ceil(tcur.x)
+  tcur.y=ceil(tcur.y)
 	 if tcur.y==3 then
-	  tcur.y=2.5
-	  tcur.x=2.5
+	  tcur.y=2.4
+	  tcur.x=2.65
 	 end
-
-  if btn(❎) and tcur.y==2.5 then
-   break
-  end
+	 
+	 if movingmob!=nil then
+	  if btnp2(❎) then
+	   --place
+		  if tcur.y==1 then
+		   bar=a
+		  else
+		   bar=b
+		  end
+	   mob=bar.army[tcur.x]
+	   if mob!=nil then
+	    local temp=movingmob
+	    movingmob=mob
+	    bar.army[tcur.x]=temp
+	   else
+ 		  bar.army[tcur.x]=movingmob
+ 		  movingmob=nil
+		  end
+	  end
+	 else
+		 if tcur.y==2.4 then
+		  if btnp2(❎) then
+	    break
+		  end
+		 else
+			 if btnp2(❎) then
+			  --pickup
+			  if tcur.y==1 then
+			   bar=a
+			  else
+			   bar=b
+			  end
+			   mob=bar.army[tcur.x]
+			   if mob!=nil then
+ 			   movingmob=mob
+ 			   bar.army[tcur.x]=nil
+ 			  end
+			 end
+			 if btn(🅾️) then
+			  --split
+			 end
+	  end
+	 end
  
   
   
@@ -219,6 +260,13 @@ function hero_trade(a,b)
   
   
   frame+=1
+  
+  if movingmob!=nil then
+   draw_big_mob(movingmob,
+    tcur.x*18+13,
+    tcur.y*28+30+flashamt())
+  end
+  
   --draw cursor
   spr(208,
       tcur.x*18+22,
@@ -2728,6 +2776,22 @@ function draw_window(x,y,w,h)
 end
 
 
+function draw_big_mob(m,x,y)
+ if m!=nil then
+  
+  spr(big_mob_sprs[m[1]],
+      x+4,y+2,1,2)
+      
+  ofx=0
+  str=tostr(m[2])
+  if (#str<2) ofx=2
+  if (#str>2) ofx=1-#str
+  rectfill2(x+4+ofx,y+2+13,4*#str,6,1)
+  print(str,x+4+ofx,y+2+13,7)
+ end
+end
+
+
 function draw_big_army(hero,y)
 
 -- rectfill2(9,y,110,24,6)
@@ -2751,15 +2815,16 @@ function draw_big_army(hero,y)
   m=hero.army[i]
 	 if m!=nil then
 	  
-	  spr(big_mob_sprs[m[1]],
-	      sx+4,sy+2,1,2)
-	      
-	  ofx=0
-	  str=tostr(m[2])
-	  if (#str<2) ofx=2
-	  if (#str>2) ofx=1-#str
-	  rectfill2(sx+4+ofx,sy+2+13,4*#str,6,1)
-	  print(str,sx+4+ofx,sy+2+13,7)
+	  draw_big_mob(m,sx,sy)
+--	  spr(big_mob_sprs[m[1]],
+--	      sx+4,sy+2,1,2)
+--	      
+--	  ofx=0
+--	  str=tostr(m[2])
+--	  if (#str<2) ofx=2
+--	  if (#str>2) ofx=1-#str
+--	  rectfill2(sx+4+ofx,sy+2+13,4*#str,6,1)
+--	  print(str,sx+4+ofx,sy+2+13,7)
   end
   sx+=18
   
