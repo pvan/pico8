@@ -2050,7 +2050,7 @@ function update_battle()
 	    end
 	   end
 	  end
-	  if (closest_spot==nil) stop("no closest") --todo: remove
+--	  if (closest_spot==nil) stop("no closest") --todo: remove
 	  mob_move(closest_spot)
   end
   
@@ -2089,9 +2089,15 @@ function draw_battle()
  
  --todo:draw based on portrait
  --heros
- spr(44,2,30,2,2)
+ spr(hero_battle_sprs
+  [attackers.id],
+  2,30,2,2)
  
- if (r_hero_present) spr(44,111,30,2,2,true)
+ if r_hero_present then 
+  spr(hero_battle_sprs
+   [defenders.id],
+   111,30,2,2,true)
+ end
  
  
  --draw corpses
@@ -2108,7 +2114,7 @@ function draw_battle()
  for m in all(moblist) do
   sx,sy=bgrid2screen(m)
   sx+=2
-  sy-=h-2
+  sy-=gh-2
   
   
   --highlight active mob
