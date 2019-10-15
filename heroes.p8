@@ -503,6 +503,7 @@ end
 --util 
 
 
+
 function ptequ(a,b)
  return a.x==b.x and a.y==b.y
 end
@@ -1847,9 +1848,10 @@ function mob_die(mob)
   --call next_mob later, it
   --correctly goes to next mob
   --(feels like a kludge)
-	 previ=indexof(moblist,activemob)-1
-	 if (previ<1) previ=#moblist
-	 activemob=moblist[previ]
+--	 previ=indexof(moblist,activemob)-1
+--	 if (previ<1) previ=#moblist
+--	 activemob=moblist[previ]
+  inc_mob_turn(-1)
  end
  
  del(l_mobs,mob)
@@ -1941,13 +1943,26 @@ function spot_empty(p)
 end
 
 
+--7757
+function inc_mob_turn(amt)
+ local newi=
+  indexof(moblist,activemob)+amt
+
+ --token: wrapclamp( ?
+ if (newi>#moblist) newi=1
+ if (newi<1) newi=#moblist
+ 
+ activemob=moblist[newi]
+end
+
 function next_mob_turn()
 
  --token: put this in func
  --that takes +1 or -1 as arg
- nexti=indexof(moblist,activemob)+1
- if (nexti>#moblist) nexti=1
- activemob=moblist[nexti]
+-- nexti=indexof(moblist,activemob)+1
+-- if (nexti>#moblist) nexti=1
+-- activemob=moblist[nexti]
+ inc_mob_turn(1)
  
  attack_portion=false
  
