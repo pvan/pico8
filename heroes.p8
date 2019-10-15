@@ -182,24 +182,16 @@ end
 --token:inline?
 function hero_trade(a,b)
 
--- omgx=1
--- omgy=1
  omg=pt(1,1)
  
  while true do
  
   --draw / update trade window
   
-  --8181
+  
   move_cursor(omg, 1,5, 1,2)
---  if (btnp(⬅️)) omgx-=1
---  if (btnp(➡️)) omgx+=1
---  if (btnp(⬆️)) omgy-=1
---  if (btnp(⬇️)) omgy+=1
---  omgx=mid(1,5,omgx)
---  omgy=mid(1,2,omgy)
 
-   
+
   if btn(❎) then
    break
   end
@@ -279,9 +271,6 @@ function _update()
    movingdelay=movespeed
   end
   local p=path[1]
---  local x,y=path[1].x,path[1].y
---  local i=xy2i(x,y)
---  local obj=i2obj[i]
   local obj=g(mapobj,p)
   if sel.move>0 then
 	  del(path,p)
@@ -467,33 +456,14 @@ function _draw()
 	 draw_hud()
 	 
 	 
-	  	 
---	 zones=objzones(sel)
---	 for z in all(zones) do
---	  print(z,0,64,0)
---	 end
---	 print("here",0,64,0)
-	 
-	 
 	 if blackout then
  	 
--- 	 --7943
  	 for x=0,15 do
  	  for y=0,15 do
  	   spr(121,x*8,y*8) 
  	  end 
  	 end
  	 
- 	 --7955
--- 	 cls()
--- 	 for x=1,128 do
---  	 for y=1,128 do
---  	  srand(x+1001*y)
---  	  if rnd(100)<1 then
---  	   pset(x,y,6)
---  	  end
---  	 end
--- 	 end
 	 end
 	 
 	 draw_dialog()
@@ -529,9 +499,6 @@ end
 --util 
 
 
---function ptinc(a,b)
--- return pt(a.x+b.x,a.y+b.y)
---end
 function ptequ(a,b)
  return a.x==b.x and a.y==b.y
 end
@@ -695,11 +662,6 @@ function pnearzones(p,zones)
    if g(i2zone,ptadd(p,d))==z
    then return true end
   end
---	 if i2zone[iaddxy(i,-1,0)]==z 
---	 or i2zone[iaddxy(i,1,0)]==z 
---	 or i2zone[iaddxy(i,0,-1)]==z 
---	 or i2zone[iaddxy(i,0,1)]==z
---	 then return true end
  end
  return false 
 end
@@ -728,12 +690,6 @@ function objnearzones(obj,zones)
  return false
 end
 
---return region tile belongs to
---(for pathfinding)
---i2zone={}
---zonecount=10
---function build_i2zone()
---end
 function ok_to_zone(res,p)
  local i=pt2i(p)
  return res[i]==nil and
@@ -741,62 +697,26 @@ function ok_to_zone(res,p)
         not i2danger[i]
 end
 function floodfill(res,p,v)
--- local x,y=i2xy(i)
  if (not ok_to_zone(res,p)) return
  s(res,p,v)
  for d in all(cardinal) do
   floodfill(res,ptadd(p,d),v)
  end
--- floodfill(res,iaddxy(i,1,0),v)
--- floodfill(res,iaddxy(i,0,-1),v)
---	floodfill(res,iaddxy(i,0,1),v)
 end
-function drawdebug_zones()
- for i,z in pairs(i2zone) do
-  p=i2pt(i)
-  local x,y=p.x,p.y
-  rectfill2(x*8+2,y*8+2,4,4,0)
-  rectfill2(x*8+3,y*8+3,2,2,z)
- end
-end
+
 
 --return all zones adjacent 
 --to obj base x,y position
 --(basically just for heroes atm)
 function objzones(obj)
  if (obj==nil) return {}
--- local x,y=obj.x,obj.y
--- local i=pt2i(obj)
+ 
  local res={}
- i=0
  for d in all(cardinal) do
-  local vv=ptadd(obj,d)
---  local vv=obj
---  print(vv.x,i*5,80)
---  print(vv.y,i*5,88)
---  i+=1
   local z=g(i2zone,ptadd(obj,d))
-  print(z,i*5,88)
-  i+=1
   if z!=nil and not has(res,z)
    then add(res,z) end
  end
--- local lz=cardzone[1]
--- local rz=cardzone[2]
--- local uz=cardzone[3]
--- local dz=cardzone[4]
----- local lz=i2zone[iaddxy(i,-1,0)]
----- local rz=i2zone[iaddxy(i,1,0)]
----- local uz=i2zone[iaddxy(i,0,-1)]
----- local dz=i2zone[iaddxy(i,0,1)]
--- if lz!=nil and not has(res,lz) then
---  add(res,lz) end
--- if rz!=nil and not has(res,rz) then
---  add(res,rz) end
--- if uz!=nil and not has(res,uz) then
---  add(res,uz) end
--- if dz!=nil and not has(res,dz) then
---  add(res,dz) end
   
  --add zone of hero too
  local z=g(i2zone,obj)
@@ -807,14 +727,8 @@ function objzones(obj)
 end
 
 
---for i2xxx arrays
-function drawdebug_layer(lyr,c)
- for k,v in pairs(lyr) do
-  p=i2pt(k)
-  local x,y=p.x,p.y
-  rect2({x*8+1,y*8+1,6,6},c)
- end
-end
+
+
 
 --reverse lookups
 --maps tile xy to obj,col,hot,etc
@@ -841,8 +755,6 @@ function create_i2tile()
       y==it.y+it.hot[2] 
       
     --map of objects
---    i2obj[i]=it
-    --8133
     s(mapobj,p,it)
       
     --map of hot spots
@@ -871,7 +783,6 @@ function create_i2tile()
        (cx==4 and cy==0))
     then
      i2col[i]=nil
---     i2obj[i]=nil
      s(mapobj,p,nil)
     end
     
@@ -890,7 +801,6 @@ function create_i2tile()
  zonecount=10
  for x=0,tilesw-1 do
   for y=0,tilesh-1 do
---   local i=xy2i(x,y)
    local p=pt(x,y)
    if ok_to_zone(i2zone,p) then
     --start new region (floodfill it)
@@ -903,11 +813,7 @@ function create_i2tile()
  --make each hero their own zone too
  for plr in all(plrs) do
   for h in all(plr.heroes) do
-   
-   --token
-		 local i=pt2i(h)
-		 i2zone[i]=zonecount
- 
+		 s(i2zone,h,zonecount)
    zonecount+=1
   end
  end
@@ -915,23 +821,6 @@ function create_i2tile()
 end
 
 
-
-function drawdebug_tilecol()
- for x=0,tilesw-1 do
-  for y=0,tilesh-1 do
-   if tmap_solid(pt(x,y)) then
-    rect2({x*8+2,y*8+2,4,4},6)
-   end
-  end
- end
-end
-
---function drawdebug_i(list)
--- for i in all(list) do
---  x,y=i2xy(i)
---  rectfill2(x*8+3,y*8+3,2,2,12)
--- end
---end
 
 --basically just for debug
 --wrong, also for tile_is_solid
@@ -1155,6 +1044,36 @@ function draw_overworld()
 end
 
 
+
+
+-- some debug functions
+
+function drawdebug_zones()
+ for i,z in pairs(i2zone) do
+  p=i2pt(i)
+  local x,y=p.x,p.y
+  rectfill2(x*8+2,y*8+2,4,4,0)
+  rectfill2(x*8+3,y*8+3,2,2,z)
+ end
+end
+--for i2xxx arrays
+function drawdebug_layer(lyr,c)
+ for k,v in pairs(lyr) do
+  p=i2pt(k)
+  local x,y=p.x,p.y
+  rect2({x*8+1,y*8+1,6,6},c)
+ end
+end
+function drawdebug_tilecol()
+ for x=0,tilesw-1 do
+  for y=0,tilesh-1 do
+   if tmap_solid(pt(x,y)) then
+    rect2({x*8+2,y*8+2,4,4},6)
+   end
+  end
+ end
+end
+
 function drawdebug_things()
  for it in all(things) do
   
@@ -1181,62 +1100,11 @@ end
 
 --a* pathfinding
 
-----1d / 2d conversions
-----assumes 0-based tile grid now
---function i2xy(i) 
--- local y=flr(i/tilesw)
--- local x=i-y*tilesw
--- return x,y
---end
---function xy2i(x,y)
--- return x+y*tilesw
---end
---function v2i(pos)
--- return xy2i(pos[1],pos[2])
---end
-
-
-----add tile x,y to tile index 
---function iaddxy(i,x,y)
--- --for now limit by map size
--- --fix should be elsewhere
--- nx,ny=i2xy(i)
--- nx+=x
--- ny+=y
--- if nx<0 or nx>tilesw-1 or
---    ny<0 or nx>tilesh-1 
--- then
---  return -1 --some junk value that will always return as solid tile
--- end
--- return xy2i(nx,ny)
----- i+=x
----- i+=y*tilesw
----- return i
---end
-
-
-----wrapper around our main
-----collision function
-----so we can specially ignore
-----a list of tile i
---function iwall(i)
--- if has(global_walkable_i,i) then
---  return false
--- end
--- x,y=i2xy(i)
--- if (tile_is_solid(x,y)) return true
--- if (i2danger[i]) return true
---end
---function iclear(i)
--- return not iwall(i)
---end
-
 function map_iswall(p)
  if has2(global_walkable,p) then
   return false
  end
  if (tile_is_solid(p)) return true
--- if (i2danger[pt2i(p)]) return true
  if (g(i2danger,p)) return true
 end
 function clear(p)
@@ -1263,37 +1131,19 @@ function map_neighbors(p)
    add(res,{newp,1})
   end
  end
--- local li=ptadd(i, -1,0)
--- local ri=iaddxy(i, 1,0)
--- local ui=iaddxy(i, 0,-1)
--- local di=iaddxy(i, 0,1)
--- if (iclear(li)) add(res,{li,1})
--- if (iclear(ri)) add(res,{ri,1})
--- if (iclear(ui)) add(res,{ui,1})
--- if (iclear(di)) add(res,{di,1})
  
  for step in all(diagonal) do
+  --token potential
   local newp=ptadd(p,step)
-  if clear(newp) then
+  if clear(newp) 
+  --prevent sneaking thru:
+  and clear(ptadd(p,pt(0,step.y)))
+  and clear(ptadd(p,pt(step.x,0)))
+  then
    add(res,{newp,1.4})
   end
-  --todo:prevent sneaking thru
  end
  
--- --diag (no sneaking thru tho)
--- local d1i=iaddxy(i, -1,-1)
--- local d2i=iaddxy(i, 1,-1)
--- local d3i=iaddxy(i, -1,1)
--- local d4i=iaddxy(i, 1,1)
--- if (iclear(li) or iclear(ui)) then
---  if (iclear(d1i)) add(res,{d1i,1.4}) end
--- if (iclear(ri) or iclear(ui)) then
---  if (iclear(d2i)) add(res,{d2i,1.4}) end
--- if (iclear(li) or iclear(di)) then
---  if (iclear(d3i)) add(res,{d3i,1.4}) end
--- if (iclear(ri) or iclear(di)) then
---  if (iclear(d4i)) add(res,{d4i,1.4}) end
---  
  return res
 end
 
@@ -1327,19 +1177,7 @@ function pathfind(start,goal,obj,
  func_nei,
  func_dist)
  
--- func_nei=func_nei or map_neighbors
--- func_dist=func_dist or map_dist
- 
--- print("pathing from "..
---       start[1]..","..start[2]..
---       " to "..
---       goal[1]..","..goal[2])
- 
  if (ptequ(start,goal)) return {}
--- si=v2i(start)
--- gi=v2i(goal)
--- 
--- if (si==gi) return {}
  
  --make a kind of ok-list
  --from optional passed in obj
@@ -1348,6 +1186,9 @@ function pathfind(start,goal,obj,
  global_walkable={}
  
  if obj!=nil then
+  --token: func that generates
+  --list of points from rect
+  --and and offset point?
   c=obj.col
 	 for cx=0,c[3]-1 do
 	  for cy=0,c[4]-1 do
@@ -1470,52 +1311,7 @@ end
 
 
 
---extra pathfinding
-
-
---build list of walkable tiles
-function build_valid_spots(obj)
- si=xy2i(obj.x,obj.y)
- 
- valid_i={si}
- local li=iaddxy(si, -1,0)
- local ri=iaddxy(si, 1,0)
- local ui=iaddxy(si, 0,-1)
- local di=iaddxy(si, 0,1)
-	flood_path(valid_i,li)
-	flood_path(valid_i,ri)
-	flood_path(valid_i,ui)
-	flood_path(valid_i,di)
- return valid_i
-end
-function flood_path(res,p)
- if (has2(res,p)) return
--- x,y=i2xy(i)
- if (tile_is_solid(p)) return
- add(res,p)
- for d in all(cardinal) do
-  flood_path(res,ptadd(p,d))
- end
--- flood_path(res,iaddxy(i,-1,0))
--- flood_path(res,iaddxy(i,1,0))
--- flood_path(res,iaddxy(i,0,-1))
--- flood_path(res,iaddxy(i,0,1))
-end
-
-function ivalid(i)
- return has(sel_valid,i)
-end
-
-
-
 --cursor
-
-
-function selat(x,y)
- if sel!=nil then
-  return sel.x==x and sel.y==y
- end
-end
 
 
 function init_cursor()
@@ -1529,7 +1325,6 @@ function update_move_cursor()
  local tx,ty=flr(curx/8),flr(cury/8)
  local p=pt(tx,ty)
  local i=pt2i(p)
--- local obj=i2obj[i]
  local obj=g(mapobj,p)
  local selzones=objzones(sel)
  
@@ -1629,7 +1424,6 @@ end
 
 function update_sel_cursor()
  local tx,ty=flr(curx/8),flr(cury/8)
- --local obj=i2obj[xy2i(tx,ty)]
  local obj=g(mapobj,pt(tx,ty))
  if obj!=nil and obj.select then
   style=obj.type
@@ -1650,7 +1444,6 @@ function move_cursor(
  
  for i=0,3 do
   if btnp(i) then
-   --p=ptadd(p,cardinal[i+1])
    ptinc(p,cardinal[i+1])
    sfx(58,-1,1,2)
   end
@@ -1676,23 +1469,6 @@ function update_cursor()
   
  curx,cury=tempp.x*8,tempp.y*8
 
- --8196
--- if (btnp(⬅️)) curx-=8 --moved=true
--- if (btnp(➡️)) curx+=8 --moved=true
--- if (btnp(⬆️)) cury-=8 --moved=true
--- if (btnp(⬇️)) cury+=8 --moved=true
----- if (moved) sfx(58,-1,1,2)
--- curx=mid(curx,0,(tilesw-1)*8)
--- cury=mid(cury,0,(tilesh-1)*8)
- 
--- if (btnp(⬅️)) curx-=8 sfx(58,-1,1,2)
--- if (btnp(➡️)) curx+=8 sfx(58,-1,1,2)
--- if (btnp(⬆️)) cury-=8 sfx(58,-1,1,2)
--- if (btnp(⬇️)) cury+=8 sfx(58,-1,1,2)
--- curx=max(curx,0)
--- cury=max(cury,0)
--- curx=min(curx,(tilesw-1)*8)
--- cury=min(cury,(tilesh-1)*8)
 end
 
 function draw_cursor()
@@ -1707,7 +1483,10 @@ end
 -->8
 --battle
 
-
+--token potential:
+--replace mob stacks
+--with .name .count
+--instead of [1] and [2]
 
 function army_is_empty(army)
  for m in all(army) do
@@ -1717,7 +1496,7 @@ function army_is_empty(army)
 end
 
 function cas_from_army(army)
- local res={}--copy(army)
+ local res={}
  for m in all(army) do
   if m.casualties>0 then
    local c=copy(m)
@@ -1725,11 +1504,6 @@ function cas_from_army(army)
    add(res,c)
   end
  end
---  m[2]=m.casualties
---  if m.casualties==0 then
---   del(m,res)
---  end
--- end
  return res
 end
 
@@ -1784,15 +1558,8 @@ function battle_end_screen(attack_won)
 end
 
 
-grid={}
-for x=0,8 do 
- for y=0,8 do
-  add(grid,pt(x,y))
-  if (x%2==1) add(grid,pt(x,y+1))
- end
-end
 
-
+--token: combine with other sorts?
 function sort_by_speed(t)
  for n=2,#t do
   local i=n
@@ -1861,6 +1628,7 @@ function from_army(x,army)
  end
  return mobs
 end
+
 --start/init rolled into one
 function start_battle(l,r)
  in_battle=true
@@ -1872,12 +1640,8 @@ function start_battle(l,r)
  attackers=l
  defenders=r
 
--- --reset anim vars
--- --(_anim are timings)
--- attack_anim=0
--- die_anim=0
 
- --2 part turns: move, attack
+ --2-part turns: move, attack
  attack_portion=false
 
  
@@ -1952,12 +1716,11 @@ function start_battle(l,r)
  end
  
  --todo: make second list
- --for display, sorted by y
+ --for display, sorted by y ?
  sort_by_speed(moblist)
  
  activemob=moblist[1]
  
--- mobstep=0
  
  
  --battle cursor
@@ -1979,8 +1742,9 @@ function get_neighbors(p)
  if (evencol(p.x)) grid_neighbors=grid_neighbors_e
  local res=copy(grid_neighbors)
  for n in all(res) do
-  n.x+=p.x
-  n.y+=p.y
+  ptinc(n,p)
+--  n.x+=p.x
+--  n.y+=p.y
  end
  return res
 end
@@ -2012,7 +1776,6 @@ function open_neighbors(bx,by)
   
  for n in all(grid_neighbors) do
  
-  --7950
   --check point is on grid
   if has2(grid,n) then
    --check for obj in spot
@@ -2020,23 +1783,6 @@ function open_neighbors(bx,by)
  	  add(res,n)
    end
   end
-   
-  --7978
---  local x,y=n.x,n.y
---  if x>=0 and x<9 and
---     y>=0 and y<10
---  then
---   --reject y=9 on even rows
---   if evencol(x) and y==9 then
---   else
---   
---    --check for obj in spot
---    if not has2(moblist,n) then
--- 	   add(res,n)
---    end
---    
---   end
---  end
   
  end
  return res
@@ -2076,8 +1822,6 @@ function mob_move(p)
 end
 
 function mob_die(mob)
--- die_anim=30
--- anim_death=mob
 
  for i=1,30 do
   local m=mob
@@ -2105,21 +1849,26 @@ function mob_die(mob)
  del(r_mobs,mob)
  del(moblist,mob)
  
- --resort (todo: needed??)
- sort_by_speed(moblist)
+ --resort needed? 
+ --i dont think so, del should
+ --preserve order right?
+-- sort_by_speed(moblist)
 end
 
 function mob_attack(pos)
+
+ --token: potential here
  local mob=activemob
- enemy=mob_at_pos(pos)
- if enemy==nil then
-  x,y=gxy2sxy(mob.x,mob.y)
-  circfill(x+5,y+5,1,1)
-  x,y=gxy2sxy(pos.x,pos.y)
-  circfill(x+5,y+5,1,8)
-  flip()
-  stop("no enemy")
- end
+ local enemy=mob_at_pos(pos)
+ 
+-- if enemy==nil then
+--  x,y=gxy2sxy(mob.x,mob.y)
+--  circfill(x+5,y+5,1,1)
+--  x,y=gxy2sxy(pos.x,pos.y)
+--  circfill(x+5,y+5,1,8)
+--  flip()
+--  stop("no enemy")
+-- end
  
  
  for i=1,30 do
@@ -2133,11 +1882,9 @@ function mob_attack(pos)
   flip()
  end
  
--- attack_anim=30
--- anim_attacker=mob
--- anim_defender=enemy
  
  if enemy.damage==nil then
+  --token: init this in init
   enemy.damage=0
  end
  enemy.damage+=mob_attacks[mob[1]]*mob[2]
@@ -2182,33 +1929,25 @@ end
 -- as x,y or as pt.. 
 -- and change func to that
 function spot_empty(p)
+ --token: inline this?
  return not has2(moblist,p)
 end
 
 
 function next_mob_turn()
 
+ --token: put this in func
+ --that takes +1 or -1 as arg
  nexti=indexof(moblist,activemob)+1
  if (nexti>#moblist) nexti=1
  activemob=moblist[nexti]
  
  attack_portion=false
  
--- for i=1,50 do
--- print("now mob "..nexti,64,64,1)
--- flip()
--- end
- 
 end
 
 function update_battle()
  
--- if attack_anim>0
--- or die_anim>0 
--- then
---  return
--- end
-
  --todo: add check if
  --player won or lost?
  --(map color to player/cpu)
@@ -2238,7 +1977,6 @@ function update_battle()
   
   if btnp(❎) then
    if has2(options,bcur) then
---    if not attack_portion then
     if has2(moves,bcur) then
 	    mob_move(bcur)
     else
@@ -2294,39 +2032,29 @@ function update_battle()
 	  mob_move(closest_spot)
   end
   
---  if mobstep==0 then
---   mobpath=ai_path_mob(activemob)
---   mobwait=0
---   mobstep+=1
---  end
---  
---  if mobwait%10==0 then
---   if mobstep>#mobpath then
---    mobturn+=1
---    mobstep=0
---   else
---    mob_move(activemob,mobpath[mobstep])
---    mobstep+=1
---   end
---  end
---  
---  mobwait+=10 --1
-  
  end
  
--- lastbcurx=bcurx
--- lastbcury=bcury
- if (btnp(⬅️)) bcurx-=1 sfx(58,-1,1,2)
- if (btnp(➡️)) bcurx+=1 sfx(58,-1,1,2)
- if (btnp(⬆️)) bcury-=1 sfx(58,-1,1,2)
- if (btnp(⬇️)) bcury+=1 sfx(58,-1,1,2)
- local maxx=8
- local maxy=8
- if (r_hero_present) maxx=9
- if (bcurx%2==1) maxy=9
- bcurx=mid(bcurx,-1,maxx)
- bcury=mid(bcury,0,maxy)
- if (bcurx==-1 or bcurx==9) bcury=2
+ 
+ bcur=pt(bcurx,bcury)
+ 
+ move_cursor(bcur, 0,8, 0,9)
+ if evencol(bcur.x) 
+ and bcur.y>8
+ then
+  bcur.y=8
+ end
+ bcurx,bcury=bcur.x,bcur.y
+-- if (btnp(⬅️)) bcurx-=1 sfx(58,-1,1,2)
+-- if (btnp(➡️)) bcurx+=1 sfx(58,-1,1,2)
+-- if (btnp(⬆️)) bcury-=1 sfx(58,-1,1,2)
+-- if (btnp(⬇️)) bcury+=1 sfx(58,-1,1,2)
+-- local maxx=8
+-- local maxy=8
+-- if (r_hero_present) maxx=9
+-- if (bcurx%2==1) maxy=9
+-- bcurx=mid(bcurx,-1,maxx)
+-- bcury=mid(bcury,0,maxy)
+-- if (bcurx==-1 or bcurx==9) bcury=2
 
 
 end
@@ -2399,27 +2127,6 @@ function draw_battle()
  end
  
  
--- --attack animation
--- if attack_anim>0 then
---  attack_anim-=1
--- 
---  local a=anim_attacker
---  local sx,sy=gxy2sxy(a.x,a.y)
---  spr(43,sx,sy)
---  
---  local d=anim_defender
---  local sx,sy=gxy2sxy(d.x,d.y)
---  spr(11,sx,sy)
---  
--- elseif die_anim>0 then
---  die_anim-=1
---  local m=anim_death
---  local sx,sy=gxy2sxy(m.x,m.y)
---  pal(8,0)
---  spr(11,sx,sy)
---  pal()
--- end
- 
  
  --cursor
  cw,ch=gw+1,gh+1
@@ -2446,13 +2153,6 @@ function draw_battle()
   end
  end
  
--- --draw neighborts of cursor
--- local temp=open_neighbors(bcurx,bcury)
--- for n in all(temp) do
---  x,y=gxy2sxy(n.x,n.y)
---  circfill(x+5,y+5,1,8)
--- end
- 
 
 
  --instructions
@@ -2461,10 +2161,6 @@ function draw_battle()
   print("skip unit",21,120,6)
  else
   print("view unit",21,120,6)
---  hl=mob_at_pos(bcur)
---  if hl!=nil then
---   print(hl.damage,21,112,7)
---  end
  end
  
  print("❎",70,121-flash(2,10),6)
@@ -2532,10 +2228,6 @@ function gxy2sxy(x,y)
 end
 
 
-
---7975 before convert to x,y
---pass to pathfinding
---wip - untested/unused
 
 --find all non-wall neighbours
 --now returning table with 
@@ -2902,6 +2594,8 @@ function d_port(p,x,y)
    
 end
 
+--token: remove and just
+--draw all armies horizontal
 function d_army(obj,x,y)
 
  local arm=obj.army
@@ -2915,10 +2609,7 @@ function d_army(obj,x,y)
  y+=10
  for mob in all(arm) do
   spr(mob_sprs[mob[1]],x,y)
---  print(mob[2],x,y+7,0)
---  print(mob[2],x+1,y+7,0)
---  print(mob[2],x,y+6,7)
---  rectfill2(x,y+6,7,5,7)
+  
   local str=tostr(mob[2])
   local ofx=0
   if (#str>2) ofx=-3*(#str-2)
@@ -2993,7 +2684,18 @@ end
 function init_data()
 
 
--- inputs={⬅️,➡️,⬆️,⬇️}
+ --pretty much just for
+ --checking if p is on grid?
+	grid={}
+	for x=0,8 do 
+	 for y=0,8 do
+	  add(grid,pt(x,y))
+	  if not evencol(x) then
+	   add(grid,pt(x,y+1))
+	  end
+	 end
+	end
+
  
 	cardinal={
 		pt(-1,0),
