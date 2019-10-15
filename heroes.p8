@@ -1773,10 +1773,10 @@ function start_battle(l,r)
  attackers=l
  defenders=r
 
- --reset anim vars
- --(_anim are timings)
- attack_anim=0
- die_anim=0
+-- --reset anim vars
+-- --(_anim are timings)
+-- attack_anim=0
+-- die_anim=0
 
  --2 part turns: move, attack
  attack_portion=false
@@ -1977,8 +1977,17 @@ function mob_move(p)
 end
 
 function mob_die(mob)
- die_anim=30
- anim_death=mob
+-- die_anim=30
+-- anim_death=mob
+
+ for i=1,30 do
+  local m=mob
+  local sx,sy=gxy2sxy(m.x,m.y)
+  pal(8,0)
+  spr(11,sx,sy)
+  pal()
+  flip()
+ end
  
  add(corpses,mob)
  
@@ -2013,9 +2022,21 @@ function mob_attack(pos)
   stop("no enemy")
  end
  
- attack_anim=30
- anim_attacker=mob
- anim_defender=enemy
+ 
+ for i=1,30 do
+  local a=mob
+  local sx,sy=gxy2sxy(a.x,a.y)
+  spr(43,sx,sy)
+  
+  local d=enemy
+  local sx,sy=gxy2sxy(d.x,d.y)
+  spr(11,sx,sy)
+  flip()
+ end
+ 
+-- attack_anim=30
+-- anim_attacker=mob
+-- anim_defender=enemy
  
  if enemy.damage==nil then
   enemy.damage=0
@@ -2083,11 +2104,11 @@ end
 
 function update_battle()
  
- if attack_anim>0
- or die_anim>0 
- then
-  return
- end
+-- if attack_anim>0
+-- or die_anim>0 
+-- then
+--  return
+-- end
 
  --todo: add check if
  --player won or lost?
@@ -2157,11 +2178,11 @@ function update_battle()
 	  for p in all(options) do
 	   for en in all(enemies) do
 	   
-			  x,y=gxy2sxy(p.x,p.y)
-			  circfill(x+5,y+5,1,11)
-			  x,y=gxy2sxy(en.x,en.y)
-			  circfill(x+5,y+5,1,14)
-	    flip()
+--			  x,y=gxy2sxy(p.x,p.y)
+--			  circfill(x+5,y+5,1,11)
+--			  x,y=gxy2sxy(en.x,en.y)
+--			  circfill(x+5,y+5,1,14)
+--	    flip()
 	    
 	    dist=grid_dist(p,en)
 	    if dist<closest_dist then
@@ -2279,26 +2300,26 @@ function draw_battle()
  end
  
  
- --attack animation
- if attack_anim>0 then
-  attack_anim-=1
- 
-  local a=anim_attacker
-  local sx,sy=gxy2sxy(a.x,a.y)
-  spr(43,sx,sy)
-  
-  local d=anim_defender
-  local sx,sy=gxy2sxy(d.x,d.y)
-  spr(11,sx,sy)
-  
- elseif die_anim>0 then
-  die_anim-=1
-  local m=anim_death
-  local sx,sy=gxy2sxy(m.x,m.y)
-  pal(8,0)
-  spr(11,sx,sy)
-  pal()
- end
+-- --attack animation
+-- if attack_anim>0 then
+--  attack_anim-=1
+-- 
+--  local a=anim_attacker
+--  local sx,sy=gxy2sxy(a.x,a.y)
+--  spr(43,sx,sy)
+--  
+--  local d=anim_defender
+--  local sx,sy=gxy2sxy(d.x,d.y)
+--  spr(11,sx,sy)
+--  
+-- elseif die_anim>0 then
+--  die_anim-=1
+--  local m=anim_death
+--  local sx,sy=gxy2sxy(m.x,m.y)
+--  pal(8,0)
+--  spr(11,sx,sy)
+--  pal()
+-- end
  
  
  --cursor
