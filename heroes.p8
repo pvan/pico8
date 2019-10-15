@@ -11,6 +11,7 @@ __lua__
 --use a* for battle? current algo hangs if obstacle in way
 --remove casualties from winner
 --add is_plr_ai list or something?
+--make battle skip turn menu option
 
 
 --notes:
@@ -1333,14 +1334,14 @@ function pathfind(start,goal,obj,
   --[1] drops the priority
   local c=pop(frontier)[1]
 
---visualize search
-if in_battle then
- x,y=gxy2sxy(c.x,c.y)
- circfill(x+5,y+5,1,12)
- x,y=gxy2sxy(goal.x,goal.y)
- circfill(x+5,y+5,1,8)
- flip()
-end
+----visualize search
+--if in_battle then
+-- x,y=gxy2sxy(c.x,c.y)
+-- circfill(x+5,y+5,1,12)
+-- x,y=gxy2sxy(goal.x,goal.y)
+-- circfill(x+5,y+5,1,8)
+-- flip()
+--end
 
   if ptequ(c,goal) then
    found_goal=true
@@ -1680,6 +1681,19 @@ function battle_end_screen(attack_won)
   del_obj(defenders)
  else
   del_obj(attackers)
+ end
+ 
+ --adjust mob numbers down
+ --if they are still alive
+ --todo: reduce tokens here
+ --by treating mobs/armies
+ --more of the same maybe??
+ if defenders.type=="mob" then
+  mobsleft=0
+  for m in all(r_mobs) do
+   mobsleft+=m[2]
+  end
+  defenders.group[2]=mobsleft
  end
  
 end
@@ -2414,15 +2428,15 @@ function draw_battle()
 --  print(val)
 -- end
  
- --debug display mob + turn
- i=0
- for m in all(moblist) do
-  print(m[1],4,60+i*8,1)
-  if m==activemob then
-   print("-",0,60+i*8,10)
-  end
-  i+=1
- end
+-- --debug display mob + turn
+-- i=0
+-- for m in all(moblist) do
+--  print(m[1],4,60+i*8,1)
+--  if m==activemob then
+--   print("-",0,60+i*8,10)
+--  end
+--  i+=1
+-- end
  	
 end
 
