@@ -272,16 +272,10 @@ function update_camera()
 -- camy=min(camy,(tilesh-1)*8-128+worldborder*2)
 end
 
-frame=0
-function _update()
 
- frame+=1
- 
- --true if open
- if (update_dialog()) return
- 
- if (in_battle) update_battle() return
 
+
+function update_map()
 
  if moving then
   movingdelay-=1
@@ -419,6 +413,29 @@ function _update()
 	 lselmvx=sel.movex
 	 lselmvy=sel.movey
  end
+end
+
+
+
+frame=0
+function _update()
+
+ frame+=1
+ 
+ --true if open
+ if update_dialog() then
+  cache_btns()
+  return
+ end
+ 
+ if in_battle then
+  update_battle()  
+  cache_btns()
+  return
+ end
+
+
+ update_map()
 
 
  
