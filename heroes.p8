@@ -134,7 +134,7 @@ function _init()
 	spawn("ore",22,20)
 
 	--block hero in castle test
-	spawn("ore",5,9)
+--	spawn("ore",5,9)
 	
  
  --do once here so we don't
@@ -952,17 +952,15 @@ end
 
 function del_obj(obj)
  del(things,obj)
- plr = obj_owner(obj)
-  
---  if obj.type=="hero" then
-   del(plr.heroes,obj)
---  else
---   stop("huh???")
---  end
- create_i2tile()
--- build_i2zone()
  
- set_sel()
+ --mob group doesn't need this 
+ if obj.type=="hero" then
+  del(obj_owner(obj).heroes,
+     obj)
+  set_sel()
+ end
+ 
+ create_i2tile()
  
 end
 
@@ -1625,14 +1623,6 @@ end
 --battle
 
 
-function end_battle(attack_won)
- in_battle=false
- if attack_won then
-  del_obj(defenders)
- else
-  del_obj(attackers)
- end
-end
 
 function army_is_empty(army)
  for m in all(army) do
@@ -1642,17 +1632,23 @@ function army_is_empty(army)
 end
 
 function cas_from_army(army)
- local res=copy(army)
- for m in all(res) do
-  m[2]=m.casualties
-  if m.casualties==0 then
-   del(m,res)
+ local res={}--copy(army)
+ for m in all(army) do
+  if m.casualties>0 then
+   local c=copy(m)
+   c[2]=c.casualties
+   add(res,c)
   end
  end
+--  m[2]=m.casualties
+--  if m.casualties==0 then
+--   del(m,res)
+--  end
+-- end
  return res
 end
 
-function battle_end_screen()
+function battle_end_screen(attack_won)
  
 	l_cas=cas_from_army(l_cas)
 	r_cas=cas_from_army(r_cas)
@@ -1678,7 +1674,13 @@ function battle_end_screen()
  end
  
  diag_open=false
- end_battle()
+ 
+ in_battle=false
+ if attack_won then
+  del_obj(defenders)
+ else
+  del_obj(attackers)
+ end
  
 end
 
@@ -2790,6 +2792,9 @@ function draw_h_army(arm,cx,y)
   if (#str>2) ofx=-3*(#str-2)
   print(str,x+ofx,y+8,0)
   x+=10
+ end
+ if #arm==0 or arm==nil then
+  print("none",cx-8,y+4,1)
  end
 end
 
