@@ -216,6 +216,9 @@ function hero_trade(a,b)
   --draw controls
   
   
+  
+  cache_btns()
+  
   flip()
   
   
@@ -406,7 +409,7 @@ function _update()
 
 
  
- 
+ cache_btns()
  
 end
 
@@ -644,6 +647,25 @@ function has2(arr, val)
  return false
 end
 
+
+cached_btn={}
+
+--clip and cache btn state
+--so we can use blocking loops
+--and still get btnp type stuff
+function cache_btns()
+ for i=0,8 do --support 2p?
+  cached_btn[i]=btn(i)
+ end
+end
+
+--replacement for btnp
+--that works even in inf loop
+function btnp2(key)
+ return (btn(key) and
+        not cached_btn[key])
+        or btnp(key)
+end
 
 -->8
 --overworld/pathfinding/cursor
@@ -1448,7 +1470,7 @@ function move_cursor(
  p, minx,maxx, miny,maxy)
  
  for i=0,3 do
-  if btnp(i) then
+  if btnp2(i) then
    ptinc(p,cardinal[i+1])
    sfx(58,-1,1,2)
   end
