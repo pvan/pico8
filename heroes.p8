@@ -196,6 +196,7 @@ function hero_trade(a,b)
  
   --draw / update trade window
   
+  bars={a,b}
   
   move_cursor(tcur, 1,5, 1,3)
   
@@ -209,19 +210,23 @@ function hero_trade(a,b)
 	 if movingmob!=nil then
 	  if btnp2(❎) then
 	   --place
-		  if tcur.y==1 then
-		   bar=a
-		  else
-		   bar=b
-		  end
+--		  if tcur.y==1 then
+--		   bar=a
+--		  else
+--		   bar=b
+--		  end
+		  bar=bars[tcur.y]
 	   mob=bar.army[tcur.x]
-	   if mob!=nil then
+	   if mob==nil then
+ 		  bar.army[tcur.x]=movingmob
+ 		  movingmob=nil
+	   elseif mob[1]==movingmob[1] then
+	    bar.army[tcur.x][2]+=movingmob[2]
+	    movingmob=nil
+	   else
 	    local temp=movingmob
 	    movingmob=mob
 	    bar.army[tcur.x]=temp
-	   else
- 		  bar.army[tcur.x]=movingmob
- 		  movingmob=nil
 		  end
 	  end
 	 else
@@ -232,19 +237,73 @@ function hero_trade(a,b)
 		 else
 			 if btnp2(❎) then
 			  --pickup
-			  if tcur.y==1 then
-			   bar=a
-			  else
-			   bar=b
+--			  if tcur.y==1 then
+--			   bar=a
+--			  else
+--			   bar=b
+--			  end
+		   bar=bars[tcur.y]
+		   mob=bar.army[tcur.x]
+		   if mob!=nil then
+			   movingmob=mob
+			   bar.army[tcur.x]=nil
 			  end
-			   mob=bar.army[tcur.x]
-			   if mob!=nil then
- 			   movingmob=mob
- 			   bar.army[tcur.x]=nil
- 			  end
 			 end
 			 if btn(🅾️) then
 			  --split
+--			  if tcur.y==1 then
+--			   bar=a
+--			  else
+--			   bar=b
+--			  end
+		   bar=bars[tcur.y]
+				 splitmob=bar.army[tcur.x]
+		   if splitmob[2]>1 then
+				  splitval=1
+				  splitmob[2]-=splitval
+				  movingmob=copy(splitmob)
+				  movingmob[2]=splitval
+				  while true do
+				   draw_window(
+				    33,
+				    60,
+				    60,
+				    30)
+				    
+				   draw_big_mob(splitmob,
+				    38,
+				    60)
+				    
+				   draw_big_mob(movingmob,
+				    64,
+				    60)
+				    
+				   frame+=1
+				   spr(225,50,70,1,1,true)
+				   spr(225,60,70)
+				   print("❎",48,82+flashamt(),1)
+				   print("done",56,82,1)
+				   
+				   if btnp2(⬅️) 
+				   and movingmob[2]>1
+				   then
+				    movingmob[2]-=1
+				    splitmob[2]+=1
+				   end
+				   if btnp2(➡️)
+				   and splitmob[2]>1
+				   then
+				    movingmob[2]+=1
+				    splitmob[2]-=1
+				   end
+				   if btnp2(❎) then
+				    break
+				   end
+				   
+	      cache_btns()
+				   flip()
+				  end
+				 end
 			 end
 	  end
 	 end
@@ -281,7 +340,7 @@ function hero_trade(a,b)
   
   flip()
   
-  _draw()
+  _draw() --could put at top too
   
  end
  
