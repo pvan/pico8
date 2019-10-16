@@ -13,6 +13,7 @@ __lua__
 --replace hero selection with menu in battle
 --remove cursor in battle during animation
 --...and remove control instructions??
+--hud menu should remember selected portrait (and maybe menu item?)
 
 
 --token saving
@@ -64,6 +65,9 @@ function set_player(p)
  for h in all(cp.heroes) do
   h.move=100
  end
+ 
+ --setup portrait bar, basically
+ update_static_hud()
  
  hud_menu_open=false
  actl_menu_y=0
@@ -451,45 +455,47 @@ function update_map()
  end
 
 
-
+ 
+ update_static_hud()
+ 
+ 
+ --open/close menu
  if (btnp(🅾️)) then
   hud_menu_open=not hud_menu_open
   if (hud_menu_open) then 
    sfx(63)
-   hud_menu_init()
+   hcur=pt(selport,1)
   else 
    sfx(61) 
-   map_update=map_cursor_update() 
-   hud_draw=draw_cur_popup_info
   end
  end
  
--- 
- update_hud()
--- if hud_menu_open then
---  return
--- end 
--- 
+
+ --always update, so we 
+ --animate open/close 
+ animate_hud_menu()
 
  if hud_menu_open then
-  cur_obj=nil --better place?
-  actl_menu_y+=flr(16-actl_menu_y)/3
- else 
-  actl_menu_y+=flr(0-actl_menu_y)/3
+  update_hud_menu_cursor()
+ else
+  update_map_cursor()
  end
  
- if (map_update!=nil) map_update()
--- update_hud()
--- if hud_menu_open then
---  return
--- end 
  
 end
 
 
-function map_cursor_update()
+function update_map_cursor()
 
- update_cursor()
+ --update cursor
+ tempp=pt(flr(curx/8),flr(cury/8))
+ move_cursor(
+  tempp,
+  0,tilesw-1,
+  0,tilesh-1)
+ curx,cury=tempp.x*8,tempp.y*8
+ 
+ 
  ctx=flr(curx/8)
  cty=flr(cury/8)
  
@@ -555,7 +561,6 @@ function map_cursor_update()
 end
 
 
-
 frame=0
 function _update()
 
@@ -586,6 +591,13 @@ function _update()
 end
 
 
+
+
+
+
+
+
+
 function map_draw()
 
  	camera(camx,camy)
@@ -612,8 +624,9 @@ function map_draw()
 		 end
 	 end
 	 
-	 
-	 draw_cursor()
+	 if not hud_menu_open then
+ 	 draw_cursor()
+	 end
 	 
 	 
 --	 drawdebug_zones()
@@ -628,7 +641,11 @@ function map_draw()
 	 camera()
 	 
 	 
- 	draw_hud()
+ 	draw_static_hud()
+ 	
+ 	--draw even when closed,
+ 	--so we animate closing
+  draw_hud_menu()
  	
  	
 	 if blackout then
@@ -1661,17 +1678,6 @@ end
 -- p[comp]=mid(p[comp],mn,mx)
 --end
 
-function update_cursor()
-
- tempp=pt(flr(curx/8),flr(cury/8))
- move_cursor(
-  tempp,
-  0,tilesw-1,
-  0,tilesh-1)
-  
- curx,cury=tempp.x*8,tempp.y*8
-
-end
 
 function draw_cursor()
  bb=flashamt()
@@ -2526,16 +2532,23 @@ function select(obj)
 end
 
 
-function hud_menu_init()
+
+
+targ_menu_y=0
+actl_menu_y=0
+
+function animate_hud_menu()
+
+ --animate menu open/close
+ if hud_menu_open then
+  actl_menu_y+=flr(16-actl_menu_y)/3
+ else 
+  actl_menu_y+=flr(0-actl_menu_y)/3
+ end
  
- hcur=pt(1,selport)
- 
- map_update=hud_menu_update
- hud_draw=hud_menu_draw
 end
 
-
-function hud_menu_update()
+function update_hud_menu_cursor()
 
  move_cursor(hcur, 
   1,99,--max(#ports,#buttons),--limited below
@@ -2578,62 +2591,18 @@ function hud_menu_update()
     
    end
    
+   --inspect
+   if hcur.x==2 then
+    
+   end
+   
   end
  end
  
--- if hud_menu_open then
---	 if (btnp(⬇️)) menudown=true sfx(60)
---	 if (btnp(⬆️)) menudown=false sfx(60)
---	 if menudown then
---	  if (btnp(⬅️)) menusel-=1 sfx(60)
---	  if (btnp(➡️)) menusel+=1 sfx(60)
---	  menusel=mid(menusel,1,#buttons)
---	 else
---	  if (btnp(⬅️)) selport-=1 sfx(60)
---	  if (btnp(➡️)) selport+=1 sfx(60)
---	  selport=mid(selport,1,#ports)
---	 end
---	 
---  select(ports[selport])
--- 
---  if btnp(❎) then
---   if menusel==4 and menudown then
---    sfx(59)
---    local askturn=false
---    for h in all(cp.heroes) do
---     if h.move>0 then
---      askturn=true
---      break
---     end
---    end
---    if askturn then
---     open_dialog({
---      "one of your heroes",
---      "can still move.",
---      "are you sure you",
---      "want to end your turn?",
---      "   yes",
---      "   no"},{
---      end_turn,
---      close_dialog})
---    else
---     end_turn()
---    end
---   end
---  end
--- 
--- end --end menu open chek
-
+ 
 end
 
-
-
---menuselx=0
---menusely=0
-targ_menu_y=0
-actl_menu_y=0
---ports={}
-function update_hud()
+function update_static_hud()
 
  --todo: proper home for this?
  ports={}
@@ -2650,6 +2619,9 @@ function update_hud()
  end
 
 end
+
+
+
 
 
 function draw_cur_popup_info()
@@ -2705,56 +2677,48 @@ function flashingbox(x,y,w,h)
 end
 
 
-function hud_menu_draw()
+function draw_hud_menu()
 
  --menu
  clip(0,0,128,18+actl_menu_y)
  draw_btn_list(buttons,20)
  clip()
  
-   
+ 
  --flashing selection box
- local i=hcur.x
- if hcur.y==1 then
-  local w=#ports*10
-  local x,y=53-w/2+10*i,9
---	 rect2({x,y,10,10},12)
-  flashingbox(x,y,10,10)
- else
-  local sx=18
---  local tw=0
-  for j=1,#buttons do
-   w=#buttons[j]*4+3
-   if (j==i) break 
-   sx+=w
-  end
-  flashingbox(sx,19,w,9)
+ --(only draw when menu open)
+ if hud_menu_open then
+	 local i=hcur.x
+	 if hcur.y==1 then
+	  local w=#ports*10
+	  local x,y=53-w/2+10*i,9
+	  flashingbox(x,y,10,10)
+	 else
+	  --todo:hardcode this w
+		 local w=0
+		 for text in all(buttons) do
+			 w+=text_box(text,200,0)
+			end
+	  local sx=62-ceil(w/2)--18
+	  for j=1,#buttons do
+	   w=#buttons[j]*4+3
+	   if (j==i) break 
+	   sx+=w
+	  end
+	  flashingbox(sx,19,w,9)
+	 end
  end
--- local x,y=63-w/2,9
--- for p in all(ports) do
---		if p==sel then
---		 rect2({x,y,10,10},12)
---		 if hud_menu_open and 
---		    not menudown then
---		  bb=flashamt()
---		  rect2({x-bb,y-bb,10+bb*2,10+bb*2},10)
---		 end
---		end
---  x+=10
--- end
-	
  
  --right sidebar: army
  
 -- if actl_menu_y>0 then
 --  d_army(sel,130-actl_menu_y,21)
 -- end
--- d_army(sel,128-10,21)
  
 end
 
-function draw_hud()
-
+function draw_static_hud()
+ 
  --top bar
  
  --color banner
@@ -2769,8 +2733,6 @@ function draw_hud()
  
  --portrait bar
 
- if (ports==nil) ports={} --todo:remove need for this
- 
  local w=#ports*10
  local x,y=63-w/2,9
  rectfill2(x,y,w,10,6)
@@ -2780,42 +2742,12 @@ function draw_hud()
  end
  
  
- 
- if (hud_draw!=nil) hud_draw()
- 
- 
- 
 
 end
 
 
---function box(tl,w,h)
--- local res={}
--- res.p=tl
--- res.w=w
--- res.h=h
--- return res
---end
---function box_from_str(s,pos)
--- return box(pos,#s*4,7)
---end
---function btn_rects(list,tl)
--- local res={}
--- for str in all(list) do
---  add(res,box_from_str(str,tl)
--- end
--- return res
---end
-
 
 function draw_btn_list(list,y)
-
--- dlist=compile_to_list(list)
--- auto_draw(dlist)
-
--- draw_big_list(list,y)
-
--- btn_rects={}
 
  --tokens: can hardcode this w
  local w=0
@@ -2839,7 +2771,6 @@ end
 
 
 function flashamt()
--- if (frame%10<5) return 0
  return flash(2,5)-1
 end
 
@@ -2873,24 +2804,12 @@ end
 
 
 function vague_number(amt)
- --7936 (inc data)
  for i=1,8 do
   if amt<group_numbers[i] then
-   return group_names[i]
+   return group_numbers[i]
   end
  end
  return "a legion of"
-
- --7953
--- if (amt<5) return "a few"
--- if (amt<10) return "several"
--- if (amt<20) return "a pack of"
--- if (amt<50) return "lots of"
--- if (amt<100) return "a horde of"
--- if (amt<250) return "a throng of"
--- if (amt<500) return "a swarm of"
--- if (amt<1000) return "zounds... "
--- return "a legion of"
 end
 
 
@@ -2917,30 +2836,30 @@ function d_port(p,x,y)
    
 end
 
---token: remove and just
---draw all armies horizontal
-function d_army(obj,x,y)
-
- local arm=obj.army
- 
- rectfill2(x,y,10,14*6,6)
- 
- d_port(sel,x,y)
-
- --army  
- x+=1
- y+=10
- for mob in all(arm) do
-  spr(mob_sprs[mob[1]],x,y)
-  
-  local str=tostr(mob[2])
-  local ofx=0
-  if (#str>2) ofx=-3*(#str-2)
-  print(str,x+ofx,y+8,0)
-  y+=14
- end
-
-end
+----token: remove and just
+----draw all armies horizontal
+--function d_army(obj,x,y)
+--
+-- local arm=obj.army
+-- 
+-- rectfill2(x,y,10,14*6,6)
+-- 
+-- d_port(sel,x,y)
+--
+-- --army  
+-- x+=1
+-- y+=10
+-- for mob in all(arm) do
+--  spr(mob_sprs[mob[1]],x,y)
+--  
+--  local str=tostr(mob[2])
+--  local ofx=0
+--  if (#str>2) ofx=-3*(#str-2)
+--  print(str,x+ofx,y+8,0)
+--  y+=14
+-- end
+--
+--end
 
 
 
@@ -3081,11 +3000,17 @@ function init_data()
  
 	--menu buttons 
 	buttons={
-	 "map",
 	 "dig",
+	 "inspect",
 	 "spell",
 	 "end turn",
 	}
+--	buttons={
+--	 "map",
+--	 "dig",
+--	 "spell",
+--	 "end turn",
+--	}
 --	menusel=4
 	
 	
