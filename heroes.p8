@@ -15,10 +15,10 @@ __lua__
 --token saving
 --compress data
 --make mob stack .name/.count insetad of [1],[2]
---switch x,y to pt (rects too?)
---improve state switching?
---consolidate hud rendering?
---eg 1 menu code for any menu?
+--switch x,y to pt (rects too?) partially done
+--improve state switching? partially done
+--consolidate hud rendering? tried and failed
+--rect({})
 
 
 --notes:
@@ -92,6 +92,15 @@ end
 function _init()
 -- music(0)
 
+
+-- --quick test area
+-- a=pt(1,1)
+-- b=pt(1,2)
+-- cls()
+-- stop( not (a and b) )
+-- stop( not a or not b )
+
+
  init_data()
  init_cursor()
 
@@ -154,7 +163,6 @@ function _init()
  --randomly spawn anything
  --over anything else
  create_i2tile()
--- build_i2zone()
  
 	for x=0,tilesw do
  	for y=0,tilesh do
@@ -174,7 +182,6 @@ function _init()
  --after populating map
  --(and whenever anything moves)
  create_i2tile()
--- build_i2zone()
 	
 end
 
@@ -267,9 +274,6 @@ function trade_update()
  --cursor pop-up info
  cur_obj=nil
  
--- while true do
- 
-  --draw / update trade window
   
  bars={trade_a,trade_b}
  
@@ -335,6 +339,9 @@ function trade_update()
 end
 
 function trade_draw()
+
+ map_draw()
+ 
   
  draw_army_b(trade_a,60)
  
@@ -343,8 +350,6 @@ function trade_draw()
  
  text_box("done",58,110)
  
- 
---  frame+=1
  
  if movingmob!=nil then
   draw_big_mob(movingmob,
@@ -383,15 +388,12 @@ function move_hero()
 end
 
 function update_camera()
+ --tokens
  camgap = 32
  if cur.x*8>camx+64+camgap then camx+=2 end
  if cur.x*8<camx+64-camgap then camx-=2 end
  if cur.y*8>camy+64+camgap then camy+=2 end
  if cur.y*8<camy+64-camgap then camy-=2 end
--- camx=max(camx,-worldborder)
--- camy=max(camy,-worldborder)
--- camx=min(camx,(tilesw-1)*8-128+worldborder*2) --minus size of camera
--- camy=min(camy,(tilesh-1)*8-128+worldborder*2)
 end
 
 
@@ -444,13 +446,11 @@ function update_map()
 	   moving=false
 	   --rebuild zones after move!
 			 create_i2tile()
---			 build_i2zone()
 	  end
 	 else
    moving=false
    --rebuild zones after move!
 		 create_i2tile()
---		 build_i2zone()
 	 end
  end
 
@@ -488,28 +488,21 @@ end
 function update_map_cursor()
 
  --update cursor
--- tempp=pt(flr(curx/8),flr(cury/8))
  move_cursor(
   cur,
   0,tilesw-1,
   0,tilesh-1)
--- curx,cury=tempp.x*8,tempp.y*8
  
- 
--- ctx=flr(curx/8)
--- cty=flr(cury/8)
  
  update_camera()
  
- if sel!=nil and
-    sel.type=="hero" 
+ if sel!=nil
+ and sel.type=="hero" 
  then
   if btnp(❎) 
   and path!=nil 
   and #path>0 
   and ptequ(path[#path],cur)
---     and (path[#path].x==ctx and
---          path[#path].y==cty)
   then
    move_hero()
   else
@@ -526,19 +519,21 @@ function update_map_cursor()
  end
  lsel2=sel
 
- --needed?
--- if lselmvx==nil and lselmvy==nil then
---  lselmvx="no move"
---  lselmvy="no move"
+ --needed if ptequ doesn't check nil
+-- if lselmv==nil then
+--  lselmv=pt(999,999)
 -- end
  if sel!=nil then
-  if sel.movex!=nil and sel.movey!=nil then
-   if sel.movex!=lselmvx or
-      sel.movey!=lselmvy then
-	   x1,y1=sel.x,sel.y
-	   x2,y2=sel.movex,sel.movey
---	   targ=i2obj[xy2i(x2,y2)]
-	   targ=g(mapobj,pt(x2,y2))
+  if sel.movep!=nil then
+   if not ptequ(sel.movep,lselmv)
+   then
+    --token
+    --todo: need copies or 
+    --can we just pass raw pts?
+    --i think raw points
+	   p1=copy(sel)
+	   p2=copy(sel.movep)
+	   targ=g(mapobj,p2)
 	   ignore=nil
 	   if targ!=nil and
 	      (targ.type=="mob" or
@@ -548,16 +543,15 @@ function update_map_cursor()
 	    ignore=targ
 	   end
 	   path=pathfind(
-	    pt(x1,y1),
-	    pt(x2,y2),
+	    p1,
+	    p2,
 	    ignore,
 	    map_neighbors,
 	    map_dist)
 	   del(path,path[1])
    end
   end
-	 lselmvx=sel.movex
-	 lselmvy=sel.movey
+	 lselmv=copy(sel.movep)
  end
 end
 
@@ -586,8 +580,6 @@ function _update()
   update_map()
  end
  
- 
--- cache_btns()
  
 end
 
@@ -710,6 +702,15 @@ end
 
 
 function ptequ(a,b)
+ --if only call with init pts,
+ --dont need this nil check.
+ --but looks like making sure 
+ --pts are init is taking more
+ --tokens than just checking here
+ 
+ --a and b -> nil if either is
+ --not x   -> true if nil else false
+ if (not (a and b)) return false
  return a.x==b.x and a.y==b.y
 end
 
@@ -1690,8 +1691,9 @@ function update_move_cursor()
   or style=="attack"
   or style=="trade"
   then
-   sel["movex"]=cur.x
-   sel["movey"]=cur.y
+   sel["movep"]=copy(cur)
+--   sel["movex"]=cur.x
+--   sel["movey"]=cur.y
   end
  end
  
