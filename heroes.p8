@@ -2262,7 +2262,6 @@ function draw_battle()
  end
  
  
- --todo:draw based on portrait
  --heros
  spr(hero_battle_sprs
   [attackers.id],
@@ -2272,6 +2271,17 @@ function draw_battle()
   spr(hero_battle_sprs
    [defenders.id],
    111,30,2,2,true)
+ end
+ 
+ 
+ --draw debug valid move spots
+ if is_player_mob_turn() then
+	 if activemob!=nil then
+		 for spot in all(options) do
+		  x,y=bgrid2screen(spot)
+		  circfill(x+5,y+5,1,6)
+		 end
+	 end
  end
  
  
@@ -2287,10 +2297,6 @@ function draw_battle()
  --draw armies
  
  for m in all(moblist) do
-  sx,sy=bgrid2screen(m)
-  sx+=2
-  sy-=gh-2
-  
   
   --highlight active mob
   if m==activemob then
@@ -2300,18 +2306,12 @@ function draw_battle()
   end   
   
   --draw mob
-  spr(big_mob_sprs[m[1]],sx,sy,1,2)
-  pal(1,1)
+  
+  sx,sy=bgrid2screen(m)
+  sx-=2
+  sy-=gh
+  draw_big_mob(m,sx,sy)
  	  
-  
-  
-  --mob number
-  ofx=0
-  str=tostr(m[2])
-  if (#str<2) ofx=2
-  if (#str>2) ofx=1-#str
-  rectfill2(sx+ofx,sy+13,4*#str,6,1)
-  print(str,sx+ofx,sy+13,7)
  end
  
  
@@ -2353,15 +2353,6 @@ function draw_battle()
  end
 
 
- --draw debug valid move spots
- if is_player_mob_turn() then
-	 if activemob!=nil then
-		 for spot in all(options) do
-		  x,y=bgrid2screen(spot)
-		  circfill(x+5,y+5,1,6)
-		 end
-	 end
- end
  
 -- if path then
 --  for p in all(path) do
@@ -2851,16 +2842,9 @@ end
 function draw_big_mob(m,x,y)
 -- rectfill2(x,y,16,20,14)
  spr(big_mob_sprs[m[1]],
-     x+4,y+2,1,2)
-    
- print_mobnum(m,x+4,y+7,true) 
- 
--- str=tostr(m[2])
--- ofx=0
--- if (#str<2) ofx=2
--- if (#str>2) ofx=1-#str
--- rectfill2(x+4+ofx,y+2+13,4*#str,6,1)
--- print(str,x+4+ofx,y+2+13,7)
+     x+4,y+2,1,2)  
+ pal(1,1)--reset possible flash
+ print_mobnum(m,x+4,y+7,true)
 end
 
 
@@ -2893,31 +2877,15 @@ function draw_army_b(hero,y)
 
 end
 
---7970 before
---7954 after
 function print_mobnum(m,x,y,bg)
-
  local str=tostr(m[2])
--- local ofx=0
--- if (#str<2) ofx=2
--- if (#str>2) ofx=1-#str
  local ofx=-2*#str+4
- 
  local c=0
  if bg!=nil then
   rectfill2(x+ofx,y+8,4*#str,6,1)
   c=7
  end
- 
  print(str,x+ofx,y+8,c)
-	  
--- str=tostr(m[2])
--- ofx=0
--- if (#str<2) ofx=2
--- if (#str>2) ofx=1-#str
--- rectfill2(x+4+ofx,y+2+13,4*#str,6,1)
--- print(str,x+4+ofx,y+2+13,7)
- 
 end
 
 
@@ -2931,37 +2899,9 @@ function draw_army_s(arm,y)
   if mob!=nil then
 	  spr(mob_sprs[mob[1]],x,y)
 	  print_mobnum(mob,x,y)
-
---		 local str=tostr(mob[2])
---		 local ofx=0
---		 if (#str<2) ofx=2
---		 if (#str>2) ofx=1-#str
-----		 if bg!=nil then
-----		  rectfill2(x+ofx,y+8,4*#str,6,1)
-----		 end
---		 print(str,x+ofx,y+8,0)
-	  
   end
   x+=12
  end
-
-
--- --7980 (orig)
--- local w=10*5
--- x=63-w/2
--- rect2({x-1,y-1,w+2,16},1)
--- rectfill2(x,y,w,14,6)
--- x+=1
--- y+=1
--- for mob in all(arm) do
---  spr(mob_sprs[mob[1]],x,y)
---  local str=tostr(mob[2])
---  local ofx=0
---  if (#str<2) ofx=2
---  if (#str>2) ofx=-3*(#str-2)
---  print(str,x+ofx,y+8,0)
---  x+=10
--- end
 
  if #arm==0 or arm==nil then
   print("none",57,y+4,1)
