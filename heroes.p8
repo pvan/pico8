@@ -275,34 +275,27 @@ function hero_trade(a,b)
 	
 		
 							draw_window(
-							 33,
-							 60,
-							 60,
-							 30)
+							 43,--63-16-2-2,
+							 54,--60-2-4,
+							 40,--16*2+8,
+							 36)--20+2+10+4)
+							 
+							print("split",53,57,1)
 							 
 							draw_big_mob(splitmob,
-							 38,
+							 45,--63-16-2,
 							 60)
 							 
 							draw_big_mob(movingmob,
-							 64,
+							 65,--63+2,
 							 60)			  
 				  
---				   draw_big_list(
---				   {
---				    splitmob,
---				    img(225,8,true),
---				    img(225,8),
---				    movingmob
---				   },
---				   50,true)
---				   50)
-				    
 				   frame+=1
---				   spr(225,50,70,1,1,true)
---				   spr(225,60,70)
-				   print("❎",48,82+flashamt(),1)
-				   print("done",56,82,1)
+				   //55=63-8
+				   spr(225,55,70,1,1,true)
+				   spr(225,63,70)
+				   print("❎",51,82+flashamt(),1)
+				   print("done",59,82,1)
 				   
 				   if btnp2(⬅️) 
 				   and movingmob[2]>1
@@ -776,6 +769,21 @@ function print2(str,col)
 end
 
 
+----print and bounce any ❎, etc
+----center on screen
+--function print_bounce(str,y)
+-- local w=#str*4
+-- local sx=63-w/2
+-- for i=1,#str do
+--  local bounce=0
+--  if str[i]>z then
+--   bounce=flashamt()
+--  end
+--  print(str[i],sx,y+bounce)
+-- end
+--end
+
+
 
 --check if array contains
 function has(array, value)
@@ -807,23 +815,40 @@ end
 
 
 cached_btn={}
+cached_btn_repeat={}
 
 --clip and cache btn state
 --so we can use blocking loops
 --and still get btnp type stuff
 function cache_btns()
  for i=0,8 do --support 2p?
-  cached_btn[i]=btn(i)
+  if btn(i) then
+   cached_btn[i]+=1
+  else
+   cached_btn[i]=0
+   cached_btn_repeat[i]=false
+  end
  end
 end
 
 --replacement for btnp
 --that works even in inf loop
 function btnp2(key)
+ if cached_btn_repeat[key] then
+	 if cached_btn[key]==4 then
+	  cached_btn[key]=0
+	 end
+ else
+	 if cached_btn[key]==15 then
+	  cached_btn_repeat[key]=true
+	  cached_btn[key]=0
+	 end
+ end
  return (btn(key) and
-        not cached_btn[key])
+         cached_btn[key]==0)
         or btnp(key)
 end
+
 
 -->8
 --overworld/pathfinding/cursor
@@ -2847,49 +2872,20 @@ function d_army(obj,x,y)
 end
 
 
-----todo: implement this
---function draw_h_list(list,y)
---
--- w=16*#list
--- x=63-w/2
--- 
---	draw_window(
---	 x,
---	 y,
---	 w,
---	 32)
---	 
---	for i=1,#list do
---	 draw_big_mob(list[i],x,y)
---	 x+=16
---	end
-----	draw_window(
-----	 33,
-----	 60,
-----	 60,
-----	 30)
---	 
-----	draw_big_mob(splitmob,
-----	 38,
-----	 60)
-----	 
-----	draw_big_mob(movingmob,
-----	 64,
-----	 60)
---end
 
 function draw_window(x,y,w,h)
- rectfill2(x,y,w,h,6)
- rect2({x-1,y-1,w+2,h+2},1)
+ rectfill2(x+1,y+1,w-2,h-2,6)
+ rect2({x,y,w,h},1)
 end
 
 
 function draw_big_mob(m,x,y)
+-- rectfill2(x,y,16,20,14)
  spr(big_mob_sprs[m[1]],
      x+4,y+2,1,2)
      
- ofx=0
  str=tostr(m[2])
+ ofx=0
  if (#str<2) ofx=2
  if (#str>2) ofx=1-#str
  rectfill2(x+4+ofx,y+2+13,4*#str,6,1)
@@ -2900,213 +2896,13 @@ end
 
 
 
-
-function img(sprite,w,mirror)
- --token
- local res={}
- res.spr=sprite
- res.w=w
- res.flip=mirror
- return res
-end
-
-
-----7989 but top menu and 
-----little armies are not correct
---gpx=0
---gpy=0
---function draw_big_list(list,y,noborder)
--- gpx=1000
--- maxh=0
--- for i=1,#list do
---  draw_big_item(list[i],noborder)
--- end
--- local w=gpx-999 //+1 for r border hmm
--- if (noborder!=nil) w-=1
--- gpx=64-w/2
--- gpy=y
--- draw_window(gpx,gpy,w,maxh+4)
--- if noborder==nil then
---  gpx+=2
---  gpy+=2
--- end
--- for i=1,#list do
---  draw_big_item(list[i],noborder)
--- end
---end
---function draw_big_item(item,noborder)
--- local borderstepx=0
--- if (noborder==nil) borderstepx=3
--- if type(item)=='table' then
---  winw=item.w
---  winh=20
--- end
--- if type(item)=='string' then
---  winw=#item*4+borderstepx
---  winh=7
--- end
--- if (winw==nil) winw=16
--- if (winh==nil) winw=24
--- maxh=max(maxh,winh)
--- if noborder==nil then
---  draw_window(gpx,gpy,winw,winh)
--- end
--- local stepx=winw+borderstepx
----- draw_window(gpx,gpy,winw,20)
----- rect2({gpx,gpy,winw,20,14})
--- if type(item)=='string' then
---  print(item,gpx+1,gpy+1)
--- elseif item.type=="hero" then
---  spr(hero_bport_sprs[item.id],
---   gpx+4,gpy+4)
--- elseif item.spr then
---  spr(item.spr,gpx,gpy+(20-item.w)/2,
---   item.w/8,item.w/8,
---   item.flip)
--- elseif #item>1 then
---  draw_big_mob(item,gpx,gpy)
--- elseif #item==0 then
---  --nothing
--- else
---  spr(item,gpx,gpy)
--- end
--- gpx+=stepx
---end
-
-
-
-
-
-
-
-
-
---function compile_to_list(list)
--- local res={}
--- for it in all(list) do
---  item={}
---  if type(it)=='string' then
---   item=item_string(it)
---  end
---  if 
---  add(res,item_hero(ports))
--- end
---end
---
---function auto_draw(lists,y)
--- totalw=0
--- maxh=0
--- for list in all(lists) do
---  for item in all(list) do
---   totalw+=item.w
---   maxh=max(maxh,item.h)
---  end
--- end
--- local x=63-totalw/2
--- maxh=0
--- 
--- --draw bg here
--- 
--- for list in all(lists) do
---  for item in all(list) do
---   draw_item(item,x,y)
---   x+=item.w
---   maxh=max(maxh,item.h)
---  end
---  y+=maxh
--- end
---end
---
---
---function item_str(str)
--- local res={}
--- res.string=str
--- res.w=#str*4
--- res.h=7
--- return res
---end
---function item_bigmob(mob)
--- local res={}
--- res.bigmob=mob
--- res.w=16
--- res.h=20
--- return res
---end
---function item_lilmob(mob)
--- local res={}
--- res.lilmob=mob
--- res.w=8
--- res.h=8
--- return res
---end
---function item_hero(hero)
--- local res={}
--- res.hero=hero
--- res.w=16
--- res.h=16
--- return res
---end
---function item_sprite(id,w,h)
--- local res={}
--- res.spr=id
--- res.w=w
--- res.h=h
--- return res
---end
---
---
---function draw_item(item,x,y)
--- if item.string!=nil then
---  print(item.string,x,y)
--- elseif item.bigmob!=nil then
---  draw_big_mob(item.bigmob,x,y)
--- elseif item.lilmob!=nil then
---  draw_lil_mob(item.lilmob,x,y)
--- elseif item.hero!=nil then
---  draw_big_mob(item.hero,x,y)
--- elseif item.spr!=nil then
---  spr(item.spr,x,y)
--- end
---end
-
-
 function draw_big_army(hero,y)
 
--- biglist={
---  item_hero(hero)
--- }
--- for i=1,5 do
---  newitem={}
---  possiblenil=hero.army[i]
---  if possiblenil!=nil then
---   newitem=possiblenil
---  end
---  biglist[i+1]=item_bigmob(newitem)
--- end
--- auto_draw(biglist,y)
-
--- biglist={
---  hero
--- }
--- for i=1,5 do
---  newitem={}
---  possiblenil=hero.army[i]
---  if possiblenil!=nil then
---   newitem=possiblenil
---  end
---  biglist[i+1]=newitem
--- end
--- draw_big_list(biglist,y)
- 
- 
- --8008
--- rectfill2(9,y,110,24,6)
  draw_window(9,y,110,24)
  
  sx=11
  sy=y+2
  
--- rectfill2(sx,sy,16,20,14)
  draw_window(sx,sy,16,20)
  spr(hero_bport_sprs
   [hero.id],
@@ -3115,34 +2911,21 @@ function draw_big_army(hero,y)
  
  for i=1,5 do
  
---  rectfill2(sx,sy,16,20,14)
   draw_window(sx,sy,16,20)
   
   m=hero.army[i]
 	 if m!=nil then
-	  
 	  draw_big_mob(m,sx,sy)
---	  spr(big_mob_sprs[m[1]],
---	      sx+4,sy+2,1,2)
---	      
---	  ofx=0
---	  str=tostr(m[2])
---	  if (#str<2) ofx=2
---	  if (#str>2) ofx=1-#str
---	  rectfill2(sx+4+ofx,sy+2+13,4*#str,6,1)
---	  print(str,sx+4+ofx,sy+2+13,7)
   end
   sx+=18
-  
  end
 
 end
 
 
 
-function draw_h_army(arm,cx,y)
 
--- draw_big_list(army,y)
+function draw_h_army(arm,cx,y)
 
  local w=10*5
  x=cx-w/2
