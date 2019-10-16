@@ -1594,33 +1594,30 @@ end
 
 
 function init_cursor()
---	curx=64
---	cury=64
 	cur=pt(8,8)
-	curanim=0
-	cur_spr=cur_sprs.arrow --updated each frame
+--	cur_spr=cur_sprs.arrow --updated each frame todo:remove?
 end
 
 
 
 
 function update_move_cursor()
--- local tx,ty=flr(curx/8),flr(cury/8)
--- local p=pt(tx,ty)
- local i=pt2i(cur)
  local obj=g(mapobj,cur)
  local selzones=objzones(sel)
  
  
- set_obj_for_popup(obj,i)
+ set_obj_for_popup(obj)
  
  
  --note the fall-thru effect here
  --later things are higher priority
  
  --first reject any out of zone
- if not has(selzones,i2zone[i]) then
+ if not has(selzones,
+            g(i2zone,cur)) 
+ then
   style="arrow"
+  
   --except allow mobs/heros
   --if adjacent to zone
   if obj!=nil then
@@ -1628,7 +1625,7 @@ function update_move_cursor()
 	  if obj.type=="mob" then
     if objnearzones(obj,selzones) then
      if pnearzones(cur,selzones)
-     or obj.x==tx and obj.y==ty
+     or ptequ(obj,cur)
      then
    	  style="attack"
   	  end
@@ -1665,10 +1662,9 @@ function update_move_cursor()
   
   --object, but what kind?
   if obj!=nil then
-	  if i2hot[i] then
+	  if g(i2hot,cur) then
 	   style="hot"
 	  end
-
   end
 
  end
@@ -1676,7 +1672,7 @@ function update_move_cursor()
  --select castles anywhere (in or out of zone)
  if obj!=nil then
   if obj.type=="castle" then
-   if not i2hot[i] then --but still not this
+   if not g(i2hot,cur) then --but still not this
     style="castle"
     if btnp(❎)
  	  and obj_owner(obj)==cp
@@ -1706,14 +1702,14 @@ end
 
 --inline this if we end up
 --combining sel + move cur 
-function set_obj_for_popup(obj,i)
+function set_obj_for_popup(obj)
  --remember obj for hud description
  --token: could just make obj global? (and rename it)
  cur_obj=obj
  --don't select area around mob
  if obj!=nil 
  and obj.type=="mob"
- and not i2hot[i] 
+ and not g(i2hot,cur)
  then
   cur_obj=nil
  end
@@ -1725,12 +1721,10 @@ end
 
 
 function update_sel_cursor()
--- local tx,ty=flr(curx/8),flr(cury/8)
--- local p=pt(tx,ty)
  local obj=g(mapobj,cur)
  
  
- set_obj_for_popup(obj,pt2i(cur))
+ set_obj_for_popup(obj)
  
  
  if obj!=nil and obj.select then
