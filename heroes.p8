@@ -331,9 +331,9 @@ end
 
 function trade_draw()
   
- draw_big_army(trade_a,60)
+ draw_army_b(trade_a,60)
  
- draw_big_army(trade_b,85)
+ draw_army_b(trade_b,85)
  
  
  text_box("done",58,110)
@@ -1703,10 +1703,8 @@ function battle_end_screen(attack_won)
   "done"}
  while true do
   draw_dialog()
-  draw_h_army(
-    l_cas,60,70)
-  draw_h_army(
-    r_cas,60,90)
+  draw_army_s(l_cas,70)
+  draw_army_s(r_cas,90)
   flip()
   if btn(❎) then
    break
@@ -2634,8 +2632,7 @@ function draw_hud()
   local w=#map_desc*4+1
   
   if cur_obj.army then
-   draw_h_army(
-    cur_obj.army,63,y-6)
+   draw_army_s(cur_obj.army,y-5)
    y-=14 --move text up
   end
   rect2({x-1,y-1,w+2,9},1)
@@ -2867,7 +2864,7 @@ end
 
 
 
-function draw_big_army(hero,y)
+function draw_army_b(hero,y)
 
  draw_window(9,y,110,24)
  
@@ -2896,25 +2893,43 @@ end
 
 
 
-function draw_h_army(arm,cx,y)
+function draw_army_s(arm,y)
 
- local w=10*5
- x=cx-w/2
- rect2({x-1,y-1,w+2,16},1)
- rectfill2(x,y,w,14,6)
- x+=1
- y+=1
- for mob in all(arm) do
-  spr(mob_sprs[mob[1]],x,y)
-  local str=tostr(mob[2])
-  local ofx=0
-  if (#str<2) ofx=2
-  if (#str>2) ofx=-3*(#str-2)
-  print(str,x+ofx,y+8,0)
+ local w=52
+ local x=39
+ draw_window(x-2,y-2,w,16)
+ for i=1,5 do
+  local mob=arm[i]
+  if mob!=nil then
+	  spr(mob_sprs[mob[1]],x,y)
+	  local str=tostr(mob[2])
+	  local ofx=0
+	  if (#str<2) ofx=2
+	  if (#str>2) ofx=-3*(#str-2)
+	  print(str,x+ofx,y+8,0)
+  end
   x+=10
  end
+
+-- --7980 (orig)
+-- local w=10*5
+-- x=63-w/2
+-- rect2({x-1,y-1,w+2,16},1)
+-- rectfill2(x,y,w,14,6)
+-- x+=1
+-- y+=1
+-- for mob in all(arm) do
+--  spr(mob_sprs[mob[1]],x,y)
+--  local str=tostr(mob[2])
+--  local ofx=0
+--  if (#str<2) ofx=2
+--  if (#str>2) ofx=-3*(#str-2)
+--  print(str,x+ofx,y+8,0)
+--  x+=10
+-- end
+
  if #arm==0 or arm==nil then
-  print("none",cx-8,y+4,1)
+  print("none",57,y+4,1)
  end
 
 end
