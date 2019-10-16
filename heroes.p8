@@ -3,7 +3,6 @@ version 18
 __lua__
 
 --todo:
---when selecting castle, popup text is for last cur pos
 --add is_plr_ai list or something?
 --make battle skip turn menu option
 --cannot trade with adjacent hero
@@ -1600,12 +1599,19 @@ function init_cursor()
 	cur_spr=cur_sprs.arrow --updated each frame
 end
 
+
+
+
 function update_move_cursor()
  local tx,ty=flr(curx/8),flr(cury/8)
  local p=pt(tx,ty)
  local i=pt2i(p)
  local obj=g(mapobj,p)
  local selzones=objzones(sel)
+ 
+ 
+ set_obj_for_popup(obj,i)
+ 
  
  --note the fall-thru effect here
  --later things are higher priority
@@ -1679,12 +1685,6 @@ function update_move_cursor()
   end
  end
 
- --remember obj for hud description
- if obj!=nil then
-  cur_obj=obj
- else
-  cur_obj=nil
- end
  
  if btnp(❎) then
   if style=="horse" 
@@ -1701,9 +1701,36 @@ function update_move_cursor()
  
 end
 
+
+--inline this if we end up
+--combining sel + move cur 
+function set_obj_for_popup(obj,i)
+ --remember obj for hud description
+ --token: could just make obj global? (and rename it)
+ cur_obj=obj
+ --don't select area around mob
+ if obj!=nil 
+ and obj.type=="mob"
+ and not i2hot[i] 
+ then
+  cur_obj=nil
+ end
+end
+
+--todo: do we really need
+--a separate update func 
+--for sel and move cursor??
+
+
 function update_sel_cursor()
  local tx,ty=flr(curx/8),flr(cury/8)
- local obj=g(mapobj,pt(tx,ty))
+ local p=pt(tx,ty)
+ local obj=g(mapobj,p)
+ 
+ 
+ set_obj_for_popup(obj,pt2i(p))
+ 
+ 
  if obj!=nil and obj.select then
   style=obj.type
 	 if (btnp(❎)) then
