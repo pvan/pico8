@@ -83,8 +83,8 @@ end
 function random_starting_army()
  return {
   {"peasants",rnd_bw(10,20)},
-  {"elves",rnd_bw(50,100)},
-  {"skeletons",rnd_bw(1000,2000)},
+  {"elves",rnd_bw(5,10)},
+--  {"skeletons",rnd_bw(1000,2000)},
  }
 end
 
@@ -456,18 +456,39 @@ function update_map()
   hud_menu_open=not hud_menu_open
   if (hud_menu_open) then 
    sfx(63)
+   hud_menu_init()
   else 
    sfx(61) 
+   map_update=map_cursor_update() 
+   hud_draw=draw_cur_popup_info
   end
  end
  
- 
+-- 
  update_hud()
+-- if hud_menu_open then
+--  return
+-- end 
+-- 
+
  if hud_menu_open then
-  return
- end 
+  cur_obj=nil --better place?
+  actl_menu_y+=flr(16-actl_menu_y)/3
+ else 
+  actl_menu_y+=flr(0-actl_menu_y)/3
+ end
  
+ if (map_update!=nil) map_update()
+-- update_hud()
+-- if hud_menu_open then
+--  return
+-- end 
  
+end
+
+
+function map_cursor_update()
+
  update_cursor()
  ctx=flr(curx/8)
  cty=flr(cury/8)
@@ -631,11 +652,10 @@ function _draw()
   draw_battle()
  else
  
-  map_draw()
-  
   if main_draw!=nil then
    main_draw()
   else
+   map_draw()
   end
 
  end 
@@ -2506,50 +2526,30 @@ function select(obj)
 end
 
 
-menuselx=0
-menusely=0
-targ_menu_y=0
-actl_menu_y=0
-ports={}
-function update_hud()
-
- if hud_menu_open then
-  actl_menu_y+=flr(16-actl_menu_y)/3
- else 
-  actl_menu_y+=flr(0-actl_menu_y)/3
- end
+function hud_menu_init()
  
-
- ports={}
- i=1
- for c in all(cp.castles) do
-  add(ports,c)
-  if (sel==h) selport=i
-  i+=1
- end
- for h in all(cp.heroes) do
-  add(ports,h)
-  if (sel==h) selport=i
-  i+=1
- end
-
- if hud_menu_open then
-	 if (btnp(⬇️)) menudown=true sfx(60)
-	 if (btnp(⬆️)) menudown=false sfx(60)
-	 if menudown then
-	  if (btnp(⬅️)) menusel-=1 sfx(60)
-	  if (btnp(➡️)) menusel+=1 sfx(60)
-	  menusel=mid(menusel,1,#buttons)
-	 else
-	  if (btnp(⬅️)) selport-=1 sfx(60)
-	  if (btnp(➡️)) selport+=1 sfx(60)
-	  selport=mid(selport,1,#ports)
-	 end
-	 
-  select(ports[selport])
+ hcur=pt(1,selport)
  
+ map_update=hud_menu_update
+ hud_draw=hud_menu_draw
+end
+
+
+function hud_menu_update()
+
+ move_cursor(hcur, 
+  1,99,--max(#ports,#buttons),--limited below
+  1,2)
+ 
+ if hcur.y==1 then
+  hcur.x=min(hcur.x,#ports)
+  select(ports[hcur.x])
+ else
+  hcur.x=min(hcur.x,#buttons)
   if btnp(❎) then
-   if menusel==4 and menudown then
+  
+   --end turn
+   if hcur.x==4 then
     sfx(59)
     local askturn=false
     for h in all(cp.heroes) do
@@ -2572,26 +2572,88 @@ function update_hud()
      end_turn()
     end
    end
+   
+   --dig, inspect, etc
+   if hcur.x==3 then
+    
+   end
+   
   end
+ end
  
- end --end menu open chek
- 
+-- if hud_menu_open then
+--	 if (btnp(⬇️)) menudown=true sfx(60)
+--	 if (btnp(⬆️)) menudown=false sfx(60)
+--	 if menudown then
+--	  if (btnp(⬅️)) menusel-=1 sfx(60)
+--	  if (btnp(➡️)) menusel+=1 sfx(60)
+--	  menusel=mid(menusel,1,#buttons)
+--	 else
+--	  if (btnp(⬅️)) selport-=1 sfx(60)
+--	  if (btnp(➡️)) selport+=1 sfx(60)
+--	  selport=mid(selport,1,#ports)
+--	 end
+--	 
+--  select(ports[selport])
+-- 
+--  if btnp(❎) then
+--   if menusel==4 and menudown then
+--    sfx(59)
+--    local askturn=false
+--    for h in all(cp.heroes) do
+--     if h.move>0 then
+--      askturn=true
+--      break
+--     end
+--    end
+--    if askturn then
+--     open_dialog({
+--      "one of your heroes",
+--      "can still move.",
+--      "are you sure you",
+--      "want to end your turn?",
+--      "   yes",
+--      "   no"},{
+--      end_turn,
+--      close_dialog})
+--    else
+--     end_turn()
+--    end
+--   end
+--  end
+-- 
+-- end --end menu open chek
+
 end
 
 
-function draw_hud()
 
- --top bar
- 
- --color banner
- pal(8,cp.color)
- spr(244,0,9)
- pal(8,8)
- 
- 
- d_res_bar()
- 
- 
+--menuselx=0
+--menusely=0
+targ_menu_y=0
+actl_menu_y=0
+--ports={}
+function update_hud()
+
+ --todo: proper home for this?
+ ports={}
+ i=1
+ for c in all(cp.castles) do
+  add(ports,c)
+  if (sel==c) selport=i
+  i+=1
+ end
+ for h in all(cp.heroes) do
+  add(ports,h)
+  if (sel==h) selport=i
+  i+=1
+ end
+
+end
+
+
+function draw_cur_popup_info()
+
  --map item description
  if cur_obj then
  
@@ -2632,72 +2694,118 @@ function draw_hud()
   print(map_desc,x+1,y+1,1)
  end
  
+end
+
+
+function flashingbox(x,y,w,h)
+ 
+ bb=flashamt()
+ rect2({x-bb,y-bb,w+bb*2,h+bb*2},10)
+ 
+end
+
+
+function hud_menu_draw()
+
+ --menu
+ clip(0,0,128,18+actl_menu_y)
+ draw_btn_list(buttons,20)
+ clip()
+ 
+   
+ --flashing selection box
+ local i=hcur.x
+ if hcur.y==1 then
+  local w=#ports*10
+  local x,y=53-w/2+10*i,9
+--	 rect2({x,y,10,10},12)
+  flashingbox(x,y,10,10)
+ else
+  local sx=18
+--  local tw=0
+  for j=1,#buttons do
+   w=#buttons[j]*4+3
+   if (j==i) break 
+   sx+=w
+  end
+  flashingbox(sx,19,w,9)
+ end
+-- local x,y=63-w/2,9
+-- for p in all(ports) do
+--		if p==sel then
+--		 rect2({x,y,10,10},12)
+--		 if hud_menu_open and 
+--		    not menudown then
+--		  bb=flashamt()
+--		  rect2({x-bb,y-bb,10+bb*2,10+bb*2},10)
+--		 end
+--		end
+--  x+=10
+-- end
+	
+ 
+ --right sidebar: army
+ 
+-- if actl_menu_y>0 then
+--  d_army(sel,130-actl_menu_y,21)
+-- end
+-- d_army(sel,128-10,21)
+ 
+end
+
+function draw_hud()
+
+ --top bar
+ 
+ --color banner
+ pal(8,cp.color)
+ spr(244,0,9)
+ pal(8,8)
+ 
+ 
+ d_res_bar()
+ 
+ 
  
  --portrait bar
- 
--- drawlist=compile_to_list(ports)
--- auto_draw(drawlist)
- 
--- for p in all(ports) do
---  p.w=8
--- end
--- draw_big_list(ports,9)
+
+ if (ports==nil) ports={} --todo:remove need for this
  
  local w=#ports*10
  local x,y=63-w/2,9
  rectfill2(x,y,w,10,6)
- for i=1,8 do
-  p=ports[i]
-  if p!=nil then
-   d_port(p,x,y)
-   
-   --flashing selection box
-			if p==sel then
-			 rect2({x,y,10,10},12)
-			 if hud_menu_open and 
-			    not menudown then
-			  bb=flashamt()
-			  rect2({x-bb,y-bb,10+bb*2,10+bb*2},10)
-			 end
-			end
-		
-   x+=10
-  end
+ for p in all(ports) do
+  d_port(p,x,y)
+  x+=10
  end
  
  
- --menu
  
- clip(0,0,128,18+actl_menu_y)
- mw=0
- for b in all(buttons) do 
-  mw+=#b*4+4
- end
- mh=9
- mx=63-mw/2
- my=19--actl_menu_y
--- rectfill2(mx,my,mw,mh,6)
-
- --bottom buttons
- local x,y=mx+1,my+1
- local count=1
- 
- draw_btn_list(buttons,y)
- 
- clip()
+ if (hud_draw!=nil) hud_draw()
  
  
- --right sidebar: army
- 
- if actl_menu_y>0 then
-  d_army(sel,130-actl_menu_y,21)
- end
--- d_army(sel,128-10,21)
  
 
 end
 
 
+--function box(tl,w,h)
+-- local res={}
+-- res.p=tl
+-- res.w=w
+-- res.h=h
+-- return res
+--end
+--function box_from_str(s,pos)
+-- return box(pos,#s*4,7)
+--end
+--function btn_rects(list,tl)
+-- local res={}
+-- for str in all(list) do
+--  add(res,box_from_str(str,tl)
+-- end
+-- return res
+--end
 
 
 function draw_btn_list(list,y)
@@ -2707,6 +2815,9 @@ function draw_btn_list(list,y)
 
 -- draw_big_list(list,y)
 
+-- btn_rects={}
+
+ --tokens: can hardcode this w
  local w=0
  for text in all(list) do
 	 w+=text_box(text,200,0)
@@ -2975,7 +3086,7 @@ function init_data()
 	 "spell",
 	 "end turn",
 	}
-	menusel=4
+--	menusel=4
 	
 	
 	res_names={
@@ -3318,8 +3429,8 @@ dddddddddddddddd0011110001111000000c000000000000335533353333333366ff66f6111111d1
 000011f100000000000111000017100018888810000000000000000000000000000000000000000000000000000111110ffbf00000ffbff01ff111ff1f1111f1
 11111ff1000000000111a1100017e100188888100000000000000000000000000000000000000000000000000111c7c1ffbbffff0ffbbbff11ff1ff111f11f11
 1f11ff110000000001a19a111017e1101888881000000000000000000000000000000000000000000000000001b17cc1fbbbbbbf0fbbbbbf0111ff11011f1110
-11fff110000000001179a9a1111ee1e1188188100000000000000000000000000000000000000000000000001111ccc1fbbbbbbf0ffbbbff011ff1110111f110
-11ff11000000000019aa9a9117e117e11810181000000000000000000000000000000000000000000000000017811111ffbbffff00fbbbf011ff1ff111f11f11
+11fff11000000000117979a1111ee1e1188188100000000000000000000000000000000000000000000000001111ccc1fbbbbbbf0ffbbbff011ff1110111f110
+11ff11000000000019aa979117e117e11810181000000000000000000000000000000000000000000000000017811111ffbbffff00fbbbf011ff1ff111f11f11
 1f11f10000000000119aa11111ee171111000110000000000000000000000000000000000000000000000000188179100ffbf00000fbbbf01ff111ff1f1111f1
 11111100000000000111110001111110100000100000000000000000000000000000000000000000000000001111111000fff00000fffff01111011111100111
 __gff__
