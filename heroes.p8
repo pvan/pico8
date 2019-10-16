@@ -191,171 +191,168 @@ function create_player(c)
 end
 
 
+function split_update()
+		
+	if btnp(⬅️) 
+	and movingmob[2]>1
+	then
+	 movingmob[2]-=1
+	 splitmob[2]+=1
+	end
+	if btnp(➡️)
+	and splitmob[2]>1
+	then
+	 movingmob[2]+=1
+	 splitmob[2]-=1
+	end
+	if btnp(❎) then
+	 main_update=trade_update
+	 main_draw=trade_draw
+	end
+
+end
+
+function split_draw()
+
+ --keep drawing trade window
+ --while split window open
+ trade_draw()
+
+ --todo: consider moving
+ --split window up, so we can
+ --still see armies, hmm...
+ --lose hierarchy that way tho
+
+	draw_window(
+	 43,--63-16-2-2,
+	 54,--60-2-4,
+	 40,--16*2+8,
+	 36)--20+2+10+4)
+	 
+	print("split",53,57,1)
+	 
+	draw_big_mob(splitmob,
+	 45,--63-16-2,
+	 60)
+	 
+	draw_big_mob(movingmob,
+	 65,--63+2,
+	 60)			  
+
+ //55=63-8
+ spr(225,55,70,1,1,true)
+ spr(225,63,70)
+ print("❎",51,82+flashamt(),1)
+ print("done",59,82,1)
+end
+
+
 --token:inline?
 function hero_trade(a,b)
-
+ trade_a=a
+ trade_b=b
  tcur=pt(1,1)
- 
+ main_update=trade_update
+ main_draw=trade_draw
+end
+
+function trade_update()
+
  --basically to hide 
  --cursor pop-up info
  cur_obj=nil
  
- while true do
+-- while true do
  
   --draw / update trade window
   
-  bars={a,b}
-  
-  move_cursor(tcur, 1,5, 1,3)
-  
-  tcur.x=ceil(tcur.x)
-  tcur.y=ceil(tcur.y)
-	 if tcur.y==3 then
-	  tcur.y=2.4
-	  tcur.x=2.65
-	 end
-	 
-	 if movingmob!=nil then
-	  if btnp2(❎) then
-	   --place
---		  if tcur.y==1 then
---		   bar=a
---		  else
---		   bar=b
---		  end
-		  bar=bars[tcur.y]
-	   mob=bar.army[tcur.x]
-	   if mob==nil then
- 		  bar.army[tcur.x]=movingmob
- 		  movingmob=nil
-	   elseif mob[1]==movingmob[1] then
-	    bar.army[tcur.x][2]+=movingmob[2]
-	    movingmob=nil
-	   else
-	    local temp=movingmob
-	    movingmob=mob
-	    bar.army[tcur.x]=temp
-		  end
+ bars={trade_a,trade_b}
+ 
+ move_cursor(tcur, 1,5, 1,3)
+ 
+ tcur.x=ceil(tcur.x)
+ tcur.y=ceil(tcur.y)
+ if tcur.y==3 then
+  tcur.y=2.4
+  tcur.x=2.65
+ end
+ 
+ if movingmob!=nil then
+  if btnp(❎) then
+   --place
+	  bar=bars[tcur.y]
+   mob=bar.army[tcur.x]
+   if mob==nil then
+		  bar.army[tcur.x]=movingmob
+		  movingmob=nil
+   elseif mob[1]==movingmob[1] then
+    bar.army[tcur.x][2]+=movingmob[2]
+    movingmob=nil
+   else
+    local temp=movingmob
+    movingmob=mob
+    bar.army[tcur.x]=temp
+	  end
+  end
+ else
+	 if tcur.y==2.4 then
+	  if btnp(❎) then
+			 main_update=nil
+			 main_draw=nil
 	  end
 	 else
-		 if tcur.y==2.4 then
-		  if btnp2(❎) then
-	    break
+		 if btnp(❎) then
+	   bar=bars[tcur.y]
+	   mob=bar.army[tcur.x]
+	   if mob!=nil then
+		   movingmob=mob
+		   bar.army[tcur.x]=nil
 		  end
-		 else
-			 if btnp2(❎) then
-			  --pickup
---			  if tcur.y==1 then
---			   bar=a
---			  else
---			   bar=b
---			  end
-		   bar=bars[tcur.y]
-		   mob=bar.army[tcur.x]
-		   if mob!=nil then
-			   movingmob=mob
-			   bar.army[tcur.x]=nil
-			  end
+		 end
+		 if btn(🅾️) then
+	   bar=bars[tcur.y]
+			 splitmob=bar.army[tcur.x]
+	   if splitmob!=nil 
+	   and splitmob[2]>1 then
+			  splitval=1
+			  splitmob[2]-=splitval
+			  movingmob=copy(splitmob)
+			  movingmob[2]=splitval
+			  
+			  main_update=split_update
+			  main_draw=split_draw
+			  
 			 end
-			 if btn(🅾️) then
-			  --split
---			  if tcur.y==1 then
---			   bar=a
---			  else
---			   bar=b
---			  end
-		   bar=bars[tcur.y]
-				 splitmob=bar.army[tcur.x]
-		   if splitmob[2]>1 then
-				  splitval=1
-				  splitmob[2]-=splitval
-				  movingmob=copy(splitmob)
-				  movingmob[2]=splitval
-				  while true do
-	
-		
-							draw_window(
-							 43,--63-16-2-2,
-							 54,--60-2-4,
-							 40,--16*2+8,
-							 36)--20+2+10+4)
-							 
-							print("split",53,57,1)
-							 
-							draw_big_mob(splitmob,
-							 45,--63-16-2,
-							 60)
-							 
-							draw_big_mob(movingmob,
-							 65,--63+2,
-							 60)			  
-				  
-				   frame+=1
-				   //55=63-8
-				   spr(225,55,70,1,1,true)
-				   spr(225,63,70)
-				   print("❎",51,82+flashamt(),1)
-				   print("done",59,82,1)
-				   
-				   if btnp2(⬅️) 
-				   and movingmob[2]>1
-				   then
-				    movingmob[2]-=1
-				    splitmob[2]+=1
-				   end
-				   if btnp2(➡️)
-				   and splitmob[2]>1
-				   then
-				    movingmob[2]+=1
-				    splitmob[2]-=1
-				   end
-				   if btnp2(❎) then
-				    break
-				   end
-				   
-	      cache_btns()
-				   flip()
-				  end
-				 end
-			 end
-	  end
-	 end
- 
-  
-  
-  draw_big_army(a,60)
-  
-  draw_big_army(b,85)
-  
-  
-  text_box("done",58,110)
-  
-  
-  frame+=1
-  
-  if movingmob!=nil then
-   draw_big_mob(movingmob,
-    tcur.x*18+13,
-    tcur.y*28+30+flashamt())
+		 end
   end
-  
-  --draw cursor
-  spr(208,
-      tcur.x*18+22,
-      tcur.y*28+46+flashamt())
-  
-  
-  --draw controls
-  
-  
-  
-  cache_btns()
-  
-  flip()
-  
-  _draw() --could put at top too
-  
  end
+ 
+end
+
+function trade_draw()
+  
+ draw_big_army(trade_a,60)
+ 
+ draw_big_army(trade_b,85)
+ 
+ 
+ text_box("done",58,110)
+ 
+ 
+--  frame+=1
+ 
+ if movingmob!=nil then
+  draw_big_mob(movingmob,
+   tcur.x*18+13,
+   tcur.y*28+30+flashamt())
+ end
+ 
+ --draw cursor
+ spr(208,
+     tcur.x*18+22,
+     tcur.y*28+46+flashamt())
+ 
+ --draw instructions?
  
 end
 
@@ -544,33 +541,31 @@ function _update()
  
  --true if open
  if update_dialog() then
-  cache_btns()
   return
  end
  
  if in_battle then
-  update_battle()  
-  cache_btns()
+  update_battle()
   return
  end
 
 
- update_map()
 
 
+ if main_update!=nil then
+  main_update()
+ else
+  update_map()
+ end
  
- cache_btns()
+ 
+-- cache_btns()
  
 end
 
 
+function map_draw()
 
-function _draw()
- 
-	if in_battle then
-  draw_battle()
- else
- 
  	camera(camx,camy)
 	
 	 draw_overworld()
@@ -612,8 +607,8 @@ function _draw()
 	 
 	 
  	draw_hud()
-	 
-	 
+ 	
+ 	
 	 if blackout then
  	 
  	 for x=0,15 do
@@ -626,10 +621,23 @@ function _draw()
 	 
 	 draw_dialog()
 	 
-	 
- end --overworld draw
- 
+end
 
+
+function _draw()
+ 
+	if in_battle then
+  draw_battle()
+ else
+ 
+  map_draw()
+  
+  if main_draw!=nil then
+   main_draw()
+  else
+  end
+
+ end 
  
 end
 
@@ -812,43 +820,6 @@ function has2(arr, val)
  end
  return false
 end
-
-
-cached_btn={}
-cached_btn_repeat={}
-
---clip and cache btn state
---so we can use blocking loops
---and still get btnp type stuff
-function cache_btns()
- for i=0,8 do --support 2p?
-  if btn(i) then
-   cached_btn[i]+=1
-  else
-   cached_btn[i]=0
-   cached_btn_repeat[i]=false
-  end
- end
-end
-
---replacement for btnp
---that works even in inf loop
-function btnp2(key)
- if cached_btn_repeat[key] then
-	 if cached_btn[key]==4 then
-	  cached_btn[key]=0
-	 end
- else
-	 if cached_btn[key]==15 then
-	  cached_btn_repeat[key]=true
-	  cached_btn[key]=0
-	 end
- end
- return (btn(key) and
-         cached_btn[key]==0)
-        or btnp(key)
-end
-
 
 -->8
 --overworld/pathfinding/cursor
@@ -1653,7 +1624,7 @@ function move_cursor(
  p, minx,maxx, miny,maxy)
  
  for i=0,3 do
-  if btnp2(i) then
+  if btnp(i) then
    ptinc(p,cardinal[i+1])
    sfx(58,-1,1,2)
   end
