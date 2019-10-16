@@ -3,9 +3,7 @@ version 18
 __lua__
 
 --todo:
---walking thru open mob
 --sorting castles/etc (move pos to lowest point, eg -x,-y col)
---dont spawn items on mobs?
 --when selecting castle, popup text is for last cur pos
 --add is_plr_ai list or something?
 --make battle skip turn menu option
@@ -148,6 +146,7 @@ function _init()
 	
 	--block grove
 	spawn("ore",22,20)
+--	spawn("mob2",22,20)
 
 	--block hero in castle test
 --	spawn("ore",5,9)
@@ -161,7 +160,10 @@ function _init()
  
 	for x=0,tilesw do
  	for y=0,tilesh do
- 	 if not tile_is_solid(pt(x,y)) then
+ 	 p=pt(x,y)
+ 	 if not tile_is_solid(p) 
+ 	 and not g(i2hot,p)
+ 	 then
  	  if rnd_bw(1,100)<4 then
  	   r=rnd_bw(1,#resources)
  	   spawn(resources[r],x,y)
@@ -646,6 +648,10 @@ function map_draw()
  	--draw even when closed,
  	--so we animate closing
   draw_hud_menu()
+  
+  if not hud_menu_open then
+   draw_cur_popup_info()
+  end
  	
  	
 	 if blackout then
@@ -983,8 +989,8 @@ function create_i2tile()
     
     --set all as solid col
     --except hot spot and mobs
-    if not is_hotspot and
-       it.type!="mob"
+    if not is_hotspot 
+    and it.type!="mob"
     then
      i2col[i]=true
     end
@@ -1267,51 +1273,51 @@ end
 
 -- some debug functions
 
---function drawdebug_zones()
--- for i,z in pairs(i2zone) do
---  p=i2pt(i)
---  local x,y=p.x,p.y
---  rectfill2(x*8+2,y*8+2,4,4,0)
---  rectfill2(x*8+3,y*8+3,2,2,z)
--- end
---end
-----for i2xxx arrays
---function drawdebug_layer(lyr,c)
--- for k,v in pairs(lyr) do
---  p=i2pt(k)
---  local x,y=p.x,p.y
---  rect2({x*8+1,y*8+1,6,6},c)
--- end
---end
---function drawdebug_tilecol()
--- for x=0,tilesw-1 do
---  for y=0,tilesh-1 do
---   if tmap_solid(pt(x,y)) then
---    rect2({x*8+2,y*8+2,4,4},6)
---   end
---  end
--- end
---end
---
---function drawdebug_things()
--- for it in all(things) do
---  
---  local r=itrect(it)
---  local bx,by=it.x*8,it.y*8
---  
---  --not-walkable space
---  rect2(itrect(it),10)
---  
---  --activation space
---  local x=bx+it.hot[1]*8
---  local y=by+it.hot[2]*8
---  rect2({x,y,8,8},8)
---  
---  --tl (reminder all rel from this)
---  rect2({bx+2,by+2,4,4},2)
---  
--- end
---end
+function drawdebug_zones()
+ for i,z in pairs(i2zone) do
+  p=i2pt(i)
+  local x,y=p.x,p.y
+  rectfill2(x*8+2,y*8+2,4,4,0)
+  rectfill2(x*8+3,y*8+3,2,2,z)
+ end
+end
+--for i2xxx arrays
+function drawdebug_layer(lyr,c)
+ for k,v in pairs(lyr) do
+  p=i2pt(k)
+  local x,y=p.x,p.y
+  rect2({x*8+1,y*8+1,6,6},c)
+ end
+end
+function drawdebug_tilecol()
+ for x=0,tilesw-1 do
+  for y=0,tilesh-1 do
+   if tmap_solid(pt(x,y)) then
+    rect2({x*8+2,y*8+2,4,4},6)
+   end
+  end
+ end
+end
+
+function drawdebug_things()
+ for it in all(things) do
+  
+  local r=itrect(it)
+  local bx,by=it.x*8,it.y*8
+  
+  --not-walkable space
+  rect2(itrect(it),10)
+  
+  --activation space
+  local x=bx+it.hot[1]*8
+  local y=by+it.hot[2]*8
+  rect2({x,y,8,8},8)
+  
+  --tl (reminder all rel from this)
+  rect2({bx+2,by+2,4,4},2)
+  
+ end
+end
 
 
 
@@ -1319,10 +1325,26 @@ end
 
 --a* pathfinding
 
+global_walkable={}
+global_goal=pt(-100,-100)
 function map_iswall(p)
- if has2(global_walkable,p) then
-  return false
+ if attacking_a_mob then
+  if has2(global_walkable,p) then 
+   return false
+  end
+ else
+  if g(i2danger,p)
+  and ptequ(p,global_goal)
+  then
+   return false
+  end
  end
+-- if has2(global_walkable,p) 
+-- and (ptequ(p,global_goal)
+-- or ptequ(p,global_ignore_center))
+-- then
+--  return false
+-- end
  if (tile_is_solid(p)) return true
  if (g(i2danger,p)) return true
 end
@@ -1392,32 +1414,71 @@ end
 --caller should check for failure
 --by checking if path=={}
 --also can pass in obj to ignore
-function pathfind(start,goal,obj,
+function pathfind(start,goal,
+ goal_mob,
  func_nei,
  func_dist)
  
  if (ptequ(start,goal)) return {}
  
- --make a kind of ok-list
- --from optional passed in obj
- --(so we can walk over our)
- --(goal collider if needed)
- global_walkable={}
  
- if obj!=nil then
+ --this special ignore case
+ --is all just for mobs
+ --theres two cases:
+ --walking to mob (attacking)
+ --or walking next to mob
+	if goal_mob!=nil then
+	 
+	 if ptequ(goal,goal_mob) then
+	  --in this case, ignore
+	  --all the danger squares,
+	  --just find path to center
+	  attacking_a_mob=true
+	 else
+	  attacking_a_mob=false
+	 end
+ 
+ 
+  --global_goal is only used
+  --if we are trying to walk
+  --specifically into danger
+  --but not attack directly
+  
+	 --remember this so we
+	 --can allow walking into 
+	 --danger zone of mobs
+	 --(but only if it's our goal)
+	 global_goal=goal
+	 
+ 
+  --global_walkable is 
+  --only used if trying to 
+  --walk to center of mob
+  --(attacking_a_mob)
+  
+	 --basically an ok-list
+	 --(so we can walk over our)
+	 --(goal collider if needed)
+	 global_walkable={}
+ 
   --token: func that generates
   --list of points from rect
   --and and offset point?
-  c=obj.col
+  c=goal_mob.col
 	 for cx=0,c[3]-1 do
 	  for cy=0,c[4]-1 do
-	   x=obj.x+c[1]+cx
-	   y=obj.y+c[2]+cy
+	   x=goal_mob.x+c[1]+cx
+	   y=goal_mob.y+c[2]+cy
 	   p=pt(x,y)
     add(global_walkable,p)
    end
   end
+  
+  
  end
+ 
+ 
+ 
  
 
  --list of tuples of 
