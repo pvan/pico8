@@ -117,17 +117,17 @@ function _init()
  red_plr.heroes[2]=
  	spawn("hero",tc.x-5,tc.y+2)
  	
- tc=spawn("castle",24,2)
+ tc=spawn("castle",26,4)
  tc.army=random_starting_army()
  green_plr.castles[1]=tc
  green_plr.heroes[1]=
- 	spawn("hero",tc.x+2,tc.y+3)
+ 	spawn("hero",tc.x,tc.y+1)
  	
- tc=spawn("castle",16,20)
+ tc=spawn("castle",20,22)
  tc.army=random_starting_army()
  blue_plr.castles[1]=tc
  blue_plr.heroes[1]=
- 	spawn("hero",tc.x+2,tc.y+3)
+ 	spawn("hero",tc.x,tc.y+1)
  	
  
  set_player(red_plr)
@@ -384,10 +384,10 @@ end
 
 function update_camera()
  camgap = 32
- if curx>camx+64+camgap then camx+=2 end
- if curx<camx+64-camgap then camx-=2 end
- if cury>camy+64+camgap then camy+=2 end
- if cury<camy+64-camgap then camy-=2 end
+ if cur.x*8>camx+64+camgap then camx+=2 end
+ if cur.x*8<camx+64-camgap then camx-=2 end
+ if cur.y*8>camy+64+camgap then camy+=2 end
+ if cur.y*8<camy+64-camgap then camy-=2 end
 -- camx=max(camx,-worldborder)
 -- camy=max(camy,-worldborder)
 -- camx=min(camx,(tilesw-1)*8-128+worldborder*2) --minus size of camera
@@ -488,16 +488,16 @@ end
 function update_map_cursor()
 
  --update cursor
- tempp=pt(flr(curx/8),flr(cury/8))
+-- tempp=pt(flr(curx/8),flr(cury/8))
  move_cursor(
-  tempp,
+  cur,
   0,tilesw-1,
   0,tilesh-1)
- curx,cury=tempp.x*8,tempp.y*8
+-- curx,cury=tempp.x*8,tempp.y*8
  
  
- ctx=flr(curx/8)
- cty=flr(cury/8)
+-- ctx=flr(curx/8)
+-- cty=flr(cury/8)
  
  update_camera()
  
@@ -505,10 +505,11 @@ function update_map_cursor()
     sel.type=="hero" 
  then
   if btnp(❎) 
-     and path!=nil 
-     and #path>0 
-     and (path[#path].x==ctx and
-          path[#path].y==cty)
+  and path!=nil 
+  and #path>0 
+  and ptequ(path[#path],cur)
+--     and (path[#path].x==ctx and
+--          path[#path].y==cty)
   then
    move_hero()
   else
@@ -1593,8 +1594,9 @@ end
 
 
 function init_cursor()
-	curx=64
-	cury=64
+--	curx=64
+--	cury=64
+	cur=pt(8,8)
 	curanim=0
 	cur_spr=cur_sprs.arrow --updated each frame
 end
@@ -1603,10 +1605,10 @@ end
 
 
 function update_move_cursor()
- local tx,ty=flr(curx/8),flr(cury/8)
- local p=pt(tx,ty)
- local i=pt2i(p)
- local obj=g(mapobj,p)
+-- local tx,ty=flr(curx/8),flr(cury/8)
+-- local p=pt(tx,ty)
+ local i=pt2i(cur)
+ local obj=g(mapobj,cur)
  local selzones=objzones(sel)
  
  
@@ -1625,7 +1627,7 @@ function update_move_cursor()
   
 	  if obj.type=="mob" then
     if objnearzones(obj,selzones) then
-     if pnearzones(p,selzones)
+     if pnearzones(cur,selzones)
      or obj.x==tx and obj.y==ty
      then
    	  style="attack"
@@ -1657,7 +1659,7 @@ function update_move_cursor()
   --default to walkable
   style="horse"
   
-  if tile_is_solid(p) then
+  if tile_is_solid(cur) then
    style="arrow"
   end
   
@@ -1692,8 +1694,8 @@ function update_move_cursor()
   or style=="attack"
   or style=="trade"
   then
-   sel["movex"]=tx
-   sel["movey"]=ty
+   sel["movex"]=cur.x
+   sel["movey"]=cur.y
   end
  end
  
@@ -1723,12 +1725,12 @@ end
 
 
 function update_sel_cursor()
- local tx,ty=flr(curx/8),flr(cury/8)
- local p=pt(tx,ty)
- local obj=g(mapobj,p)
+-- local tx,ty=flr(curx/8),flr(cury/8)
+-- local p=pt(tx,ty)
+ local obj=g(mapobj,cur)
  
  
- set_obj_for_popup(obj,pt2i(p))
+ set_obj_for_popup(obj,pt2i(cur))
  
  
  if obj!=nil and obj.select then
@@ -1769,7 +1771,7 @@ end
 function draw_cursor()
  bb=flashamt()
  if (hud_menu_open) bb=0
- spr(cur_spr, curx,cury+bb)
+ spr(cur_spr, cur.x*8,cur.y*8+bb)
 end
 
 
@@ -2606,12 +2608,15 @@ function select(obj)
  sel=obj
  if (obj==nil) return
  if sel!=lsel then
-	 curx,cury=sel.x*8,sel.y*8
+--	 curx,cury=sel.x*8,sel.y*8
+  --ptmul
+  cur=copy(sel) --only need x,y but cheaper to copy entire
 	 if sel.type=="castle" then
-	  curx+=2*8
-	  cury+=3*8
+	  cur.y+=1
+--	  curx+=2*8
+--	  cury+=3*8
 	 end
-	 camx,camy=curx-64,cury-64
+	 camx,camy=cur.x*8-64,cur.y*8-64
 	 --update_camera()
 	 --update_move_cursor()
  end
