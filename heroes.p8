@@ -3,7 +3,6 @@ version 18
 __lua__
 
 --todo:
---sorting castles/etc (move pos to lowest point, eg -x,-y col)
 --when selecting castle, popup text is for last cur pos
 --add is_plr_ai list or something?
 --make battle skip turn menu option
@@ -111,13 +110,13 @@ function _init()
   blue_plr
  }
  
- tc=spawn("castle",3,5)
+ tc=spawn("castle",3+2,5+2)
  red_plr.castles[1]=tc
  tc.army=random_starting_army()
  red_plr.heroes[1]=
- 	spawn("hero",tc.x+2,tc.y+3)
+ 	spawn("hero",tc.x,tc.y+1)
  red_plr.heroes[2]=
- 	spawn("hero",tc.x-3,tc.y+6)
+ 	spawn("hero",tc.x-5,tc.y+2)
  	
  tc=spawn("castle",24,2)
  tc.army=random_starting_army()
@@ -3207,12 +3206,12 @@ function init_data()
 	  ["select"]=true,
 	  ["port"]=202,
 	  ["spr"]=137,
-	  ["sprx"]=0,
-	  ["spry"]=0,
+	  ["sprx"]=-2*8,
+	  ["spry"]=-2*8,
 	  ["sprw"]=5,
 	  ["sprh"]=4,
-	  ["col"]={0,1,5,3},
-	  ["hot"]={2,3},
+	  ["col"]={-2,-1,5,3},
+	  ["hot"]={0,1},
 	 },
 	 ["hero"]={
 	  ["type"]="hero",
