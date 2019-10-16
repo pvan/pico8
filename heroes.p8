@@ -83,7 +83,8 @@ end
 function random_starting_army()
  return {
   {"peasants",rnd_bw(10,20)},
-  {"elves",rnd_bw(5,10)},
+  {"elves",rnd_bw(50,100)},
+  {"skeletons",rnd_bw(1000,2000)},
  }
 end
 
@@ -2851,13 +2852,15 @@ function draw_big_mob(m,x,y)
 -- rectfill2(x,y,16,20,14)
  spr(big_mob_sprs[m[1]],
      x+4,y+2,1,2)
-     
- str=tostr(m[2])
- ofx=0
- if (#str<2) ofx=2
- if (#str>2) ofx=1-#str
- rectfill2(x+4+ofx,y+2+13,4*#str,6,1)
- print(str,x+4+ofx,y+2+13,7)
+    
+ print_mobnum(m,x+4,y+7,true) 
+ 
+-- str=tostr(m[2])
+-- ofx=0
+-- if (#str<2) ofx=2
+-- if (#str>2) ofx=1-#str
+-- rectfill2(x+4+ofx,y+2+13,4*#str,6,1)
+-- print(str,x+4+ofx,y+2+13,7)
 end
 
 
@@ -2890,26 +2893,58 @@ function draw_army_b(hero,y)
 
 end
 
+--7970 before
+--7954 after
+function print_mobnum(m,x,y,bg)
 
+ local str=tostr(m[2])
+-- local ofx=0
+-- if (#str<2) ofx=2
+-- if (#str>2) ofx=1-#str
+ local ofx=-2*#str+4
+ 
+ local c=0
+ if bg!=nil then
+  rectfill2(x+ofx,y+8,4*#str,6,1)
+  c=7
+ end
+ 
+ print(str,x+ofx,y+8,c)
+	  
+-- str=tostr(m[2])
+-- ofx=0
+-- if (#str<2) ofx=2
+-- if (#str>2) ofx=1-#str
+-- rectfill2(x+4+ofx,y+2+13,4*#str,6,1)
+-- print(str,x+4+ofx,y+2+13,7)
+ 
+end
 
 
 function draw_army_s(arm,y)
 
- local w=52
- local x=39
+ local w=12*5+2--52--=10*5+2
+ local x=34--39--=63-w/2+2
  draw_window(x-2,y-2,w,16)
  for i=1,5 do
   local mob=arm[i]
   if mob!=nil then
 	  spr(mob_sprs[mob[1]],x,y)
-	  local str=tostr(mob[2])
-	  local ofx=0
-	  if (#str<2) ofx=2
-	  if (#str>2) ofx=-3*(#str-2)
-	  print(str,x+ofx,y+8,0)
+	  print_mobnum(mob,x,y)
+
+--		 local str=tostr(mob[2])
+--		 local ofx=0
+--		 if (#str<2) ofx=2
+--		 if (#str>2) ofx=1-#str
+----		 if bg!=nil then
+----		  rectfill2(x+ofx,y+8,4*#str,6,1)
+----		 end
+--		 print(str,x+ofx,y+8,0)
+	  
   end
-  x+=10
+  x+=12
  end
+
 
 -- --7980 (orig)
 -- local w=10*5
