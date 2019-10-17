@@ -10,7 +10,14 @@ __lua__
 --hud menu should remember selected portrait (and maybe menu item?)
 
 
---token saving
+--big todos:
+--player select/multiplayer support
+--castles
+--fog of war
+--main menu/level select
+
+
+--token saving:
 --compress data
 --make mob stack .name/.count insetad of [1],[2]
 --switch x,y to pt (rects too?) partially done
@@ -757,13 +764,6 @@ end
 
 
 
-function wait(ticks)
- while ticks>0 do
-  ticks-=1
-  draw_battle()
-  flip()
- end
-end
 
 
 
@@ -1799,12 +1799,6 @@ function end_in_giveup()
  --reset from last battle
  btnx_wasup=false
  
- --turn these off
- activemob=nil
- bcur.x=1000
- 
- binstructions=false
-
  loser=defender
  if has(l_mobs,activemob) then 
   loser=attacker
@@ -1851,6 +1845,13 @@ end
 function battle_end_screen(attack_won)
  
  path=nil --var also used in map
+ 
+ 
+ --turn these off
+ activemob=nil
+ bcur.x=1000
+ binstructions=false
+ 
  
 	l_cas=cas_from_army(l_cas)
 	r_cas=cas_from_army(r_cas)
@@ -2150,10 +2151,20 @@ end
 -- return not evencol(x)
 --end
 
+function battle_wait(ticks)
+ while ticks>0 do
+  ticks-=1
+  draw_battle(true)
+  flip()
+ end
+end
+
+
 function mob_move(p)
 
  local m=activemob
  dist=grid_dist(m,p)
+ 
  while dist>0 do
  
   path=pathfind(m,p,nil,
@@ -2162,7 +2173,7 @@ function mob_move(p)
   for step in all(path) do
    --token: ptset
    m.x,m.y=step.x,step.y
-   wait(3)
+   battle_wait(3)
   end
   
   dist=grid_dist(m,p)
@@ -2229,6 +2240,7 @@ function mob_attack(pos)
 -- end
  
  
+ draw_battle(true)
  for i=1,30 do
   local a=mob
   local sx,sy=bgrid2screen(a)
@@ -2314,6 +2326,8 @@ function next_mob_turn()
  inc_mob_turn(1)
  
  attack_portion=false
+ 
+ bcur=copy(activemob)
  
 end
 
@@ -2419,14 +2433,12 @@ function update_battle()
 	    end
 	   end
 	  end
---	  if (closest_spot==nil) stop("no closest") --todo: remove
 	  mob_move(closest_spot)
   end
   
  end
  
  
--- bcur=pt(bcurx,bcury)
  
  move_cursor(bcur, 0,8, 0,9)
  if evencol(bcur.x) 
@@ -2439,7 +2451,7 @@ end
 
 
 
-function draw_battle()
+function draw_battle(hidecursor)
 
 	cls(3)
 	
@@ -2511,22 +2523,25 @@ function draw_battle()
  
  
  --cursor
- sx,sy=bgrid2screen(bcur)
- rect2({sx,sy,gw+1,gh+1},15)
- --bounce?
--- cw,ch=gw+1,gh+1
--- ex=0
--- if (frame%10<5) c=10 ex=1 cw+=2 ch+=2
--- rect2({sx-ex,sy-ex,cw,ch},10)
+ if not hidecursor then
+ 	sx,sy=bgrid2screen(bcur)
+	 rect2({sx,sy,gw+1,gh+1},15)
+	 --bounce?
+	-- cw,ch=gw+1,gh+1
+	-- ex=0
+	-- if (frame%10<5) c=10 ex=1 cw+=2 ch+=2
+	-- rect2({sx-ex,sy-ex,cw,ch},10)
+	 
+	 --draw cursor symbol
+	 if has2(options,bcur) then
+	  local tspr=27
+	  if has2(attacks,bcur) then
+	   tspr=43
+	  end
+   spr(tspr,sx+2,sy+1+flashamt())
+	 end
+	end
  
- --draw cursor symbol
- if has2(options,bcur) then
-  if has2(attacks,bcur) then
-   spr(43,sx+2,sy+1+flashamt())
-  else
-   spr(27,sx+2,sy+1+flashamt())
-  end
- end
  
 
  if binstructions 
