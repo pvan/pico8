@@ -649,13 +649,13 @@ function map_draw()
  	 
  	 for x=0,15 do
  	  for y=0,15 do
+ 	   palt(0,false)
  	   spr(121,x*8,y*8) 
+ 	   palt(0,true)
  	  end 
  	 end
  	 
 	 end
-	 
-	 draw_dialog()
 	 
 end
 
@@ -673,6 +673,9 @@ function _draw()
   end
 
  end 
+ 
+	 
+	draw_dialog()
  
 end
 
@@ -1607,7 +1610,8 @@ function update_move_cursor()
  local selzones=objzones(sel)
  
  
- set_obj_for_popup(obj)
+ cur_obj=obj
+-- set_obj_for_popup(obj)
  
  
  --note the fall-thru effect here
@@ -1702,20 +1706,23 @@ function update_move_cursor()
 end
 
 
---inline this if we end up
---combining sel + move cur 
-function set_obj_for_popup(obj)
- --remember obj for hud description
- --token: could just make obj global? (and rename it)
- cur_obj=obj
- --don't select area around mob
- if obj!=nil 
- and obj.type=="mob"
- and not g(i2hot,cur)
- then
-  cur_obj=nil
- end
-end
+----inline this if we end up
+----combining sel + move cur 
+--function set_obj_for_popup(obj)
+-- --remember obj for hud description
+-- --token: could just make obj global? (and rename it)
+-- cur_obj=obj
+-- --don't select area around mob
+-- 
+---- --8054
+---- if obj!=nil 
+---- and obj.type=="mob"
+---- and not g(i2hot,cur)
+---- then
+----  cur_obj=nil
+---- end
+-- 
+--end
 
 --todo: do we really need
 --a separate update func 
@@ -1726,7 +1733,8 @@ function update_sel_cursor()
  local obj=g(mapobj,cur)
  
  
- set_obj_for_popup(obj)
+ cur_obj=obj
+-- set_obj_for_popup(obj)
  
  
  if obj!=nil and obj.select then
@@ -1781,6 +1789,42 @@ end
 --with .name .count
 --instead of [1] and [2]
 
+
+function end_in_giveup()
+
+ --reset from last battle
+ btnx_wasup=false
+ 
+ --turn these off
+ activemob=nil
+ bcur.x=1000
+ 
+ binstructions=false
+
+ loser=defender
+ if has(l_mobs,activemob) then 
+  loser=attacker
+ end
+ --this seems backwards somehow?
+ battle_end_screen(loser==attacker)
+end
+
+function retreat()
+ end_msg1=hero_names[attacker.id].." retreated"
+ end_msg2="from battle"
+  
+ end_in_giveup()
+end
+
+function surrender()
+ end_msg1=hero_names[attacker.id].." negotiated"
+ end_msg2="a peaceful surrender"
+  
+ end_in_giveup()
+end
+
+
+
 function army_is_empty(army)
  for m in all(army) do
   if (m[2]>0) return false
@@ -1802,34 +1846,46 @@ end
 
 function battle_end_screen(attack_won)
  
+ 
 	l_cas=cas_from_army(l_cas)
 	r_cas=cas_from_army(r_cas)
  
- 
+ hack_to_center_dialog=true
  diag_open=true
  diag_txt={
-  "battle end",
+  "    --battle end--    ",
+  "",
+  end_msg1,
+  end_msg2,
   "",
   "casualties",
   "",
+  "",
+  "",
+  "",
+  "",
+  "",
   "done"}
  while true do
+  draw_battle()
   draw_dialog()
-  draw_army_s(l_cas,70)
-  draw_army_s(r_cas,90)
+  draw_army_s(l_cas,61)
+  draw_army_s(r_cas,81)
   flip()
-  if btn(❎) then
+  frame+=1
+  if btn(❎) and btnx_wasup then
    break
   end
+  btnx_wasup=not btn(❎)
  end
  
  diag_open=false
  
  in_battle=false
  if attack_won then
-  del_obj(defenders)
+  del_obj(defender)
  else
-  del_obj(attackers)
+  del_obj(attacker)
  end
  
  --adjust mob numbers down
@@ -1838,12 +1894,12 @@ function battle_end_screen(attack_won)
  --(and in battle start)
  --by treating mobs/armies
  --more of the same maybe??
- if defenders.type=="mob" then
+ if defender.type=="mob" then
   mobsleft=0
   for m in all(r_mobs) do
    mobsleft+=m[2]
   end
-  defenders.group[2]=mobsleft
+  defender.group[2]=mobsleft
  end
  
 end
@@ -1924,12 +1980,14 @@ end
 function start_battle(l,r)
  in_battle=true
 
+ binstructions=true
+ 
  --l is always hero
  --r could be hero or mob
  
  --remember so we can del loser
- attackers=l
- defenders=r
+ attacker=l
+ defender=r
 
 
  --2-part turns: move, attack
@@ -2291,9 +2349,24 @@ function update_battle()
    end
    
   elseif btnp(🅾️) then
-   if spot_empty(bcur) then
- 	  next_mob_turn()
-	  end
+  
+   open_dialog({
+    "--battle menu--",
+    "   skip turn",
+    "   cast spell",
+    "   retreat",
+    "   surrender",
+   },{
+    next_mob_turn,
+    close_dialog,
+    retreat,
+    surrender,
+   })
+--   return --needed?
+      
+--   if spot_empty(bcur) then
+-- 	  next_mob_turn()
+--	  end
 	 end
 	 
 --	 if spot_empty(bcur) then
@@ -2301,8 +2374,9 @@ function update_battle()
 --	 else
 --	  display_skip_turn_msg=false
 --	 end
-	 display_skip_turn_msg=
-	  spot_empty(bcur)
+
+--	 display_skip_turn_msg=
+--	  spot_empty(bcur)
   
  else
  
@@ -2375,12 +2449,12 @@ function draw_battle()
  
  --heros
  spr(hero_battle_sprs
-  [attackers.id],
+  [attacker.id],
   2,30,2,2)
  
  if r_hero_present then 
   spr(hero_battle_sprs
-   [defenders.id],
+   [defender.id],
    111,30,2,2,true)
  end
  
@@ -2446,17 +2520,16 @@ function draw_battle()
  end
  
 
-
- --instructions
- print("🅾️",10,121-flash(2,10),6)
- if display_skip_turn_msg then
-  print("skip unit",21,120,6)
- else
-  print("view unit",21,120,6)
+ if binstructions then
+	 --instructions
+	 print("🅾️",10,121-flash(2,10),6)
+  print("options",21,120,6)
+	 
+	 --todo: could make this say
+	 --move/attack dynamically
+	 print("❎",65,121-flash(2,10),6)
+	 print("move/attack",76,120,6)
  end
- 
- print("❎",70,121-flash(2,10),6)
- print("move here",81,120,6)
  
  
  if attack_portion then
@@ -2542,13 +2615,14 @@ end
 --dialog
 
 function open_dialog(txt,opts)
+ hack_to_center_dialog=false
  diag_open=true
  diag_txt=txt
  diag_opts=opts
  diag_sel=1
 end
 function close_dialog()
- blackout=false
+ blackout=false --better place?
  diag_open=false
 end
 
@@ -2573,22 +2647,32 @@ function draw_dialog()
  if diag_open then
   maxw=0
   for l in all(diag_txt) do
-   if (#l>maxw) maxw=#l
+   maxw=max(maxw,#l)
   end
   w=maxw*4+2+6
   h=#diag_txt*7+6
-  x=63-w/2-3
+  x=63-w/2//-3
   y=63-h/2-3
-  rectfill2(x,y,w,h,6)
-  rect2({x-1,y-1,w+2,h+2},0)
+  draw_window(x,y,w,h)
+--  rectfill2(x,y,w,h,6)
+--  rect2({x-1,y-1,w+2,h+2},0)
   x+=1+3
   y+=1+3
   for l in all(diag_txt) do
+	  if hack_to_center_dialog then
+	   x=63-#l*2
+	  end
    print(l,x,y,1)
    y+=7
   end
   y-=7*(#diag_opts+1)
-  spr(225,x+1+sin(t()),y+diag_sel*7-1)
+  if hack_to_center_dialog then
+   x=45
+   y=99
+   spr(225,x+flash(2,15),y-1)
+  else  
+   spr(225,x+1+sin(t()),y+diag_sel*7-1)
+	 end
  end
 end
 
@@ -2726,13 +2810,17 @@ function draw_cur_popup_info()
     colorstrings[obj_owner(cur_obj).color]
     .." "..cur_obj.type
     
-  elseif cur_obj.type=="mob" 
+  elseif cur_obj.type=="mob"
   then
-   stack=cur_obj.group
-   map_desc=vague_number(stack[2])
-    .." "..stack[1]
-    .." ["..stack[2].."]"
-    
+   if g(i2hot,cur) then
+    --token
+	   stack=cur_obj.group
+	   map_desc=vague_number(stack[2])
+	    ..stack[1]
+	    .." ["..stack[2].."]"
+	  else
+	   map_desc=nil
+   end
   elseif cur_obj.type=="treasure" 
   then
    map_desc=cur_obj.subtype
@@ -2741,17 +2829,19 @@ function draw_cur_popup_info()
    map_desc=cur_obj.type
   end
   
-  local x=63-#map_desc*2
-  local y=118
-  local w=#map_desc*4+1
-  
-  if cur_obj.army then
-   draw_army_s(cur_obj.army,y-5)
-   y-=14 --move text up
+  if map_desc!=nil then
+	  local x=63-#map_desc*2
+	  local y=118
+	  local w=#map_desc*4+1
+	  
+	  if cur_obj.army then
+	   draw_army_s(cur_obj.army,y-5)
+	   y-=14 --move text up
+	  end
+	  rect2({x-1,y-1,w+2,9},1)
+	  rectfill2(x,y,w,7,6)
+	  print(map_desc,x+1,y+1,1)
   end
-  rect2({x-1,y-1,w+2,9},1)
-  rectfill2(x,y,w,7,6)
-  print(map_desc,x+1,y+1,1)
  end
  
 end
@@ -2894,10 +2984,10 @@ end
 function vague_number(amt)
  for i=1,8 do
   if amt<group_numbers[i] then
-   return group_numbers[i]
+   return group_names[i]
   end
  end
- return "a legion of"
+ return "a legion of "
 end
 
 
@@ -3066,13 +3156,13 @@ function init_data()
 	 5,10,20,50,100,250,500,1000
 	}
 	group_names={
-		"a few",
-		"several",
-		"a pack of",
-		"lots of",
-		"a horde of",
-		"a throng of",
-		"a swarm of",
+		"a few ",
+		"several ",
+		"a pack of ",
+		"lots of ",
+		"a horde of ",
+		"a throng of ",
+		"a swarm of ",
 		"zounds... ",
 	}
 
@@ -3209,6 +3299,12 @@ function init_data()
 	--hero type/person is id'd
 	--by the index into these
 	--eg heroid=3 is index 3 in all
+	
+	hero_names={
+	 "alakazam",
+	 "benny",
+	 "charon"
+	}
 	
 	hero_port_sprs={
 	 201,217,233
@@ -3374,14 +3470,14 @@ __gfx__
 66666d11dddddddd000001cc61771761000cc6677777c00033354444bbb399931d66ffd1ff66ff66000000003b3b3b3b3bbbbbbb3b333b33b3b3b3b37cc7777c
 66666d1111111111011111cc6677117167ccc6677667c00033154444bbb444431df66fd1dddddddd00000000b3b3b3333b3b3b3b33b333b33b3b3b3b7777cc77
 66666d111111111111771ccc6676661167cccc766600c00033114444bbb444431dff66d111111111000000003b3b3b3bbbbbbbbb333b333b33b333b3ccc77ccc
-ddddd61ddddddddd16771cccc6667110677ccc77d000c000333339999b344443f66ff6661111111100000000b3b3b3b3b3b3b3b3b333b333b333b333cccccccc
-dd66d11ddddddddd167711ccc777d10067d0cc07d000c00c3333999999224233ff66ff661d111111000000003b3b3b3b3333b3333b333b3333b333b377cc77cc
-d611ddddddd66ddd161771ccc771d10007dd0c07dd00c0c033229999992222336ff66ff6111111d100000000b3b3b3b3b3b3b3b3333b333b33333333cc77cc77
-d1dddddddddd11dd1617711cc171d100077000077000cc003222229b3322223366ff66ff11111111000000003b3b3b3b3333333333b333b333333333cccccccc
-ddddd1dddddddddd11171d111171d110ccccccccccccc000322223bbb3322333f66ff66f1111d11100000000b3b3b3b3b3b3b3b3b333b333b333b333cccccccc
-ddd661ddd666dddd00171dd10171dd100c00000000000000322233bbbb353333ff66ff661d111111000000003b3b3b3bb33333333b333b3333b333b377cc77cc
-dd111dddd111dddd001771110177111000c00000000000003355333bb33533336ff66ff61111111100000000b3b3b3b3b3b3b3b3333b333b33333333cc77cc77
-dddddddddddddddd0011110001111000000c000000000000335533353333333366ff66f6111111d1000000003b3b3b3b3333333333b333b333333333cccccccc
+ddddd61ddddddddd16771cccc6667110677ccc77d000c000333339999b344443f66ff6660000000000000000b3b3b3b3b3b3b3b3b333b333b333b333cccccccc
+dd66d11ddddddddd167711ccc777d10067d0cc07d000c00c3333999999224233ff66ff660d000000000000003b3b3b3b3333b3333b333b3333b333b377cc77cc
+d611ddddddd66ddd161771ccc771d10007dd0c07dd00c0c033229999992222336ff66ff6000000d000000000b3b3b3b3b3b3b3b3333b333b33333333cc77cc77
+d1dddddddddd11dd1617711cc171d100077000077000cc003222229b3322223366ff66ff00000000000000003b3b3b3b3333333333b333b333333333cccccccc
+ddddd1dddddddddd11171d111171d110ccccccccccccc000322223bbb3322333f66ff66f0000d00000000000b3b3b3b3b3b3b3b3b333b333b333b333cccccccc
+ddd661ddd666dddd00171dd10171dd100c00000000000000322233bbbb353333ff66ff660d000000000000003b3b3b3bb33333333b333b3333b333b377cc77cc
+dd111dddd111dddd001771110177111000c00000000000003355333bb33533336ff66ff60000000000000000b3b3b3b3b3b3b3b3333b333b33333333cc77cc77
+dddddddddddddddd0011110001111000000c000000000000335533353333333366ff66f6000000d0000000003b3b3b3b3333333333b333b333333333cccccccc
 00000000b333b333b333b3333333bbb334debbb3333a9a9333bbbb33b333b3333333333300000000000000000000110000000000000000000000000000000000
 0111111033b333b333b333b33ddbbb6bddedd3bb339999a93b3b3bb3333333b33333333300000000000000000001111000000000000000000000000000000000
 01f11f103333333333333333ddbbbbb64dddeb3b3399a9993b3b3b3b336333333333333300000000000000000011111100000000000000000000009999000000
