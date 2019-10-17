@@ -5,8 +5,6 @@ __lua__
 --todo:
 --add is_plr_ai list or something?
 --cannot trade with adjacent hero
---remove cursor in battle during animation
---...and remove control instructions??
 --hud menu should remember selected portrait (and maybe menu item?)
 
 
@@ -1850,7 +1848,7 @@ function battle_end_screen(attack_won)
  --turn these off
  activemob=nil
  bcur.x=1000
- binstructions=false
+-- binstructions=false
  
  
 	l_cas=cas_from_army(l_cas)
@@ -1986,7 +1984,7 @@ end
 function start_battle(l,r)
  in_battle=true
 
- binstructions=true
+-- binstructions=true
  
  --l is always hero
  --r could be hero or mob
@@ -2544,10 +2542,16 @@ function draw_battle(hidecursor)
  
  
 
- if binstructions 
- and not diag_open
+-- if binstructions then
+-- if not hidecursor then
+ if is_player_mob_turn() 
+ and not hidecursor
  then
-	 draw_control("menu","move/attack")
+  if diag_open then
+ 	 draw_control("close menu","select")
+	 else
+	  draw_control("menu","move/attack")
+	 end
  end
  
  
