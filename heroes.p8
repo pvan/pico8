@@ -114,7 +114,6 @@ function _init()
  green_plr=create_player(11)
  blue_plr=create_player(12)
  
- 
  plrs={
   red_plr,
   green_plr,
@@ -202,6 +201,8 @@ function create_player(c)
  
  res["heroes"]={}
  res["castles"]={}
+ 
+ res["ai"]=false
  return res
 end
 
@@ -575,11 +576,11 @@ function _update()
   return
  end
  
- if in_battle then
-  cur_obj=nil --todo: better place for this
-  update_battle()
-  return
- end
+-- if in_battle then
+--  cur_obj=nil --todo: better place for this
+--  update_battle()
+--  return
+-- end
 
 
 
@@ -672,9 +673,9 @@ end
 
 function _draw()
  
-	if in_battle then
-  draw_battle()
- else
+--	if in_battle then
+--  draw_battle()
+-- else
  
   if main_draw!=nil then
    main_draw()
@@ -682,7 +683,7 @@ function _draw()
    map_draw()
   end
 
- end 
+-- end 
  
 	 
 	draw_dialog()
@@ -1951,7 +1952,7 @@ function battle_end_screen(attack_won)
   "",
   "done"}
  while true do
-  draw_battle()
+  battle_draw()
   draw_dialog()
   draw_army_s(l_cas,61)
   draw_army_s(r_cas,81)
@@ -1965,7 +1966,10 @@ function battle_end_screen(attack_won)
  
  diag_open=false
  
- in_battle=false
+-- in_battle=false
+ main_update=map_update
+ main_draw=map_draw
+ 
  if attack_won then
   del_obj(defender)
  else
@@ -2075,10 +2079,17 @@ function setup_mob_list(l,c)
 -- end
 end 
 
-
 --start/init rolled into one
 function start_battle(l,r)
- in_battle=true
+ --8120
+-- in_battle=true
+ 
+ main_update=battle_update
+ main_draw=battle_draw
+
+ --better place for this?
+ cur_obj=nil
+ 
 
 -- binstructions=true
  
@@ -2262,7 +2273,7 @@ end
 function battle_wait(ticks)
  while ticks>0 do
   ticks-=1
-  draw_battle(true)
+  battle_draw(true)
   flip()
  end
 end
@@ -2348,7 +2359,7 @@ function mob_attack(pos)
 -- end
  
  
- draw_battle(true)
+ battle_draw(true)
  for i=1,30 do
   local a=mob
   local sx,sy=bgrid2screen(a)
@@ -2439,7 +2450,7 @@ function next_mob_turn()
  
 end
 
-function update_battle()
+function battle_update()
  
  --todo: add check if
  --player won or lost?
@@ -2536,7 +2547,7 @@ end
 
 
 
-function draw_battle(hidecursor)
+function battle_draw(hidecursor)
 
 	cls(3)
 	
@@ -2752,8 +2763,8 @@ function update_dialog()
   end
   
   --hack for battle menu
-  if btnp(🅾️) and in_battle then
---  and diag_txt[1]=="--battle menu--")
+--  if btnp(🅾️) and in_battle then
+  if btnp(🅾️) and main_draw==battle_draw then
    sfx(61)
    close_dialog()
   end
