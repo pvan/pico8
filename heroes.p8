@@ -202,18 +202,21 @@ end
 
 
 function split_update()
-		
+	
+	amt=1
+	if (btn(🅾️)) amt=5
+	
 	if btnp(⬅️) 
-	and movingmob[2]>1
+	and movingmob[2]>amt
 	then
-	 movingmob[2]-=1
-	 splitmob[2]+=1
+	 movingmob[2]-=amt
+	 splitmob[2]+=amt
 	end
 	if btnp(➡️)
-	and splitmob[2]>1
+	and splitmob[2]>amt
 	then
-	 movingmob[2]+=1
-	 splitmob[2]-=1
+	 movingmob[2]+=amt
+	 splitmob[2]-=amt
 	end
 	if btnp(❎) then
 	 main_update=trade_update
@@ -252,6 +255,9 @@ function split_draw()
  //55=63-8
  spr(225,55,70,1,1,true)
  spr(225,63,70)
+ 
+ --todo: need this still?
+ --feels better tahn bottom ui
  print("❎",51,82+flashamt(),1)
  print("done",59,82,1)
 end
@@ -2929,8 +2935,19 @@ function draw_static_hud()
  end
  
  
+ --todo: token:
+ --could put these controls in 
+ --their respective functions?
+ --hmm but drawing over each other?
+ 
  --controls
- draw_control("menu","select")
+ if main_draw==split_draw then
+  draw_control("fast","done")
+ elseif main_draw==trade_draw then
+  draw_control("split","select")
+ else
+  draw_control("menu","select")
+ end
 
 end
 
