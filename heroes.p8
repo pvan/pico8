@@ -2148,27 +2148,11 @@ function start_battle(l,r)
  main_update=battle_update
  main_draw=battle_draw
 
- --better place for this?
- cur_obj=nil
  
  
  --l is always hero
  --r could be hero or mob
  
- 
- --what we need:
- --current player mobs
- --current/other player (plr)
- --other player hero
- 
- 
- --8116 before changes
- --less tokens this way?
--- attacker_plr=obj_owner(l)
--- defender_plr=obj_owner(r)
- 
- 
-
  
  corpses={}
  
@@ -2556,6 +2540,9 @@ end
 
 function battle_update()
     
+ --better place for this?
+ cur_obj=nil
+ 
  
  --needs to be here so we
  --can abort out of update...
