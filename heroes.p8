@@ -1844,6 +1844,7 @@ end
 
 function battle_end_screen(attack_won)
  
+ path=nil --var also used in map
  
 	l_cas=cas_from_army(l_cas)
 	r_cas=cas_from_army(r_cas)
@@ -2316,10 +2317,14 @@ function update_battle()
  --player won or lost?
  --(map color to player/cpu)
  if army_is_empty(l_mobs) then
+	 end_msg1="attackers defeated"
+	 end_msg2=hero_names[attacker.id].." abandons your cause"
   battle_end_screen(false)
   return
  end
  if army_is_empty(r_mobs) then
+	 end_msg1="victory"
+	 end_msg2=""
   battle_end_screen(true)
   return
  end
