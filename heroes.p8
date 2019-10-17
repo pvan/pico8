@@ -13,6 +13,7 @@ __lua__
 --castles
 --fog of war
 --main menu/level select
+--hero experience
 
 
 --token saving:
@@ -22,6 +23,7 @@ __lua__
 --improve state switching? partially done
 --consolidate hud rendering? tried and failed
 --rect({})
+--areas marked "token"
 
 
 --notes:
@@ -95,7 +97,7 @@ end
 function _init()
 -- music(0)
 
-
+ 
 -- --quick test area
 -- a=pt(1,1)
 -- b=pt(1,2)
@@ -119,6 +121,12 @@ function _init()
   green_plr,
   blue_plr
  }
+ 
+-- ai={}
+-- ai[red_plr]=false
+-- ai[green_plr]=false
+-- ai[blue_plr]=false
+ 
  
  tc=spawn("castle",3+2,5+2)
  red_plr.castles[1]=tc
@@ -1788,7 +1796,16 @@ end
 -->8
 --battle
 
---todo:
+
+--we now have a current_team
+--pointer to a team object...
+--teams are aaa and bbb 
+--each has what's needed 
+--as well as .enemy 
+--(to get the opposite team)
+--it works pretty well to
+--satisfy our earlier goals:
+--
 --need to clarify:
 --attacker / defender
 --current turn / opposite
@@ -1800,6 +1817,7 @@ end
 --replace mob stacks
 --with .name .count
 --instead of [1] and [2]
+
 
 function open_battle_menu()
  open_dialog({
@@ -1816,6 +1834,7 @@ function open_battle_menu()
  })
 end
 
+
 function ask_retreat()
  open_dialog({
   "are you sure",
@@ -1827,9 +1846,17 @@ function ask_retreat()
   open_battle_menu,
  })
 end
+function retreat()
+ end_msg1=hero_names[current_team.hero_id].." retreated"
+ end_msg2="from battle"
+ end_with_loser(current_team)
+end
+
 
 function ask_surrender()
- if not r_hero_present then
+ local enemy_id=
+  current_team.enemy.hero_id
+ if enemy_id==nil then
   open_dialog({
    "no hero to negotiate with",
    "   ok"
@@ -1838,11 +1865,11 @@ function ask_surrender()
   })
  else
   cost=0
-  for m in all(get_current_team()) do
+  for m in all(current_team.mobs) do
    cost+=m[2]*mob_hps[m[1]]
   end
 	 open_dialog({
-	  hero_names[defender.id].." will accept",
+	  hero_names[enemy_id].." will accept",
 	  "your surrender for ",
 	  cost.." gold",
 	  "   accept",
@@ -1853,34 +1880,13 @@ function ask_surrender()
 	 })
 	end
 end
-
-
-function end_in_giveup()
-
- --reset from last battle
- btnx_wasup=false
- 
- loser=defender
- if has(l_mobs,activemob) then 
-  loser=attacker
- end
- --this seems backwards somehow?
- battle_end_screen(loser==attacker)
-end
-
-function retreat()
- end_msg1=hero_names[attacker.id].." retreated"
- end_msg2="from battle"
-  
- end_in_giveup()
-end
-
 function surrender(cost)
 
- local loser=obj_owner(get_current_hero())
- local winner=obj_owner(get_other_hero())
+ --less tokens to just inline
+-- local l_plr=current_team.plr
+-- local w_plr=current_team.enemy.plr
  
- if loser.gold<cost then
+ if current_team.plr.gold<cost then
   open_dialog({
    "you can't afford it!",
    "   ok"
@@ -1889,26 +1895,31 @@ function surrender(cost)
   })
  else
  
-	 loser.gold-=cost
-	 winner.gold+=cost
+	 current_team.plr.gold-=cost
+	 current_team.enemy.plr.gold+=cost
 	
-	 end_msg1=hero_names[attacker.id].." negotiated"
+	 end_msg1=hero_names[current_team.hero_id].." negotiated"
 	 end_msg2="a peaceful surrender"
 	  
-	 end_in_giveup()
+  end_with_loser(current_team)
 	 
  end
 end
 
 
 
-function army_is_empty(army)
- for m in all(army) do
-  if (m[2]>0) return false
- end
- return true
+
+function team_is_dead(team)
+ return #team.mobs<=0
+ --token: just check #mobs
+ --now that we actually remove them
+-- for m in all(team.mobs) do
+--  if (m[2]>0) return false
+-- end
+-- return true
 end
 
+--todo: token: simplify this?
 function cas_from_army(army)
  local res={}
  for m in all(army) do
@@ -1921,7 +1932,23 @@ function cas_from_army(army)
  return res
 end
 
-function battle_end_screen(attack_won)
+function team_wipe(loser)
+ if is_team_player(loser) then
+	 end_msg1="attackers defeated"
+	 end_msg2=hero_names[loser.hero_id].." abandons your cause"
+	else
+	 end_msg1="victory"
+	 end_msg2=""
+	end
+	end_with_loser(loser)
+end
+
+function end_with_loser(loser)
+ 
+
+ --reset from last battle
+ btnx_wasup=false
+ 
  
  path=nil --var also used in map
  
@@ -1932,8 +1959,8 @@ function battle_end_screen(attack_won)
 -- binstructions=false
  
  
-	l_cas=cas_from_army(l_cas)
-	r_cas=cas_from_army(r_cas)
+	l_cas=cas_from_army(aaa.cas)
+	r_cas=cas_from_army(bbb.cas)
  
  hack_to_center_dialog=true
  diag_open=true
@@ -1970,11 +1997,9 @@ function battle_end_screen(attack_won)
  main_update=map_update
  main_draw=map_draw
  
- if attack_won then
-  del_obj(defender)
- else
-  del_obj(attacker)
- end
+ 
+ del_obj(loser.unit)
+ 
  
  --adjust mob numbers down
  --if they are still alive
@@ -1982,12 +2007,12 @@ function battle_end_screen(attack_won)
  --(and in battle start)
  --by treating mobs/armies
  --more of the same maybe??
- if defender.type=="mob" then
+ if bbb.unit.type=="mob" then
   mobsleft=0
-  for m in all(r_mobs) do
+  for m in all(bbb.mobs) do
    mobsleft+=m[2]
   end
-  defender.group[2]=mobsleft
+  bbb.unit.group[2]=mobsleft
  end
  
 end
@@ -2044,7 +2069,7 @@ function valid_moves(mob)
  speed=mob_speeds[mob[1]]
  for spot in all(grid) do
   if grid_dist(spot,mob)<speed then
-   if spot_empty(spot) then   
+   if is_empty(spot) then   
     add(result,spot)
    end
   end
@@ -2052,74 +2077,25 @@ function valid_moves(mob)
  return result
 end
 
-function from_army(x,hero)
+function from_unit(x,unit)
  local mobs={}
- for i=1,5 do
-  local m=hero.army[i]
-  if m!=nil then
-   m.x=x
-   m.y=i*2-2
-   add(mobs,m)
-  end
- end
- return mobs
-end
-
-
-function setup_mob_list(l,c)
- for m in all(l) do
-  add(moblist,m)
-  add(c,m)
-  m.casualties=0
- end
--- for m in all(r_mobs) do
---  add(moblist,m)
---  add(r_cas,m)
---  m.casualties=0
--- end
-end 
-
---start/init rolled into one
-function start_battle(l,r)
- --8120
--- in_battle=true
  
- main_update=battle_update
- main_draw=battle_draw
-
- --better place for this?
- cur_obj=nil
+ if unit.type=="hero" then
  
-
--- binstructions=true
- 
- --l is always hero
- --r could be hero or mob
- 
- --remember so we can del loser
- attacker=l
- defender=r
-
-
- --2-part turns: move, attack
- attack_portion=false
-
- 
- corpses={}
- 
- 
- --setup armies
- 
- l_mobs=from_army(0,l)
- 
- 
- r_hero_present=r.type=="hero"
- if r_hero_present then
-  r_mobs=from_army(8,r)
- else --if r.type=="mob" then
+	 for i=1,5 do
+	  local m=unit.army[i]
+	  if m!=nil then
+	   m.x=x
+	   m.y=i*2-2
+	   add(mobs,m)
+	  end
+	 end
+	 
+ else
   
-  mobname=r.group[1]
-  mobcount=r.group[2]
+  --mobs with no hero
+  mobname=unit.group[1]
+  mobcount=unit.group[2]
 	 
   split=flr(mobcount/5)
   leftover=mobcount%5
@@ -2137,16 +2113,66 @@ function start_battle(l,r)
 	  count=3
 	 end
 	 
-  r_mobs={}
 	 for i=0,count-1 do
  	 thisamt=split
  	 if (leftover>i) thisamt+=1
 	  mobstack={mobname,thisamt}
 	  mobstack.x=8
 	  mobstack.y=(starty+i)*2
-   add(r_mobs,mobstack)
+   add(mobs,mobstack)
 	 end
+	 
+	 
  end
+ 
+ return mobs
+end
+
+
+--function setup_mob_list(l,c)
+-- for m in all(l) do
+--  add(moblist,m)
+--  add(c,m)
+--  m.casualties=0
+-- end
+---- for m in all(r_mobs) do
+----  add(moblist,m)
+----  add(r_cas,m)
+----  m.casualties=0
+---- end
+--end 
+
+--start/init rolled into one
+function start_battle(l,r)
+ 
+ main_update=battle_update
+ main_draw=battle_draw
+
+ --better place for this?
+ cur_obj=nil
+ 
+ 
+ --l is always hero
+ --r could be hero or mob
+ 
+ 
+ --what we need:
+ --current player mobs
+ --current/other player (plr)
+ --other player hero
+ 
+ 
+ --8116 before changes
+ --less tokens this way?
+-- attacker_plr=obj_owner(l)
+-- defender_plr=obj_owner(r)
+ 
+ 
+
+ 
+ corpses={}
+ 
+ 
  
 
  --token: bake these
@@ -2155,60 +2181,126 @@ function start_battle(l,r)
  gh=10
  --grid start x/y (margins)
  gstart=pt(19,19)
--- gsx=(128-10*9)/2
--- gsy=(128-10*9)/2
  
- --sort mobs for turn order
+ 
+ 
+ --setup units / teams
+ 
+ --master list of all units
+ --on battlefield
+ --used to track turn order
+ --(usually sorted by speed)
+ --but also used to sort by y
+ --when drawing battlefield units
  moblist={}
- l_cas={}
- r_cas={}
- setup_mob_list(l_mobs,l_cas)
- setup_mob_list(r_mobs,r_cas)
-
+ 
+ --each mob pointer is a key
+ --into this hastable that
+ --returns a pointer to the
+ --team that owns that mob
+ --(less tokens than a func)
+ --3+5=8 tokens this way
+ --vs about 20 in a function 
+ mob_team={}
+ 
+ --these also populate
+ --moblist and mob_team
+ aaa=make_battle_team(0,l)
+ bbb=make_battle_team(8,r)
+ 
+ --8 tokens to quickly
+ --get opp team
+ --(easier than a func that
+ -- checks if x is part of one
+ -- and then returns the other)
+ aaa.enemy=bbb
+ bbb.enemy=aaa
  
  
- --todo: make second list
- --for display, sorted by y ?
+ 
+ 
+ 
+ --usually kept sorted by speed
+ --which is the unit turn order
+ --but sorted by y before being
+ --used to draw and sorted by
+ --speed right away again after
+ --
+ --todo: could that skip mobs
+ --with the same speed if they
+ --are not sorted the same way?
  sort_by_speed(moblist)
+ 
+ 
  
  activemob=moblist[1]
  
+ --shortcut to init a few things
+ --that also reset every turn:
+ --attack_portion=false
+ --bcur=copy(activemob)
+ --current_team=mob_team[activemob] 
+ inc_mob_turn(0)
+
+
+end
+
+function make_battle_team(x,unit)
+ local res={}
  
+ --so we know if ai or plr 
+ res.plr=obj_owner(unit)
  
- --battle cursor
- --we really only want x/y 
- --from mob but it's less tokens 
- --to just copy the whole thing
- bcur=copy(activemob)
--- bcur=pt(activemob.x,activemob.y)
+ --todo: could try to combine
+ --these .unit and .hero
+ --but need some way to check
+ --if combined new var is hero
+ --before trying to get its id
+ --maybe... use these two vars:
+ -- .is_hero=unit.type=="hero"
+ -- .unit  (and use unit.id)
+ --todo: test if less tokens
  
-end
-
-
-function get_current_team()
- if has(l_mobs,activemob) then
-  return l_mobs
+ --so we know what unit to
+ --remove from map if defeated
+ res.unit=unit
+ 
+ --so we know what hero 
+ --to draw / name to use
+ res.hero_id=nil
+ if unit.type=="hero" then
+  res.hero_id=unit.id
  end
- return r_mobs
+ 
+ res.mobs=from_unit(x,unit)
+ res.cas={}
+ 
+ for m in all(res.mobs) do
+  add(moblist,m)
+  
+  --can't copy b/c we don't
+  --actually want full deep copy
+  --just a 1-level deep copy
+  --(copy the mob pointers)
+  add(res.cas,m)
+  
+  --init these here so we don't
+  --have to check if nil later
+  m.casualties=0
+  m.damage=0
+  
+  --important token-saving
+  --reverse lookup table
+  mob_team[m]=res
+ end
+ 
+ return res
 end
 
-function get_current_hero()
- if has(l_mobs,activemob) then
-  return attacker
- end
- return defender
-end
 
-function get_other_hero()
- if has(l_mobs,activemob) then
-  return defender
- end
- return attacker
-end
 
 function get_enemies(mob)
- if (has(l_mobs,mob)) return r_mobs
- return l_mobs 
+ return mob_team[mob].enemy.mobs
 end
 
  
@@ -2310,7 +2402,8 @@ end
 
 function mob_die(mob)
 
- for i=1,30 do
+ --death animation
+ for i=1,20 do
   local m=mob
   local sx,sy=bgrid2screen(m)
   pal(8,0)
@@ -2319,28 +2412,21 @@ function mob_die(mob)
   flip()
  end
  
- add(corpses,mob)
- 
  if mob==activemob then
   --set activemob back one
   --so when we delete it and
   --call next_mob later, it
   --correctly goes to next mob
   --(feels like a kludge)
---	 previ=indexof(moblist,activemob)-1
---	 if (previ<1) previ=#moblist
---	 activemob=moblist[previ]
   inc_mob_turn(-1)
  end
  
- del(l_mobs,mob)
- del(r_mobs,mob)
+ add(corpses,mob)
+ 
+ del(aaa.mobs,mob)
+ del(bbb.mobs,mob)
  del(moblist,mob)
  
- --resort needed? 
- --i dont think so, del should
- --preserve order right?
--- sort_by_speed(moblist)
 end
 
 function mob_attack(pos)
@@ -2359,8 +2445,9 @@ function mob_attack(pos)
 -- end
  
  
+ --attack/hurt animation
  battle_draw(true)
- for i=1,30 do
+ for i=1,20 do
   local a=mob
   local sx,sy=bgrid2screen(a)
   spr(43,sx,sy)
@@ -2372,10 +2459,10 @@ function mob_attack(pos)
  end
  
  
- if enemy.damage==nil then
-  --token: init this in init
-  enemy.damage=0
- end
+-- if enemy.damage==nil then
+--  --token: init this in init
+--  enemy.damage=0
+-- end
  enemy.damage+=mob_attacks[mob[1]]*mob[2]
  
  enemy_hp=mob_hps[enemy[1]]
@@ -2383,7 +2470,7 @@ function mob_attack(pos)
   enemy.damage-=enemy_hp
   if enemy[2]>0 then
    enemy[2]-=1
-   enemy["casualties"]+=1
+   enemy.casualties+=1
   end
  end
  
@@ -2396,14 +2483,30 @@ function mob_attack(pos)
 end
 
 
+--function get_mob_team()
+--
+--end
+
+function is_plr_ai(p)
+ return p==nil or p.ai
+end
+
+function is_team_player(team)
+ return not is_plr_ai(team.plr)
+end
+
 --right now l_mobs is assumed player
 --hotseat battle support tbd
-function is_player_mob_turn()
- return has(l_mobs,activemob)
+function is_player_turn()
+ return is_team_player(current_team)
+--todo: something that works
+--if player is plr (with .ai or some other way)
+--or if player is nil (mob controlled)
+-- return not mob_team[activemob].plr.ai
+-- return has(aaa.mobs,activemob)
 end
 
 function mob_at_pos(pos)
--- if (pos==nil) return nil --tood: could move this to ptequ?
  for m in all(moblist) do
   if ptequ(m,pos) then
    return m
@@ -2417,13 +2520,12 @@ end
 -- points, check if called more
 -- as x,y or as pt.. 
 -- and change func to that
-function spot_empty(p)
- --token: inline this?
+function is_empty(p)
+ --token: inline this
  return not has2(moblist,p)
 end
 
 
---7757
 function inc_mob_turn(amt)
  local newi=
   indexof(moblist,activemob)+amt
@@ -2433,53 +2535,64 @@ function inc_mob_turn(amt)
  if (newi<1) newi=#moblist
  
  activemob=moblist[newi]
-end
-
-function next_mob_turn()
-
- --token: put this in func
- --that takes +1 or -1 as arg
--- nexti=indexof(moblist,activemob)+1
--- if (nexti>#moblist) nexti=1
--- activemob=moblist[nexti]
- inc_mob_turn(1)
+ 
  
  attack_portion=false
  
  bcur=copy(activemob)
  
+ --5 tokens here saves us
+ --2 per use
+ --(1 token vs 3)
+ current_team=mob_team[activemob] 
+ 
 end
 
+--todo: inline
+function next_mob_turn()
+ inc_mob_turn(1)
+end
+
+
 function battle_update()
+    
  
- --todo: add check if
- --player won or lost?
- --(map color to player/cpu)
- if army_is_empty(l_mobs) then
-	 end_msg1="attackers defeated"
-	 end_msg2=hero_names[attacker.id].." abandons your cause"
-  battle_end_screen(false)
+ --needs to be here so we
+ --can abort out of update...
+ --if we change end screen
+ --to not be a blocking, modal
+ --kind of thing, then maybe
+ --we could move this check
+ --to mob_die or somewhere else 
+ --but still would need to be 
+ --careful with what's ran
+ --after team_wipe() is called
+ if team_is_dead(aaa) then
+  team_wipe(aaa)
   return
  end
- if army_is_empty(r_mobs) then
-	 end_msg1="victory"
-	 end_msg2=""
-  battle_end_screen(true)
+ if team_is_dead(bbb) then
+  team_wipe(bbb)
   return
  end
-   
+ 
+ 
  attacks=adjacent_enemies(activemob)
  moves=valid_moves(activemob) 
 
  options=copy(moves)
  --if move mode, still allow 
  --attacks if there are any
+ --todo:token:concat lists function
  for a in all(attacks) do
   add(options,a)
  end
+ 
+ --todo: might not need this
+ --since we concat attack anyway
  if (attack_portion) options=attacks
 
- if is_player_mob_turn() then
+ if is_player_turn() then
   
   if btnp(❎) then
    if has2(options,bcur) then
@@ -2538,6 +2651,7 @@ function battle_update()
  
  move_cursor(bcur, 0,8, 0,9)
  if evencol(bcur.x) 
+ --token: clampx/y functions?
  and bcur.y>8
  then
   bcur.y=8
@@ -2566,18 +2680,18 @@ function battle_draw(hidecursor)
  
  --heros
  spr(hero_battle_sprs
-  [attacker.id],
+  [aaa.hero_id],
   2,30,2,2)
  
- if r_hero_present then 
+ if bbb.hero_id!=nil then 
   spr(hero_battle_sprs
-   [defender.id],
+   [bbb.hero_id],
    111,30,2,2,true)
  end
  
  
  --draw debug valid move spots
- if is_player_mob_turn() then
+ if is_player_turn() then
 	 if activemob!=nil then
 		 for spot in all(options) do
 		  x,y=bgrid2screen(spot)
@@ -2598,23 +2712,24 @@ function battle_draw(hidecursor)
  
  --draw armies
  
+ --todo: enable this
+ --sort by y (leaving off to
+ --compare tokens for now)
+-- sort_by_y(moblist)
  for m in all(moblist) do
-  
   --highlight active mob
   if m==activemob then
    flashcols={7,6,10,13,1}
    pal(1,flashcols[
     flash(#flashcols,3)])
-  end   
-  
+  end
   --draw mob
-  
   sx,sy=bgrid2screen(m)
   sx-=2
   sy-=gh
   draw_big_mob(m,sx,sy)
- 	  
  end
+-- sort_by_speed(moblist)
  
  
  
@@ -2642,7 +2757,7 @@ function battle_draw(hidecursor)
 
 -- if binstructions then
 -- if not hidecursor then
- if is_player_mob_turn() 
+ if is_player_turn() 
  and not hidecursor
  then
   if diag_open then
