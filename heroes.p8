@@ -576,6 +576,7 @@ function _update()
  end
  
  if in_battle then
+  cur_obj=nil --todo: better place for this
   update_battle()
   return
  end
@@ -1278,51 +1279,51 @@ end
 
 -- some debug functions
 
-function drawdebug_zones()
- for i,z in pairs(i2zone) do
-  p=i2pt(i)
-  local x,y=p.x,p.y
-  rectfill2(x*8+2,y*8+2,4,4,0)
-  rectfill2(x*8+3,y*8+3,2,2,z)
- end
-end
---for i2xxx arrays
-function drawdebug_layer(lyr,c)
- for k,v in pairs(lyr) do
-  p=i2pt(k)
-  local x,y=p.x,p.y
-  rect2({x*8+1,y*8+1,6,6},c)
- end
-end
-function drawdebug_tilecol()
- for x=0,tilesw-1 do
-  for y=0,tilesh-1 do
-   if tmap_solid(pt(x,y)) then
-    rect2({x*8+2,y*8+2,4,4},6)
-   end
-  end
- end
-end
-
-function drawdebug_things()
- for it in all(things) do
-  
-  local r=itrect(it)
-  local bx,by=it.x*8,it.y*8
-  
-  --not-walkable space
-  rect2(itrect(it),10)
-  
-  --activation space
-  local x=bx+it.hot[1]*8
-  local y=by+it.hot[2]*8
-  rect2({x,y,8,8},8)
-  
-  --tl (reminder all rel from this)
-  rect2({bx+2,by+2,4,4},2)
-  
- end
-end
+--function drawdebug_zones()
+-- for i,z in pairs(i2zone) do
+--  p=i2pt(i)
+--  local x,y=p.x,p.y
+--  rectfill2(x*8+2,y*8+2,4,4,0)
+--  rectfill2(x*8+3,y*8+3,2,2,z)
+-- end
+--end
+----for i2xxx arrays
+--function drawdebug_layer(lyr,c)
+-- for k,v in pairs(lyr) do
+--  p=i2pt(k)
+--  local x,y=p.x,p.y
+--  rect2({x*8+1,y*8+1,6,6},c)
+-- end
+--end
+--function drawdebug_tilecol()
+-- for x=0,tilesw-1 do
+--  for y=0,tilesh-1 do
+--   if tmap_solid(pt(x,y)) then
+--    rect2({x*8+2,y*8+2,4,4},6)
+--   end
+--  end
+-- end
+--end
+--
+--function drawdebug_things()
+-- for it in all(things) do
+--  
+--  local r=itrect(it)
+--  local bx,by=it.x*8,it.y*8
+--  
+--  --not-walkable space
+--  rect2(itrect(it),10)
+--  
+--  --activation space
+--  local x=bx+it.hot[1]*8
+--  local y=by+it.hot[2]*8
+--  rect2({x,y,8,8},8)
+--  
+--  --tl (reminder all rel from this)
+--  rect2({bx+2,by+2,4,4},2)
+--  
+-- end
+--end
 
 
 
@@ -1786,10 +1787,71 @@ end
 -->8
 --battle
 
+--todo:
+--need to clarify:
+--attacker / defender
+--current turn / opposite
+--player vs ai control
+--mob vs army vs hero vs player
+
+
 --token potential:
 --replace mob stacks
 --with .name .count
 --instead of [1] and [2]
+
+function open_battle_menu()
+ open_dialog({
+  "--battle menu--",
+  "   skip turn",
+  "   cast spell",
+  "   retreat",
+  "   surrender",
+ },{
+  next_mob_turn,
+  close_dialog,
+  ask_retreat,
+  ask_surrender,
+ })
+end
+
+function ask_retreat()
+ open_dialog({
+  "are you sure",
+  "you want to retreat?",
+  "   yes",
+  "   no",
+ },{
+  retreat,
+  open_battle_menu,
+ })
+end
+
+function ask_surrender()
+ if not r_hero_present then
+  open_dialog({
+   "no hero to negotiate with",
+   "   ok"
+  },{
+   open_battle_menu
+  })
+ else
+  cost=0
+  for m in all(get_current_team()) do
+   cost+=m[2]*mob_hps[m[1]]
+  end
+	 open_dialog({
+	  hero_names[defender.id].." will accept",
+	  "your surrender for ",
+	  cost.." gold",
+	  "   accept",
+	  "   deny",
+	 },{
+	  function() surrender(cost) end,
+	  open_battle_menu,
+	 })
+	end
+end
 
 
 function end_in_giveup()
@@ -1812,11 +1874,29 @@ function retreat()
  end_in_giveup()
 end
 
-function surrender()
- end_msg1=hero_names[attacker.id].." negotiated"
- end_msg2="a peaceful surrender"
-  
- end_in_giveup()
+function surrender(cost)
+
+ local loser=obj_owner(get_current_hero())
+ local winner=obj_owner(get_other_hero())
+ 
+ if loser.gold<cost then
+  open_dialog({
+   "you can't afford it!",
+   "   ok"
+  },{
+   open_battle_menu
+  })
+ else
+ 
+	 loser.gold-=cost
+	 winner.gold+=cost
+	
+	 end_msg1=hero_names[attacker.id].." negotiated"
+	 end_msg2="a peaceful surrender"
+	  
+	 end_in_giveup()
+	 
+ end
 end
 
 
@@ -1968,17 +2048,33 @@ function valid_moves(mob)
  return result
 end
 
-function from_army(x,army)
+function from_army(x,hero)
  local mobs={}
  for i=1,5 do
-  if army[i]!=nil then
-   army[i].x=x
-   army[i].y=i*2-2
-   add(mobs,army[i])
+  local m=hero.army[i]
+  if m!=nil then
+   m.x=x
+   m.y=i*2-2
+   add(mobs,m)
   end
  end
  return mobs
 end
+
+
+function setup_mob_list(l,c)
+ for m in all(l) do
+  add(moblist,m)
+  add(c,m)
+  m.casualties=0
+ end
+-- for m in all(r_mobs) do
+--  add(moblist,m)
+--  add(r_cas,m)
+--  m.casualties=0
+-- end
+end 
+
 
 --start/init rolled into one
 function start_battle(l,r)
@@ -2003,14 +2099,13 @@ function start_battle(l,r)
  
  --setup armies
  
- l_mobs=from_army(0,l.army)
-
+ l_mobs=from_army(0,l)
  
- if r.type=="hero" then
-  r_hero_present=true
-  r_mobs=from_army(8,r.army)
- elseif r.type=="mob" then
-  r_hero_present=false
+ 
+ r_hero_present=r.type=="hero"
+ if r_hero_present then
+  r_mobs=from_army(8,r)
+ else --if r.type=="mob" then
   
   mobname=r.group[1]
   mobcount=r.group[2]
@@ -2056,16 +2151,10 @@ function start_battle(l,r)
  moblist={}
  l_cas={}
  r_cas={}
- for m in all(l_mobs) do
-  add(moblist,m)
-  add(l_cas,m)
-  m.casualties=0
- end
- for m in all(r_mobs) do
-  add(moblist,m)
-  add(r_cas,m)
-  m.casualties=0
- end
+ setup_mob_list(l_mobs,l_cas)
+ setup_mob_list(r_mobs,r_cas)
+
+ 
  
  --todo: make second list
  --for display, sorted by y ?
@@ -2084,6 +2173,27 @@ function start_battle(l,r)
  
 end
 
+
+function get_current_team()
+ if has(l_mobs,activemob) then
+  return l_mobs
+ end
+ return r_mobs
+end
+
+function get_current_hero()
+ if has(l_mobs,activemob) then
+  return attacker
+ end
+ return defender
+end
+
+function get_other_hero()
+ if has(l_mobs,activemob) then
+  return defender
+ end
+ return attacker
+end
 
 function get_enemies(mob)
  if (has(l_mobs,mob)) return r_mobs
@@ -2371,33 +2481,10 @@ function update_battle()
    
   elseif btnp(🅾️) then
    sfx(64)
-   open_dialog({
-    "--battle menu--",
-    "   skip turn",
-    "   cast spell",
-    "   retreat",
-    "   surrender",
-   },{
-    next_mob_turn,
-    close_dialog,
-    retreat,
-    surrender,
-   })
+   open_battle_menu()
 --   return --needed?
       
---   if spot_empty(bcur) then
--- 	  next_mob_turn()
---	  end
 	 end
-	 
---	 if spot_empty(bcur) then
---   display_skip_turn_msg=true
---	 else
---	  display_skip_turn_msg=false
---	 end
-
---	 display_skip_turn_msg=
---	  spot_empty(bcur)
   
  else
  
@@ -2665,9 +2752,8 @@ function update_dialog()
   end
   
   --hack for battle menu
-  if (btnp(🅾️) 
-  and diag_txt[1]=="--battle menu--")
-  then
+  if btnp(🅾️) and in_battle then
+--  and diag_txt[1]=="--battle menu--")
    sfx(61)
    close_dialog()
   end
@@ -2833,7 +2919,7 @@ end
 function draw_cur_popup_info()
 
  --map item description
- if cur_obj then
+ if cur_obj!=nil then
  
   --text descrip
   
