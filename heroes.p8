@@ -4,9 +4,7 @@ __lua__
 
 --todo:
 --add is_plr_ai list or something?
---make battle skip turn menu option
 --cannot trade with adjacent hero
---replace hero selection with menu in battle
 --remove cursor in battle during animation
 --...and remove control instructions??
 --hud menu should remember selected portrait (and maybe menu item?)
@@ -2503,7 +2501,7 @@ function draw_battle()
  
  --cursor
  sx,sy=bgrid2screen(bcur)
- rect2({sx,sy,gw+1,gh+1},10)
+ rect2({sx,sy,gw+1,gh+1},15)
  --bounce?
 -- cw,ch=gw+1,gh+1
 -- ex=0
@@ -2523,35 +2521,12 @@ function draw_battle()
  if binstructions 
  and not diag_open
  then
-	 --instructions
-	 
-	 draw_window(8,117,114,11)
-	 
-	 --8156
---	 print("🅾️",10,121-flash(2,10),6)
-  --8155
-  spr(246+flash(2,15),10,118)
-  print("options",21,120,1)
-	 
-	 --todo: could make this say
-	 --move/attack dynamically
---	 print("❎",65,121-flash(2,10),6)
-  spr(230+flash(2,15),65,118)
-	 print("move/attack",76,120,1)
+	 draw_control("menu","move/attack")
  end
  
--- if diag_open then
---  print("🅾️",64,64)
-----	 print("🅾️",10,121-flash(2,10),6)
-----  print("close menu",19,120,6)
-----	 
-----	 --todo: could make this say
-----	 --move/attack dynamically
-----	 print("❎",65,121-flash(2,10),6)
-----	 print("select item",74,120,6)
--- end
  
- 
+ --todo: better way to indicate
+ --this phase of the turn??
  if attack_portion then
   print("attack",30,0,6)
  end
@@ -2683,18 +2658,6 @@ function draw_dialog()
   x=63-w/2//-3
   y=63-h/2-3
   draw_window(x,y,w,h)
-  
-	 --more battle menu hacks
-	 if diag_txt[1]=="--battle menu--"
-	 then
-	  local tmpx=x+w-30
-	  local tmpy=y+h-1
-	  draw_window(tmpx-1,tmpy-1,11+4*5+2,11)
-	  spr(247+flash(2,15)-1,tmpx,tmpy)
-	  print("close",tmpx+10,tmpy+2)
---	  print("🅾️",x+w-14,y+h+2,1)
---	  print("🅾️",x+w-14,y+h+flash(2,15),2)
-	 end
 	 
   x+=1+3
   y+=1+3
@@ -2709,12 +2672,9 @@ function draw_dialog()
   if hack_to_center_dialog then
    x=45
    y=99
-   spr(215,x+flash(2,15),y-1,2,1)
+   spr(225,x+flash(2,15),y-1)
   else  
---   spr(225,x+1+sin(t()),y+diag_sel*7-1)
---   spr(215,x-1+flash(2,15),y+diag_sel*7-1,2,1)
-
-   spr(215+16-16*flash(2,15),x-1,y-1+diag_sel*7-1,2,1)
+   spr(225,x+1+sin(t()),y+diag_sel*7-1)
 	 end
 	 
  end
@@ -2894,7 +2854,7 @@ end
 function flashingbox(x,y,w,h)
  
  bb=flashamt()
- rect2({x-bb,y-bb,w+bb*2,h+bb*2},10)
+ rect2({x-bb,y-bb,w+bb*2,h+bb*2},15)
  
 end
 
@@ -2964,6 +2924,8 @@ function draw_static_hud()
  end
  
  
+ --controls
+ draw_control("menu","select")
 
 end
 
@@ -3161,6 +3123,21 @@ function draw_army_s(arm,y)
 
 end
 
+
+
+function draw_control(o,x)
+ --token: bake y iny
+ local y=122
+ 
+-- rectfill2(0,y-1,#o*4+7+2,7,6)
+ rectfill2(0,y-1,#o*4+9,7,6)
+ print("🅾️"..o,1,y,1)
+ 
+ local xw=#x*4+7
+ rectfill2(126-xw,y-1,128,7,6)
+ print(x.."❎",127-xw,y,1)
+
+end
 -->8
 --data
 
