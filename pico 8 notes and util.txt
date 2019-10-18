@@ -1,6 +1,27 @@
 
 
 
+--hash pt for use as keys
+--assumes x,y are <255 (1 byte)
+--packs y into the higher bits
+--could also use the 16 bits decimal
+--recall pico numbers are stored
+--like so: 1:15:16 sign:whole:decimal
+function pt2i(p)
+ return bor(p.x,shl(p.y,8))
+end
+function i2pt(i)
+ local x=band(i,0b11111111)
+ local y=band(i,0b1111111100000000)
+ y=shr(y,8)
+ return pt(x,y)
+end
+
+
+
+
+
+
 
 --round to nearest int
 function round(num)

@@ -23,7 +23,8 @@ __lua__
 --improve state switching? partially done
 --consolidate hud rendering? tried and failed
 --areas marked "token"
---try replacing nil checks with "or nil"?
+--spr functions, eg spr_mirx(id,x,y)
+
 
 
 --notes:
@@ -124,10 +125,6 @@ function _init()
   blue_plr
  }
  
--- ai={}
--- ai[red_plr]=false
--- ai[green_plr]=false
--- ai[blue_plr]=false
  
  
  tc=spawn("castle",3+2,5+2)
@@ -482,7 +479,7 @@ function update_map()
  --open/close menu
  if (btnp(🅾️)) then
   hud_menu_open=not hud_menu_open
-  if (hud_menu_open) then
+  if hud_menu_open then
    sfx(63)
    hcur=pt(selport,1)
   else 
@@ -726,6 +723,8 @@ function end_turn()
  end
 end
 
+
+
 -->8
 --util 
 
@@ -771,12 +770,12 @@ end
 function pt2i(p)
  return bor(p.x,shl(p.y,8))
 end
-function i2pt(i)
- local x=band(i,0b11111111)
- local y=band(i,0b1111111100000000)
- y=shr(y,8)
- return pt(x,y)
-end
+--function i2pt(i)
+-- local x=band(i,0b11111111)
+-- local y=band(i,0b1111111100000000)
+-- y=shr(y,8)
+-- return pt(x,y)
+--end
 
 
 
@@ -835,17 +834,17 @@ end
 
 
 
---drop shadow print
-function print2(str,col)
- local cursor_x=peek(0x5f26)
- local cursor_y=peek(0x5f27)
--- if (col==nil) col=7
- col=col or 7 --default val
- print(str,cursor_x+1,cursor_y+1,0)
- print(str,cursor_x,cursor_y+1,0)
- print(str,cursor_x,cursor_y,col)
- poke(0x5f27,cursor_y+6)
-end
+----drop shadow print
+--function print2(str,col)
+-- local cursor_x=peek(0x5f26)
+-- local cursor_y=peek(0x5f27)
+---- if (col==nil) col=7
+-- col=col or 7 --default val
+-- print(str,cursor_x+1,cursor_y+1,0)
+-- print(str,cursor_x,cursor_y+1,0)
+-- print(str,cursor_x,cursor_y,col)
+-- poke(0x5f27,cursor_y+6)
+--end
 
 
 ----print and bounce any ❎, etc
