@@ -22,7 +22,6 @@ __lua__
 --switch x,y to pt (rects too?) partially done
 --improve state switching? partially done
 --consolidate hud rendering? tried and failed
---rect({})
 --areas marked "token"
 --try replacing nil checks with "or nil"?
 
@@ -532,9 +531,15 @@ function update_map_cursor()
  else
   update_sel_cursor()
  end
- 
+
+ --token: could set this at time 
+ --sel is set (looks like 3 spots?)
+ --
  --clear path if sel change
- if (lsel2==nil) lsel2="no object" --not nil b/c sel could be nil and we want to detect changes
+ --note lsel2 default is not nil
+ --bc sel could be nil and
+ --we want to detect changes
+ lsel2=lsel2 or "no object" --set if nil 
  if (lsel2!=sel and sel!=nil) then
   path={}
  end
@@ -811,7 +816,7 @@ end
 
 --8078
 function rect2(x,y,w,h,c)
- if (c==nil) c=10
+ c=c or 10 --default val
  rect(x,y,x+w-1,y+h-1,c)
 --function rect2(r,c)
 -- if (c==nil) c=10
@@ -834,7 +839,8 @@ end
 function print2(str,col)
  local cursor_x=peek(0x5f26)
  local cursor_y=peek(0x5f27)
- if (col==nil) col=7
+-- if (col==nil) col=7
+ col=col or 7 --default val
  print(str,cursor_x+1,cursor_y+1,0)
  print(str,cursor_x,cursor_y+1,0)
  print(str,cursor_x,cursor_y,col)
