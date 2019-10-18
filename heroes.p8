@@ -2159,10 +2159,6 @@ function start_battle(l,r)
  
  
 
- --token: bake these
- --grid tile w/h (global)
- gw=10
- gh=10
  --grid start x/y (margins)
  gstart=pt(19,19)
  
@@ -2656,7 +2652,8 @@ function battle_draw(hidecursor)
  
  for spot in all(grid) do
   x,y=bgrid2screen(spot)
-  rect2({x,y,gw+1,gh+1},11)
+--  rect2({x,y,gw+1,gh+1},11)
+  rect2({x,y,11,11},11)
  end
  
  
@@ -2718,7 +2715,8 @@ function battle_draw(hidecursor)
  --cursor
  if not hidecursor then
  	sx,sy=bgrid2screen(bcur)
-	 rect2({sx,sy,gw+1,gh+1},15)
+--	 rect2({sx,sy,gw+1,gh+1},15)
+	 rect2({sx,sy,11,11},15)
 	 --bounce?
 	-- cw,ch=gw+1,gh+1
 	-- ex=0
@@ -2798,21 +2796,15 @@ function battle_draw(hidecursor)
 end
 
 function bgrid2screen(p)
- local res=pt(p.x*gw,p.y*gh)
+ --ptmul or ptscale ?
+-- local res=pt(p.x*gw,p.y*gh)
+ local res=pt(p.x*10,p.y*10)
  ptinc(res,gstart)
--- local res=pt(gsx+p.x*gw,
---              gsy+p.y*gh)
  if not evencol(p.x) then
-  res.y-=gh/2
+  res.y-=5 --gh/2
  end
  return res.x,res.y
 end
-
-----grid to screen
---function gxy2sxy(x,y)
--- if (evencol(x)) return gsx+x*gw,gsy+y*gh
--- return gsx+x*gw,gsy+y*gh-gh/2
---end
 
 
 
