@@ -2346,14 +2346,6 @@ end
 -- return not evencol(x)
 --end
 
-function battle_wait(ticks)
- while ticks>0 do
-  ticks-=1
-  battle_draw(true)
-  flip()
- end
-end
-
 
 function mob_move(p)
 
@@ -2368,7 +2360,10 @@ function mob_move(p)
   for step in all(path) do
    --token: ptset
    m.x,m.y=step.x,step.y
-   battle_wait(3)
+   for i=1,3 do
+		  battle_draw(true)
+		  flip()
+		 end
   end
   
   dist=grid_dist(m,p)
