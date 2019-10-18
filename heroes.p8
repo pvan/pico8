@@ -108,7 +108,9 @@ function _init()
 
 
  init_data()
- init_cursor()
+ 
+ --init cursor
+ cur=pt(8,8)
 
  
  blackout=true
@@ -810,7 +812,7 @@ end
 --8078
 function rect2(x,y,w,h,c)
  if (c==nil) c=10
- rect(x,y,x+w,y+h,c)
+ rect(x,y,x+w-1,y+h-1,c)
 --function rect2(r,c)
 -- if (c==nil) c=10
 -- if (r[3]==0 or r[4]==0) return
@@ -1448,14 +1450,16 @@ function pathfind(start,goal,
  --or walking next to mob
 	if goal_mob!=nil then
 	 
-	 if ptequ(goal,goal_mob) then
-	  --in this case, ignore
-	  --all the danger squares,
-	  --just find path to center
-	  attacking_a_mob=true
-	 else
-	  attacking_a_mob=false
-	 end
+--	 if ptequ(goal,goal_mob) then
+--	  --in this case, ignore
+--	  --all the danger squares,
+--	  --just find path to center
+--	  attacking_a_mob=true
+--	 else
+--	  attacking_a_mob=false
+--	 end
+	 
+	 attacking_a_mob=ptequ(goal,goal_mob)
  
  
   --global_goal is only used
@@ -1611,12 +1615,6 @@ end
 
 
 --cursor
-
-
-function init_cursor()
-	cur=pt(8,8)
---	cur_spr=cur_sprs.arrow --updated each frame todo:remove?
-end
 
 
 
@@ -2709,7 +2707,7 @@ function battle_draw(hidecursor)
   --draw mob
   sx,sy=bgrid2screen(m)
   sx-=2
-  sy-=gh
+  sy-=10
   draw_big_mob(m,sx,sy)
  end
 -- sort_by_speed(moblist)
