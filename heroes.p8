@@ -24,6 +24,7 @@ __lua__
 --consolidate hud rendering? tried and failed
 --rect({})
 --areas marked "token"
+--try replacing nil checks with "or nil"?
 
 
 --notes:
@@ -806,13 +807,16 @@ function rnd_bw(low,high)
 end
 
 
-
-function rect2(r,c) 
+--8078
+function rect2(x,y,w,h,c)
  if (c==nil) c=10
- if (r[3]==0 or r[4]==0) return
- rect(r[1],r[2],
-      r[1]+r[3]-1,
-      r[2]+r[4]-1,c)
+ rect(x,y,x+w,y+h,c)
+--function rect2(r,c)
+-- if (c==nil) c=10
+-- if (r[3]==0 or r[4]==0) return
+-- rect(r[1],r[2],
+--      r[1]+r[3]-1,
+--      r[2]+r[4]-1,c)
 end
 
 
@@ -1301,14 +1305,14 @@ end
 -- for k,v in pairs(lyr) do
 --  p=i2pt(k)
 --  local x,y=p.x,p.y
---  rect2({x*8+1,y*8+1,6,6},c)
+--  rect2(x*8+1,y*8+1,6,6,c)
 -- end
 --end
 --function drawdebug_tilecol()
 -- for x=0,tilesw-1 do
 --  for y=0,tilesh-1 do
 --   if tmap_solid(pt(x,y)) then
---    rect2({x*8+2,y*8+2,4,4},6)
+--    rect2(x*8+2,y*8+2,4,4,6)
 --   end
 --  end
 -- end
@@ -1326,10 +1330,10 @@ end
 --  --activation space
 --  local x=bx+it.hot[1]*8
 --  local y=by+it.hot[2]*8
---  rect2({x,y,8,8},8)
+--  rect2(x,y,8,8,8)
 --  
 --  --tl (reminder all rel from this)
---  rect2({bx+2,by+2,4,4},2)
+--  rect2(bx+2,by+2,4,4,2)
 --  
 -- end
 --end
@@ -2652,8 +2656,8 @@ function battle_draw(hidecursor)
  
  for spot in all(grid) do
   x,y=bgrid2screen(spot)
---  rect2({x,y,gw+1,gh+1},11)
-  rect2({x,y,11,11},11)
+--  rect2(x,y,gw+1,gh+1,11)
+  rect2(x,y,11,11,11)
  end
  
  
@@ -2715,13 +2719,13 @@ function battle_draw(hidecursor)
  --cursor
  if not hidecursor then
  	sx,sy=bgrid2screen(bcur)
---	 rect2({sx,sy,gw+1,gh+1},15)
-	 rect2({sx,sy,11,11},15)
+--	 rect2(sx,sy,gw+1,gh+1,15)
+	 rect2(sx,sy,11,11,15)
 	 --bounce?
 	-- cw,ch=gw+1,gh+1
 	-- ex=0
 	-- if (frame%10<5) c=10 ex=1 cw+=2 ch+=2
-	-- rect2({sx-ex,sy-ex,cw,ch},10)
+	-- rect2(sx-ex,sy-ex,cw,ch,10)
 	 
 	 --draw cursor symbol
 	 if has2(options,bcur) then
@@ -3058,7 +3062,7 @@ function draw_cur_popup_info()
 	   draw_army_s(cur_obj.army,y-5)
 	   y-=14 --move text up
 	  end
-	  rect2({x-1,y-1,w+2,9},1)
+	  rect2(x-1,y-1,w+2,9,1)
 	  rectfill2(x,y,w,7,6)
 	  print(map_desc,x+1,y+1,1)
   end
@@ -3070,7 +3074,7 @@ end
 function flashingbox(x,y,w,h)
  
  bb=flashamt()
- rect2({x-bb,y-bb,w+bb*2,h+bb*2},15)
+ rect2(x-bb,y-bb,w+bb*2,h+bb*2,15)
  
 end
 
@@ -3173,7 +3177,7 @@ end
 
 function text_box(text,x,y)
  local w=#text*4+3
- rect2({x-1,y-1,w,9},1)
+ rect2(x-1,y-1,w,9,1)
  rectfill2(x,y,w-2,7,6)
  print(text,x+1,y+1,1)
  return w
@@ -3242,7 +3246,7 @@ function d_port(p,x,y)
 	
 	--blue border
 	if p==sel then
-	 rect2({x,y,10,10},12)
+	 rect2(x,y,10,10,12)
 	end
    
 end
@@ -3276,7 +3280,7 @@ end
 
 function draw_window(x,y,w,h)
  rectfill2(x+1,y+1,w-2,h-2,6)
- rect2({x,y,w,h},1)
+ rect2(x,y,w,h,1)
 end
 
 
