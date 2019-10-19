@@ -2392,17 +2392,31 @@ function mob_die(mob)
  
  add(corpses,mob)
  
- del(aaa.mobs,mob)
- del(bbb.mobs,mob)
- del(moblist,mob)
- del(mobdrawlist,mob)
- 
- --todo: func that does xx to
- --both aaa and bbb ??
- 
- --remove from unit too
- del(aaa.unit.army,mob)
- del(bbb.unit.army,mob)
+ --7912
+ del_lists={
+  aaa.mobs,
+  bbb.mobs,
+  moblist,
+  mobdrawlist,
+  aaa.unit.army,
+  bbb.unit.army,
+  }
+ for l in all(del_lists) do
+  del(l,mob)
+ end
+  
+ --7916
+-- del(aaa.mobs,mob)
+-- del(bbb.mobs,mob)
+-- del(moblist,mob)
+-- del(mobdrawlist,mob)
+-- 
+-- --todo: func that does xx to
+-- --both aaa and bbb ??
+-- 
+-- --remove from unit too
+-- del(aaa.unit.army,mob)
+-- del(bbb.unit.army,mob)
  
 end
 
