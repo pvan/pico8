@@ -6,6 +6,9 @@ __lua__
 --add is_plr_ai list or something?
 --cannot trade with adjacent hero
 --hud menu should remember selected portrait (and maybe menu item?)
+--sort by y in battle draw
+--remvoe itrect
+--change init functions to {[]=x,[]=y} form
 
 
 --big todos:
@@ -18,12 +21,13 @@ __lua__
 
 --token saving:
 --compress data
---make mob stack .name/.count insetad of [1],[2]
 --switch x,y to pt (rects too?) partially done
 --improve state switching? partially done
 --consolidate hud rendering? tried and failed
 --areas marked "token"
 --spr functions, eg spr_mirx(id,x,y)
+--would making col into obj save?
+--and make hot into pt? (other similar things? spr stats?)
 
 
 
@@ -88,8 +92,8 @@ end
 
 function random_starting_army()
  return {
-  {"peasants",rnd_bw(10,20)},
-  {"elves",rnd_bw(5,10)},
+  ms("peasants",rnd_bw(10,20)),
+  ms("elves",rnd_bw(5,10)),
 --  {"skeletons",rnd_bw(1000,2000)},
  }
 end
@@ -220,16 +224,17 @@ function split_update()
 	if (btn(🅾️)) amt=5
 	
 	if btnp(⬅️) 
-	and movingmob[2]>amt
+	and movingmob.count>amt
 	then
-	 movingmob[2]-=amt
-	 splitmob[2]+=amt
+	 movingmob.count-=amt
+	 splitmob.count+=amt
 	end
 	if btnp(➡️)
-	and splitmob[2]>amt
+	and splitmob.count>amt
 	then
-	 movingmob[2]+=amt
-	 splitmob[2]-=amt
+ 	--todo: token: func here?
+	 movingmob.count+=amt
+	 splitmob.count-=amt
 	end
 	if btnp(❎) then
 	 main_update=trade_update
@@ -311,8 +316,8 @@ function trade_update()
    if mob==nil then
 		  bar.army[tcur.x]=movingmob
 		  movingmob=nil
-   elseif mob[1]==movingmob[1] then
-    bar.army[tcur.x][2]+=movingmob[2]
+   elseif mob.name==movingmob.name then
+    bar.army[tcur.x].count+=movingmob.count
     movingmob=nil
    else
     local temp=movingmob
@@ -339,11 +344,11 @@ function trade_update()
 	   bar=bars[tcur.y]
 			 splitmob=bar.army[tcur.x]
 	   if splitmob!=nil 
-	   and splitmob[2]>1 then
+	   and splitmob.count>1 then
 			  splitval=1
-			  splitmob[2]-=splitval
+			  splitmob.count-=splitval
 			  movingmob=copy(splitmob)
-			  movingmob[2]=splitval
+			  movingmob.count=splitval
 			  
 			  main_update=split_update
 			  main_draw=split_draw
@@ -817,12 +822,6 @@ end
 function rect2(x,y,w,h,c)
  c=c or 10 --default val
  rect(x,y,x+w-1,y+h-1,c)
---function rect2(r,c)
--- if (c==nil) c=10
--- if (r[3]==0 or r[4]==0) return
--- rect(r[1],r[2],
---      r[1]+r[3]-1,
---      r[2]+r[4]-1,c)
 end
 
 
@@ -889,6 +888,19 @@ function has2(arr, val)
   end
  end
  return false
+end
+
+
+
+--7949->7936
+--todo: change name to id?
+function ms(name,count)
+--	local res={}
+--	res.name=name
+--	res.count=count
+--	return res
+ return {["name"]=name,
+         ["count"]=count}
 end
 
 -->8
@@ -1097,8 +1109,7 @@ end
 
 
 
-
-
+--asdf:remvoe this
 function itrect(it)
  r={}
  for i=1,#it.col do 
@@ -1135,7 +1146,7 @@ function spawn(name,tx,ty)
  end
  
  if res.type=="mob" then
-  res.group[2]=rnd_bw(5,9)
+  res.group.count=rnd_bw(5,9)
  end
  
  if res.type=="treasure" then
@@ -1873,7 +1884,7 @@ function ask_surrender()
  else
   cost=0
   for m in all(current_team.mobs) do
-   cost+=m[2]*mob_hps[m[1]]
+   cost+=m.count*mob_hps[m.name]
   end
 	 open_dialog({
 	  hero_names[enemy_id].." will accept",
@@ -1932,7 +1943,7 @@ function cas_from_army(army)
  for m in all(army) do
   if m.casualties>0 then
    local c=copy(m)
-   c[2]=c.casualties
+   c.count=c.casualties
    add(res,c)
   end
  end
@@ -2017,9 +2028,9 @@ function end_with_loser(loser)
  if bbb.unit.type=="mob" then
   mobsleft=0
   for m in all(bbb.mobs) do
-   mobsleft+=m[2]
+   mobsleft+=m.count
   end
-  bbb.unit.group[2]=mobsleft
+  bbb.unit.group.count=mobsleft
  end
  
 end
@@ -2031,8 +2042,8 @@ function sort_by_speed(t)
  for n=2,#t do
   local i=n
   while i>1 and
-   mob_speeds[t[i][1]]>
-   mob_speeds[t[i-1][1]]
+   mob_speeds[t[i].name]>
+   mob_speeds[t[i-1].name]
   do
    t[i],t[i-1]=t[i-1],t[i]
    i-=1
@@ -2073,7 +2084,7 @@ end
 
 function valid_moves(mob)
  result={}
- speed=mob_speeds[mob[1]]
+ speed=mob_speeds[mob.name]
  for spot in all(grid) do
   if grid_dist(spot,mob)<speed then
    if is_empty(spot) then   
@@ -2095,14 +2106,19 @@ function from_unit(x,unit)
 	   m.x=x
 	   m.y=i*2-2
 	   add(mobs,m)
+--	   cls()
+--	   for k,v in pairs(m) do
+--	    print(k.." "..v)
+--	   end
+--	   stop()
 	  end
 	 end
 	 
  else
   
   --mobs with no hero
-  mobname=unit.group[1]
-  mobcount=unit.group[2]
+  mobname=unit.group.name
+  mobcount=unit.group.count
 	 
   split=flr(mobcount/5)
   leftover=mobcount%5
@@ -2123,7 +2139,7 @@ function from_unit(x,unit)
 	 for i=0,count-1 do
  	 thisamt=split
  	 if (leftover>i) thisamt+=1
-	  mobstack={mobname,thisamt}
+	  mobstack=ms(mobname,thisamt)
 	  mobstack.x=8
 	  mobstack.y=(starty+i)*2
    add(mobs,mobstack)
@@ -2136,18 +2152,6 @@ function from_unit(x,unit)
 end
 
 
---function setup_mob_list(l,c)
--- for m in all(l) do
---  add(moblist,m)
---  add(c,m)
---  m.casualties=0
--- end
----- for m in all(r_mobs) do
-----  add(moblist,m)
-----  add(r_cas,m)
-----  m.casualties=0
----- end
---end 
 
 --start/init rolled into one
 function start_battle(l,r)
@@ -2156,7 +2160,6 @@ function start_battle(l,r)
  main_draw=battle_draw
 
  
- 
  --l is always hero
  --r could be hero or mob
  
@@ -2164,8 +2167,6 @@ function start_battle(l,r)
  corpses={}
  
  
- 
-
  --grid start x/y (margins)
  gstart=pt(19,19)
  
@@ -2409,6 +2410,13 @@ function mob_die(mob)
  del(bbb.mobs,mob)
  del(moblist,mob)
  
+ --todo: func that does xx to
+ --both aaa and bbb ??
+ 
+ --remove from unit too
+ del(aaa.unit.army,mob)
+ del(bbb.unit.army,mob)
+ 
 end
 
 function mob_attack(pos)
@@ -2445,18 +2453,19 @@ function mob_attack(pos)
 --  --token: init this in init
 --  enemy.damage=0
 -- end
- enemy.damage+=mob_attacks[mob[1]]*mob[2]
+ enemy.damage+=mob_attacks[mob.name]
+              *mob.count
  
- enemy_hp=mob_hps[enemy[1]]
+ enemy_hp=mob_hps[enemy.name]
  while enemy.damage>enemy_hp do
   enemy.damage-=enemy_hp
-  if enemy[2]>0 then
-   enemy[2]-=1
+  if enemy.count>0 then
+   enemy.count-=1
    enemy.casualties+=1
   end
  end
  
- if enemy[2]<=0 then
+ if enemy.count<=0 then
   mob_die(enemy)
  end
  
@@ -3042,9 +3051,9 @@ function draw_cur_popup_info()
    if g(i2hot,cur) then
     --token
 	   stack=cur_obj.group
-	   map_desc=vague_number(stack[2])
-	    ..stack[1]
-	    .." ["..stack[2].."]"
+	   map_desc=vague_number(stack.count)
+	    ..stack.name
+	    .." ["..stack.count.."]"
 	  else
 	   map_desc=nil
    end
@@ -3254,31 +3263,6 @@ function d_port(p,x,y)
    
 end
 
-----token: remove and just
-----draw all armies horizontal
---function d_army(obj,x,y)
---
--- local arm=obj.army
--- 
--- rectfill2(x,y,10,14*6,6)
--- 
--- d_port(sel,x,y)
---
--- --army  
--- x+=1
--- y+=10
--- for mob in all(arm) do
---  spr(mob_sprs[mob[1]],x,y)
---  
---  local str=tostr(mob[2])
---  local ofx=0
---  if (#str>2) ofx=-3*(#str-2)
---  print(str,x+ofx,y+8,0)
---  y+=14
--- end
---
---end
-
 
 
 function draw_window(x,y,w,h)
@@ -3289,7 +3273,7 @@ end
 
 function draw_big_mob(m,x,y)
 -- rectfill2(x,y,16,20,14)
- spr(big_mob_sprs[m[1]],
+ spr(big_mob_sprs[m.name],
      x+4,y+2,1,2)  
  pal(1,1)--reset possible flash
  print_mobnum(m,x+4,y+7,true)
@@ -3326,7 +3310,7 @@ function draw_army_b(hero,y)
 end
 
 function print_mobnum(m,x,y,bg)
- local str=tostr(m[2])
+ local str=tostr(m.count)
  local ofx=-2*#str+4
  local c=0
  if bg!=nil then
@@ -3345,7 +3329,7 @@ function draw_army_s(arm,y)
  for i=1,5 do
   local mob=arm[i]
   if mob!=nil then
-	  spr(mob_sprs[mob[1]],x,y)
+	  spr(mob_sprs[mob.name],x,y)
 	  print_mobnum(mob,x,y)
   end
   x+=12
@@ -3606,9 +3590,9 @@ function init_data()
 	  ["hot"]={-100,-100},
 	  ["move"]=100,
 	  ["army"]={
-	   {"calavry",20},
-	   {"elves",40},
-	   {"peasants",250}
+	   ms("calavry",20),
+	   ms("elves",40),
+	   ms("peasants",250)
 	  },
 	 },
 	 ["testhouse"]={
@@ -3630,7 +3614,7 @@ function init_data()
 	  ["sprh"]=1,
 	  ["col"]={-1,-1,3,3},
 	  ["hot"]={0,0},
-	  ["group"]={"goblins",40}
+	  ["group"]=ms("goblins",40)
 	 },
 	 ["mob2"]={
 	  ["type"]="mob",
@@ -3641,7 +3625,7 @@ function init_data()
 	  ["sprh"]=1,
 	  ["col"]={-1,-1,3,3},
 	  ["hot"]={0,0},
-	  ["group"]={"skeletons",15}
+	  ["group"]=ms("skeletons",15)
 	 },
 	 ["gold"]={
 	  ["type"]="treasure",
