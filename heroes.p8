@@ -6,6 +6,8 @@ __lua__
 --add is_plr_ai list or something?
 --cannot trade with adjacent hero
 --hud menu should remember selected portrait (and maybe menu item?)
+--mob id key instead of name key?
+--append lists function?
 
 
 --big todos:
@@ -2026,19 +2028,19 @@ end
 
 
 
---token: combine with other sorts?
-function sort_by_speed(t)
- for n=2,#t do
-  local i=n
-  while i>1 and
-   mob_speeds[t[i].name]>
-   mob_speeds[t[i-1].name]
-  do
-   t[i],t[i-1]=t[i-1],t[i]
-   i-=1
-  end
- end
-end
+----token: combine with other sorts?
+--function sort_by_speed(t)
+-- for n=2,#t do
+--  local i=n
+--  while i>1 and
+--   mob_speeds[t[i].name]>
+--   mob_speeds[t[i-1].name]
+--  do
+--   t[i],t[i-1]=t[i-1],t[i]
+--   i-=1
+--  end
+-- end
+--end
 
 function grid_dist(c,t)
 
@@ -2199,11 +2201,18 @@ function start_battle(l,r)
  
  
  
- --todo: alternate teams
- --if multiple of same speed?
- sort_by_speed(moblist)
+ --alternate teams
+ --if multiple of same speed
+-- sort_by_speed(moblist)
+ --7905
  
- 
+ for speed=20,1,-1 do
+  for i=1,5 do
+   add_mob_of_speed(aaa,speed)
+   add_mob_of_speed(bbb,speed)
+  end
+ end
+-- mobdrawlist=copy(moblist)
  
  
  activemob=moblist[1]
@@ -2217,6 +2226,18 @@ function start_battle(l,r)
 
 
 end
+
+
+function add_mob_of_speed(team,speed)
+ for m in all(team.temp) do
+  if mob_speeds[m.name]==speed then
+   del(team.temp,m)
+   add(moblist,m)
+   break
+  end
+ end
+end
+
 
 function make_battle_team(x,unit)
  local res={}
@@ -2247,10 +2268,13 @@ function make_battle_team(x,unit)
  
  res.mobs=from_unit(x,unit)
  res.cas={}
+ res.temp={} --used for sorting
  
  for m in all(res.mobs) do
-  add(moblist,m)
+--  add(moblist,m)
   add(mobdrawlist,m)
+  
+  add(res.temp,m)
   
   --can't copy b/c we don't
   --actually want full deep copy
@@ -2796,15 +2820,15 @@ function battle_draw(hidecursor)
 --  print(val)
 -- end
  
--- --debug display mob + turn
--- i=0
--- for m in all(moblist) do
---  print(m[1],4,60+i*8,1)
---  if m==activemob then
---   print("-",0,60+i*8,10)
---  end
---  i+=1
--- end
+ --debug display mob + turn
+ i=0
+ for m in all(moblist) do
+  print(m.name,4,60+i*8,1)
+  if m==activemob then
+   print("-",0,60+i*8,10)
+  end
+  i+=1
+ end
  	
 end
 
