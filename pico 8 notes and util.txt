@@ -1,5 +1,46 @@
 
 
+--todo: add to this doc:
+--dialog (try to revise to less tokens)
+--pathfinding (generalized example)
+
+
+
+
+--pt(x,y) object
+--tends to be a token-efficent way to deal with lots of x,y points
+--create with p=pt(x,y) instead of p={x,y}
+--and access with p.x, p.y instead of p[1], [2]
+
+function pt(x,y)
+ return {["x"]=x,["y"]=y}
+end
+
+function ptequ(a,b)
+ --if only call with init pts,
+ --dont need this nil check.
+ --(but looks like making sure 
+ --pts are init can take more
+ --tokens than just checking here)
+ 
+ --a and b -> nil if either is
+ --not x   -> true if nil else false
+ if (not (a and b)) return false
+ return a.x==b.x and a.y==b.y
+end
+
+function ptadd(a,b)
+ return pt(a.x+b.x, a.y+b.y)
+end
+
+function ptinc(p,amt)
+ p.x+=amt.x
+ p.y+=amt.y
+end
+
+--add more ptXXX() as needed
+
+
 
 --hash pt for use as keys
 --assumes x,y are <255 (1 byte)
@@ -18,8 +59,66 @@ function i2pt(i)
 end
 
 
+--get/set from arr using pt key
+--just hashing p to i
+--by limiting x,y to <255
+function g(arr,p)
+ return arr[pt2i(p)]
+end
+function s(arr,p,val)
+ arr[pt2i(p)]=val
+end
 
 
+--generic way to move a pt() with arrow keys
+--TODO: way to clamp/wrap pts in less tokens?
+cardinal={
+ pt(-1,0),
+ pt( 1,0),
+ pt(0,-1),
+ pt(0, 1),
+}
+function move_cursor(
+ p, minx,maxx, miny,maxy)
+ 
+ for i=0,3 do
+  if btnp(i) then
+   ptinc(p,cardinal[i+1])
+   sfx(58,-1,1,2)
+  end
+ end
+ p.x=mid(p.x,minx,maxx)
+ p.y=mid(p.y,miny,maxy)
+end
+
+
+
+
+function rect2(x,y,w,h,c)
+ c=c or 10 --default val
+ rect(x,y,x+w-1,y+h-1,c)
+end
+
+
+function rectfill2(x,y,w,h,c)
+ if w>0 and h>0 then
+  rectfill(x,y,x+w-1,y+h-1,c)
+ end
+end
+
+
+
+--drop shadow print
+function print2(str,col)
+ local cursor_x=peek(0x5f26)
+ local cursor_y=peek(0x5f27)
+-- if (col==nil) col=7
+ col=col or 7 --default val
+ print(str,cursor_x+1,cursor_y+1,0)
+ print(str,cursor_x,cursor_y+1,0)
+ print(str,cursor_x,cursor_y,col)
+ poke(0x5f27,cursor_y+6)
+end
 
 
 
@@ -198,6 +297,33 @@ function has(array, value)
 end
 
 
+--simple expansion over has()
+--that allows for pts
+--TODO: combine into one has
+--that works with val and pt?
+function has2(arr, val)
+ if type(arr)=='table' then
+  for i=1,#arr do
+   if (arr[i]==val) return true
+   
+   --check pts
+   if ptequ(arr[i],val) then
+    return true
+   end
+   
+  end
+ end
+ return false
+end
+
+
+
+function indexof(t,n)
+ for k,v in pairs(t) do
+  if (v==n) return k
+ end
+end
+
 
 
 
@@ -317,8 +443,8 @@ end
 function cache_mouse_state()
  --for mouse edge triggers
  lmwasdown=lmouse()
-	rmwasdown=rmouse()
-	mmwasdown=mmouse()
+ rmwasdown=rmouse()
+ mmwasdown=mmouse()
 end
 
 function nmouse() return stat(34)==0 end
@@ -341,6 +467,51 @@ function debug_print_mouse()
  print("lmup"..tostr(lmup()))
  print("lmdown"..tostr(lmdown()))
  print("lmouse"..tostr(lmouse()))
+end
+
+--camera pan
+function mouse_pan()
+ mx,my=get_mouse()
+ --mwheel drag
+ if mmdown() then
+  camdrag=true
+  camclickworldx=mx+cx
+  camclickworldy=my+cy
+ end
+ if mmouse() then
+  if camdrag then
+   cx=camclickworldx-mx
+   cy=camclickworldy-my
+  end
+ end
+ if mmup() then
+  camdrag=false
+ end
+-- mx-=cx
+-- my-=cy
+ cache_mouse_state() --or call after this function
+end
+
+--drag object
+function mouse_drag(obj)
+ if (obj==nil or obj[1]==nil or obj[2]==nil) return
+ mx,my=get_mouse()
+ --left button
+ if lmdown() then
+  objdrag=true
+  dragstartx=obj[1]-mx
+  dragstarty=obj[2]-my
+ end
+ if lmouse() then
+  if objdrag then
+   obj[1]=dragstartx+mx
+   obj[2]=dragstarty+my
+  end
+ end
+ if lmup() then
+  objdrag=false
+ end
+ cache_mouse_state() --or call after this function
 end
 
 */
