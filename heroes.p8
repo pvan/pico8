@@ -6,7 +6,6 @@ __lua__
 --add is_plr_ai list or something?
 --cannot trade with adjacent hero
 --hud menu should remember selected portrait (and maybe menu item?)
---sort by y in battle draw
 
 
 --big todos:
@@ -2697,10 +2696,13 @@ function battle_draw(hidecursor)
  
  --draw armies
  
- --todo: enable this
- --sort by y (leaving off to
- --compare tokens for now)
--- sort_by_y(moblist)
+ --temp sort by y for rendering
+ --bug: doesn't preserve mob
+ --turn order...
+ --bug: also should mob turn
+ --order alternate teams if
+ --both have multiple of same?
+ sort_by_y(moblist)
  for m in all(moblist) do
   --highlight active mob
   if m==activemob then
@@ -2714,7 +2716,7 @@ function battle_draw(hidecursor)
   sy-=10
   draw_big_mob(m,sx,sy)
  end
--- sort_by_speed(moblist)
+ sort_by_speed(moblist)
  
  
  
@@ -3485,7 +3487,7 @@ function init_data()
 	 ["goblins"]=4,
 	 ["skeletons"]=4,
 	 ["peasants"]=2,
-	 ["elves"]=5,
+	 ["elves"]=4,
 	}
 	
 	mob_attacks={
