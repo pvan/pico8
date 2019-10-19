@@ -27,6 +27,7 @@ __lua__
 --spr functions, eg spr_mirx(id,x,y)
 --would making col into obj save?
 --and make hot into pt? (other similar things? spr stats?)
+--consider a 1-level deep copy for copying lists of pointers?
 
 
 
@@ -2201,18 +2202,14 @@ function start_battle(l,r)
  
  
  
- --alternate teams
+ --sort by alternate teams
  --if multiple of same speed
--- sort_by_speed(moblist)
- --7905
- 
  for speed=20,1,-1 do
   for i=1,5 do
    add_mob_of_speed(aaa,speed)
    add_mob_of_speed(bbb,speed)
   end
  end
--- mobdrawlist=copy(moblist)
  
  
  activemob=moblist[1]
@@ -2820,15 +2817,15 @@ function battle_draw(hidecursor)
 --  print(val)
 -- end
  
- --debug display mob + turn
- i=0
- for m in all(moblist) do
-  print(m.name,4,60+i*8,1)
-  if m==activemob then
-   print("-",0,60+i*8,10)
-  end
-  i+=1
- end
+-- --debug display mob + turn
+-- i=0
+-- for m in all(moblist) do
+--  print(m.name,4,60+i*8,1)
+--  if m==activemob then
+--   print("-",0,60+i*8,10)
+--  end
+--  i+=1
+-- end
  	
 end
 
