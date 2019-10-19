@@ -2171,6 +2171,10 @@ function start_battle(l,r)
  --when drawing battlefield units
  moblist={}
  
+ --used to draw mobs
+ --sorted by y
+ mobdrawlist={}
+ 
  --each mob pointer is a key
  --into this hastable that
  --returns a pointer to the
@@ -2195,18 +2199,10 @@ function start_battle(l,r)
  
  
  
- 
- 
- --usually kept sorted by speed
- --which is the unit turn order
- --but sorted by y before being
- --used to draw and sorted by
- --speed right away again after
- --
- --todo: could that skip mobs
- --with the same speed if they
- --are not sorted the same way?
+ --todo: alternate teams
+ --if multiple of same speed?
  sort_by_speed(moblist)
+ 
  
  
  
@@ -2254,6 +2250,7 @@ function make_battle_team(x,unit)
  
  for m in all(res.mobs) do
   add(moblist,m)
+  add(mobdrawlist,m)
   
   --can't copy b/c we don't
   --actually want full deep copy
@@ -2398,6 +2395,7 @@ function mob_die(mob)
  del(aaa.mobs,mob)
  del(bbb.mobs,mob)
  del(moblist,mob)
+ del(mobdrawlist,mob)
  
  --todo: func that does xx to
  --both aaa and bbb ??
@@ -2696,14 +2694,8 @@ function battle_draw(hidecursor)
  
  --draw armies
  
- --temp sort by y for rendering
- --bug: doesn't preserve mob
- --turn order...
- --bug: also should mob turn
- --order alternate teams if
- --both have multiple of same?
- sort_by_y(moblist)
- for m in all(moblist) do
+ sort_by_y(mobdrawlist)
+ for m in all(mobdrawlist) do
   --highlight active mob
   if m==activemob then
    flashcols={7,6,10,13,1}
@@ -2716,7 +2708,6 @@ function battle_draw(hidecursor)
   sy-=10
   draw_big_mob(m,sx,sy)
  end
- sort_by_speed(moblist)
  
  
  
