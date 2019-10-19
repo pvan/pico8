@@ -7,8 +7,6 @@ __lua__
 --cannot trade with adjacent hero
 --hud menu should remember selected portrait (and maybe menu item?)
 --sort by y in battle draw
---remvoe itrect
---change init functions to {[]=x,[]=y} form
 
 
 --big todos:
@@ -758,10 +756,7 @@ function ptinc(p,amt)
 end
 
 function pt(x,y)
- local res={}
- res.x=x
- res.y=y
- return res
+ return {["x"]=x,["y"]=y}
 end
 
 
@@ -892,13 +887,8 @@ end
 
 
 
---7949->7936
 --todo: change name to id?
 function ms(name,count)
---	local res={}
---	res.name=name
---	res.count=count
---	return res
  return {["name"]=name,
          ["count"]=count}
 end
@@ -1109,19 +1099,19 @@ end
 
 
 
---asdf:remvoe this
-function itrect(it)
- r={}
- for i=1,#it.col do 
-  r[i]=it.col[i]*8
- end
- r[1]+=it.x*8
- r[2]+=it.y*8
- return r
-end
+--function itrect(it)
+-- r={}
+-- for i=1,#it.col do 
+--  r[i]=it.col[i]*8
+-- end
+-- r[1]+=it.x*8
+-- r[2]+=it.y*8
+-- return r
+--end
 
 things={}
 
+--token: split into diff funcs
 function spawn(name,tx,ty)
  local res={}
  at=archetypes[name]
