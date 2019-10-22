@@ -14,6 +14,8 @@ __lua__
 --fog of war
 --main menu/level select
 --hero experience
+--battle debris / scenery
+--search for todo keyword
 
 
 --token saving:
@@ -103,6 +105,9 @@ end
 function _init()
 -- music(0)
 
+ --todo: do these need to be pts? hmm
+ topc=pt(1,1)
+ botc=pt(1,1)
  
 -- --quick test area
 -- a=pt(1,1)
@@ -487,7 +492,7 @@ function update_map()
   hud_menu_open=not hud_menu_open
   if hud_menu_open then
    sfx(63)
-   hcur=pt(selport,1)
+--   hcur=pt(selport,1)
   else 
    sfx(61) 
   end
@@ -1792,7 +1797,9 @@ function update_sel_cursor()
  cur_spr=cur_sprs[style]
 end
 
-
+function move_cursor2(p,maxx)
+ move_cursor(p,1,maxx,1,1)
+end
 function move_cursor(
  p, minx,maxx, miny,maxy)
  
@@ -2992,19 +2999,46 @@ end
 
 function update_hud_menu_cursor()
 
- move_cursor(hcur, 
-  1,99,--max(#ports,#buttons),--limited below
-  1,2)
+ --7935
+ --asdf
  
- if hcur.y==1 then
-  hcur.x=min(hcur.x,#ports)
-  select(ports[hcur.x])
+-- curinfo={topc, botc}
+-- limitinfo={ports, buttons}
+-- 
+-- hcur=curinfo[rowrow]
+-- limit=limitinfo[rowrow]
+ 
+ if toptop then
+  move_cursor2(topc,#ports)
+  hcur_x=topc.x
+--  bcur=topc
  else
-  hcur.x=min(hcur.x,#buttons)
+  move_cursor2(botc,#buttons)
+  hcur_x=botc.x
+--  bcur=botc
+ end
+ 
+ if (btnp(⬇️)) toptop=false
+ if (btnp(⬆️)) toptop=true
+ 
+ --todo: make min default 1?
+ 
+-- move_cursor(hcur, 
+--  1,99,--max(#ports,#buttons),--limited below
+--  1,2)
+ 
+-- if hcur.y==1 then
+--  hcur.x=min(hcur.x,#ports)
+--  select(ports[hcur.x])
+-- else
+--  hcur.x=min(hcur.x,#buttons)
+ if toptop then
+  select(ports[hcur_x])
+ else
   if btnp(❎) then
   
    --end turn
-   if hcur.x==4 then
+   if hcur_x==4 then
     sfx(59)
     local askturn=false
     for h in all(cp.heroes) do
@@ -3029,12 +3063,12 @@ function update_hud_menu_cursor()
    end
    
    --dig, inspect, etc
-   if hcur.x==3 then
+   if hcur_x==3 then
     
    end
    
    --inspect
-   if hcur.x==2 then
+   if hcur_x==2 then
     
    end
    
@@ -3137,8 +3171,8 @@ function draw_hud_menu()
  --flashing selection box
  --(only draw when menu open)
  if hud_menu_open then
-	 local i=hcur.x
-	 if hcur.y==1 then
+	 local i=hcur_x --tokens
+	 if toptop then
 	  local w=#ports*10
 	  local x,y=53-w/2+10*i,9
 	  flashingbox(x,y,10,10)
