@@ -3,8 +3,7 @@ version 18
 __lua__
 
 --todo:
---add is_plr_ai list or something?
---cannot trade with adjacent hero
+--attacking enemy castle is wrong icon
 --hud menu should remember selected portrait (and maybe menu item?)
 --mob id key instead of name key?
 --append lists function?
@@ -24,10 +23,11 @@ __lua__
 --improve state switching? partially done
 --consolidate hud rendering? tried and failed
 --areas marked "token"
---spr functions, eg spr_mirx(id,x,y)
+--spr functions, eg spr_mirx(id,x,y), spr_pal(spr,x,y,c1,c2)?
 --would making col into obj save?
 --and make hot into pt? (other similar things? spr stats?)
 --consider a 1-level deep copy for copying lists of pointers?
+--maybe passing in list instead of returning one?
 
 
 
@@ -169,7 +169,7 @@ function _init()
 --	spawn("mob2",22,20)
 
 	--block hero in castle test
---	spawn("ore",5,9)
+	spawn("ore",5,9)
 	
  
  --do once here so we don't
@@ -705,6 +705,7 @@ function _draw()
  
 	 
 	draw_dialog()
+	
  
 end
 
@@ -815,7 +816,7 @@ function rnd_bw(low,high)
 end
 
 
---8078
+
 function rect2(x,y,w,h,c)
  c=c or 10 --default val
  rect(x,y,x+w-1,y+h-1,c)
@@ -1066,10 +1067,14 @@ function create_i2tile()
  end
  
  --make each hero their own zone too
+ --but only if surrounded
+ --(to fix edge case bug)
  for plr in all(plrs) do
   for h in all(plr.heroes) do
-		 s(i2zone,h,zonecount)
-   zonecount+=1
+	  if #objzones(h)==0 then
+ 		 s(i2zone,h,zonecount)
+    zonecount+=1
+   end
   end
  end
  
@@ -1419,6 +1424,8 @@ end
 
 
 
+--todo: del returns val now?
+--can replace this with that?
 --token: inline 
 function pop(t)
  local v=t[#t]
@@ -2906,7 +2913,7 @@ function draw_dialog()
   w=maxw*4+2+6
   h=#diag_txt*7+6
   x=63-w/2//-3
-  y=63-h/2-3
+  y=63-h/2-3 --todo: centered without -3 actually?
   draw_window(x,y,w,h)
 	 
   x+=1+3
@@ -2942,17 +2949,11 @@ function select(obj)
  sel=obj
  if (obj==nil) return
  if sel!=lsel then
---	 curx,cury=sel.x*8,sel.y*8
-  --ptmul
   cur=copy(sel) --only need x,y but cheaper to copy entire
 	 if sel.type=="castle" then
 	  cur.y+=1
---	  curx+=2*8
---	  cury+=3*8
 	 end
 	 camx,camy=cur.x*8-64,cur.y*8-64
-	 --update_camera()
-	 --update_move_cursor()
  end
  lsel=sel
 end
@@ -2966,11 +2967,11 @@ actl_menu_y=0
 function animate_hud_menu()
 
  --animate menu open/close
+ local targ=0
  if hud_menu_open then
-  actl_menu_y+=flr(16-actl_menu_y)/3
- else 
-  actl_menu_y+=flr(0-actl_menu_y)/3
- end
+  targ=16
+ end 
+ actl_menu_y+=flr(targ-actl_menu_y)/3
  
 end
 
@@ -3092,6 +3093,7 @@ function draw_cur_popup_info()
 	   draw_army_s(cur_obj.army,y-5)
 	   y-=14 --move text up
 	  end
+	  --token
 	  rect2(x-1,y-1,w+2,9,1)
 	  rectfill2(x,y,w,7,6)
 	  print(map_desc,x+1,y+1,1)
@@ -3207,6 +3209,7 @@ end
 
 function text_box(text,x,y)
  local w=#text*4+3
+ --token: draw_window
  rect2(x-1,y-1,w,9,1)
  rectfill2(x,y,w-2,7,6)
  print(text,x+1,y+1,1)
@@ -3228,6 +3231,8 @@ function flash(amt,f)
 end
 
 
+--todo: token: shouldn't need this
+--map from id to spr directly
 function res_spr(n)
  return res_sprs[
   indexof(res_names,n)]
@@ -3362,7 +3367,7 @@ end
 
 
 function draw_control(o,x)
- --token: bake y iny
+ --token: bake y in
  local y=122
  
 -- rectfill2(0,y-1,#o*4+7+2,7,6)
