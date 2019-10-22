@@ -106,8 +106,8 @@ function _init()
 -- music(0)
 
  --todo: do these need to be pts? hmm
- topc=pt(1,1)
- botc=pt(1,1)
+-- topc=pt(1,1)
+-- botc=pt(1,1)
  
 -- --quick test area
 -- a=pt(1,1)
@@ -492,7 +492,13 @@ function update_map()
   hud_menu_open=not hud_menu_open
   if hud_menu_open then
    sfx(63)
---   hcur=pt(selport,1)
+   
+--   update_static_hud()
+--   tcur=pt(selport,1)
+--   toptop=true
+   
+   hcur=pt(selport,1)
+
   else 
    sfx(61) 
   end
@@ -1797,9 +1803,9 @@ function update_sel_cursor()
  cur_spr=cur_sprs[style]
 end
 
-function move_cursor2(p,maxx)
- move_cursor(p,1,maxx,1,1)
-end
+--function move_cursor2(p,maxx)
+-- move_cursor(p,1,maxx,1,1)
+--end
 function move_cursor(
  p, minx,maxx, miny,maxy)
  
@@ -1809,6 +1815,13 @@ function move_cursor(
    sfx(58,-1,1,2)
   end
  end
+ --20 extra tokens and we could
+ --add uneven limit to x
+-- if type(maxx)=='table' then
+--  p.x=mid(p.x,minx,maxx[p.y])
+-- else
+--  p.x=mid(p.x,minx,maxx)
+-- end
  p.x=mid(p.x,minx,maxx)
  p.y=mid(p.y,miny,maxy)
 end
@@ -2997,6 +3010,8 @@ function animate_hud_menu()
  
 end
 
+lasttopx=1
+lastbotx=4
 function update_hud_menu_cursor()
 
  --7935
@@ -3008,37 +3023,52 @@ function update_hud_menu_cursor()
 -- hcur=curinfo[rowrow]
 -- limit=limitinfo[rowrow]
  
- if toptop then
-  move_cursor2(topc,#ports)
-  hcur_x=topc.x
---  bcur=topc
- else
-  move_cursor2(botc,#buttons)
-  hcur_x=botc.x
---  bcur=botc
+ --7955
+-- if toptop then
+--  move_cursor2(topc,#ports)
+--  hcur_x=topc.x
+----  move_val({topx},#ports)
+----  bcur=topc
+-- else
+--  move_cursor2(botc,#buttons)
+--  hcur_x=botc.x
+----  move_val({botx},#buttons)
+----  bcur=botc
+-- end
+-- 
+-- if (btnp(⬇️)) toptop=false
+-- if (btnp(⬆️)) toptop=true
+-- 
+
+ --todo: make min default 1?
+ lasthcury=hcur.y
+ move_cursor(hcur, 
+  1,99,--max(#ports,#buttons),--limited below
+  1,2)
+ if lasthcury!=hcur.y then
+  if lasthcury==2 then
+   lastbotx=hcur.x
+   hcur.x=lasttopx
+  else
+   lasttopx=hcur.x
+   hcur.x=lastbotx
+  end
  end
  
- if (btnp(⬇️)) toptop=false
- if (btnp(⬆️)) toptop=true
- 
- --todo: make min default 1?
- 
--- move_cursor(hcur, 
---  1,99,--max(#ports,#buttons),--limited below
---  1,2)
- 
--- if hcur.y==1 then
---  hcur.x=min(hcur.x,#ports)
---  select(ports[hcur.x])
--- else
---  hcur.x=min(hcur.x,#buttons)
- if toptop then
-  select(ports[hcur_x])
+ if hcur.y==1 then
+  hcur.x=min(hcur.x,#ports)
+  select(ports[hcur.x])
  else
+  hcur.x=min(hcur.x,#buttons)
+  
+-- if toptop then
+--  select(ports[hcur_x])
+-- else
+
   if btnp(❎) then
   
    --end turn
-   if hcur_x==4 then
+   if hcur.x==4 then
     sfx(59)
     local askturn=false
     for h in all(cp.heroes) do
@@ -3063,12 +3093,12 @@ function update_hud_menu_cursor()
    end
    
    --dig, inspect, etc
-   if hcur_x==3 then
+   if hcur.x==3 then
     
    end
    
    --inspect
-   if hcur_x==2 then
+   if hcur.x==2 then
     
    end
    
@@ -3171,8 +3201,9 @@ function draw_hud_menu()
  --flashing selection box
  --(only draw when menu open)
  if hud_menu_open then
-	 local i=hcur_x --tokens
-	 if toptop then
+	 local i=hcur.x --tokens
+	 if hcur.y==1 then
+--	 if toptop then
 	  local w=#ports*10
 	  local x,y=53-w/2+10*i,9
 	  flashingbox(x,y,10,10)
