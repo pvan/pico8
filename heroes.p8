@@ -3,7 +3,6 @@ version 18
 __lua__
 
 --todo:
---attacking enemy castle is wrong icon
 --hud menu should remember selected portrait (and maybe menu item?)
 --mob id key instead of name key?
 --append lists function?
@@ -28,6 +27,8 @@ __lua__
 --and make hot into pt? (other similar things? spr stats?)
 --consider a 1-level deep copy for copying lists of pointers?
 --maybe passing in list instead of returning one?
+--re-think zone code?
+--rethink map cursor code?
 
 
 
@@ -1699,6 +1700,16 @@ function update_move_cursor()
 	  if g(i2hot,cur) then
 	   style="hot"
 	  end
+	  
+	  --enemy castle
+	  --or hero in castle
+	  --but not empty enemy castle
+	  if obj_owner(obj)!=cp
+	  and #obj.army>0
+--	  and obj.type=="castle"
+	  then
+	   style="attack"
+	  end
   end
 
  end
@@ -2115,6 +2126,8 @@ function from_unit(x,unit)
 	 
  else
   
+  --todo: can we save tokens here?
+    
   --mobs with no hero
   mobname=unit.group.name
   mobcount=unit.group.count
