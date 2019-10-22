@@ -1701,7 +1701,7 @@ function update_move_cursor()
 	   style="hot"
 	  end
 	  
-	  --enemy castle
+	  --enemy "castle
 	  --or hero in castle
 	  --but not empty enemy castle
 	  if obj_owner(obj)!=cp
@@ -1714,17 +1714,19 @@ function update_move_cursor()
 
  end
  
- --select castles anywhere (in or out of zone)
- if obj!=nil then
-  if obj.type=="castle" then
-   if not g(i2hot,cur) then --but still not this
-    style="castle"
-    if btnp(❎)
- 	  and obj_owner(obj)==cp
- 	  then
-     sel=obj
-    end
-   end
+ --select castles anywhere 
+ --(in or out of zone)
+ --but only your own
+ if obj!=nil
+ and obj_owner(obj)==cp 
+ and obj.type=="castle" 
+ and not g(i2hot,cur) --but still not this
+ then 
+  style="castle"
+  if btnp(❎)
+--  and obj_owner(obj)==cp
+  then
+   sel=obj
   end
  end
 
