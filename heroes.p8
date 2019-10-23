@@ -11,6 +11,7 @@ __lua__
 --hero experience
 --battle debris / scenery
 --search for todo keyword
+--make sure to rebuild zones after picking up items
 
 
 --token saving:
@@ -45,8 +46,6 @@ __lua__
 --music is faure
 --see https://www.youtube.com/watch?v=pmdkpmtjms0
 
-camx=0
-camy=0
 
 function set_sel()
 
@@ -108,7 +107,10 @@ function _init()
 -- cls()
 -- stop( not (a and b) )
 -- stop( not a or not b )
-
+	
+	cam=pt(0,0)
+	--camx=0
+	--camy=0
 
  init_data()
  
@@ -420,11 +422,16 @@ end
 
 function update_camera()
  --tokens
- camgap = 32
- if cur.x*8>camx+64+camgap then camx+=2 end
- if cur.x*8<camx+64-camgap then camx-=2 end
- if cur.y*8>camy+64+camgap then camy+=2 end
- if cur.y*8<camy+64-camgap then camy-=2 end
+-- camgap = 32
+-- if cur.x*8>camx+64+camgap then camx+=2 end
+-- if cur.x*8<camx+64-camgap then camx-=2 end
+-- if cur.y*8>camy+64+camgap then camy+=2 end
+-- if cur.y*8<camy+64-camgap then camy-=2 end
+ camgap = 4
+ if cur.x>cam.x+8+camgap then cam.x+=1 end
+ if cur.x<cam.x+8-camgap then cam.x-=1 end
+ if cur.y>cam.y+8+camgap then cam.y+=1 end
+ if cur.y<cam.y+8-camgap then cam.y-=1 end
 end
 
 
@@ -469,8 +476,9 @@ function update_map()
 	   sel.move-=5
 	   if (sel.move<0) sel.move=0
 	   --lock cam to hero?
-	   camx=sel.x*8-64
-	   camy=sel.y*8-64
+    cam=ptadd(sel,pt(-8,-8))
+--	   camx=sel.x*8-64
+--	   camy=sel.y*8-64
 	   update_camera()
 	  end
 	  if #path==0 then
@@ -494,15 +502,22 @@ function update_map()
  for thing in all(ports) do
   local size=4
   if (thing.type=="castle") size=5
-  for x=-size,size do
-   for y=-size,size do
-    if abs(x)+abs(y)<size*2-1 then
-     s(cp.fog,
-      pt(thing.x+x,thing.y+y),
-      false)
-    end
+  do_grid(size,function(x,y)
+   if abs(x)+abs(y)<size*2-1 then
+    s(cp.fog,
+     pt(thing.x+x,thing.y+y),
+     false)
    end
-  end
+  end)
+--  for x=-size,size do
+--   for y=-size,size do
+--    if abs(x)+abs(y)<size*2-1 then
+--     s(cp.fog,
+--      pt(thing.x+x,thing.y+y),
+--      false)
+--    end
+--   end
+--  end
  end
  
  
@@ -656,7 +671,8 @@ end
 
 function map_draw()
 
- 	camera(camx,camy)
+  --8061
+ 	camera(cam.x*8,cam.y*8)
 	
 	 draw_overworld()
 	 
@@ -686,18 +702,20 @@ function map_draw()
 --	 drawdebug_layer(i2hot,11)
 --	 drawdebug_layer(i2col,10)
 	 
-	 
- 	for x=camx-16,camx+128,8 do
-  	for y=camy-16,camy+128,8 do
-  	 local p=pt(flr(x/8),flr(y/8))
-    if blackout 
+--	  do_grid(size,function(x,y)
+-- 	for x=camx-16,camx+128,8 do
+--  	for y=camy-16,camy+128,8 do
+ 	for x=0,16 do
+  	for y=0,16 do
+  	 local p=pt(x+cam.x,y+cam.y)
+    if blackout
     or g(cp.fog,p)
     then
  	   palt(0,false)
- 	   spr(121,p.x*8,p.y*8) 
+ 	   spr(121,p.x*8,p.y*8)
  	   palt(0,true)
 	   end
-	  end 
+	  end
 	 end
 	 
 	 
@@ -811,12 +829,12 @@ end
 function pt2i(p)
  return bor(p.x,shr(p.y,16))
 end
-function i2pt(i)
- local x=band(i,0b1111111111111111)
- local y=band(i,0b0000000000000000.1111111111111111)
- y=shl(y,16)
- return pt(x,y)
-end
+--function i2pt(i)
+-- local x=band(i,0b1111111111111111)
+-- local y=band(i,0b0000000000000000.1111111111111111)
+-- y=shl(y,16)
+-- return pt(x,y)
+--end
 
 
 
@@ -936,6 +954,19 @@ function ms(name,count)
  }
 end
 
+
+--8045
+--a bit of a convoluted way
+--to save a few tokens
+--when iterating over an area
+function do_grid(size,f)
+ for x=-size,size do
+  for y=-size,size do
+--   f(pt(x,y))
+   f(x,y)
+  end
+ end
+end
 -->8
 --overworld/pathfinding/cursor
 
@@ -1777,7 +1808,8 @@ function update_move_cursor()
   or style=="attack"
   or style=="trade"
   then
-   sel["movep"]=copy(cur)
+   sel.movep=copy(cur)
+--   sel["movep"]=copy(cur)
 --   sel["movex"]=cur.x
 --   sel["movey"]=cur.y
   end
@@ -3013,7 +3045,8 @@ function select(obj)
 	 if sel.type=="castle" then
 	  cur.y+=1
 	 end
-	 camx,camy=cur.x*8-64,cur.y*8-64
+	 cam=ptadd(cur,pt(-8,-8))
+--	 camx,camy=cur.x*8-64,cur.y*8-64
  end
  lsel=sel
 end
