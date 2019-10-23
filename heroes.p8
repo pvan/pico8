@@ -2058,6 +2058,7 @@ function end_with_loser(loser)
  
  
  path=nil --var also used in map
+ moving=false --todo: better way?
  
  
  --turn these off
