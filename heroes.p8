@@ -8,6 +8,10 @@ __lua__
 --change obj.type to int instead of string index
 --check if do_grid is better as (p) or (x,y)
 --check if do_grid is better as 0,size or -size,size
+--no fog on borders is cannon, but some problems:
+--  blackout needs revisiton
+--  sprites that overlap border
+--  (is it just best to switch back to fog over border??)
 
 
 --big todos:
@@ -422,10 +426,27 @@ end
 function update_camera()
  --tokens
  camgap = 4
- if cur.x>cam.x+camgap then cam.x+=1 end
- if cur.x<cam.x-camgap then cam.x-=1 end
- if cur.y>cam.y+camgap then cam.y+=1 end
- if cur.y<cam.y-camgap then cam.y-=1 end
+ --7985
+-- if cur.x>cam.x+camgap then cam.x+=1 end
+-- if cur.x<cam.x-camgap then cam.x-=1 end
+-- if cur.y>cam.y+camgap then cam.y+=1 end
+-- if cur.y<cam.y-camgap then cam.y-=1 end
+
+ --7977
+-- cam.x=max(cur.x-camgap,cam.x)
+-- cam.y=max(cur.y-camgap,cam.y)
+-- cam.x=min(cur.x+camgap,cam.x)
+-- cam.y=min(cur.y+camgap,cam.y)
+
+ --7963
+ cam.x=mid(cam.x,
+           cur.x-camgap,
+           cur.x+camgap)
+           
+ cam.y=mid(cam.y,
+           cur.y-camgap,
+           cur.y+camgap)
+ 
 end
 
 
