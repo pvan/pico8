@@ -829,7 +829,7 @@ end
 --recall pico numbers are stored
 --like so: 1:15:16 sign:whole:decimal
 function pt2i(p)
- return bor(p.x,shr(p.y,16))
+ return bor(p.x,lshr(p.y,16))
 end
 --function i2pt(i)
 -- local x=band(i,0b1111111111111111)
