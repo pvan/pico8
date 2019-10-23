@@ -27,6 +27,7 @@ __lua__
 --maybe passing in list instead of returning one?
 --re-think zone code?
 --rethink map cursor code?
+--way to iterate over an area using a pt? eg forarea(p,w,h) or something?
 
 
 
@@ -198,6 +199,8 @@ end
 
 
 function create_player(c)
+ --tokens: use . isntead of []
+ --or return {[""]=} format?
  local res={}
  res["color"]=c
  res["gold"]=200
@@ -212,6 +215,14 @@ function create_player(c)
  res["castles"]={}
  
  res["ai"]=false
+ 
+ res.fog={}
+ for x=-15,tilesw+15 do
+  for y=-15,tilesh+15 do
+   s(res.fog,pt(x,y),true)
+  end
+ end 
+   
  return res
 end
 
@@ -475,8 +486,21 @@ function update_map()
  end
 
 
- 
+ --now using ports for fog too
  update_static_hud()
+ 
+ 
+ --udpate fog of war
+ for thing in all(ports) do
+  for x=-3,3 do
+   for y=-3,3 do
+    s(cp.fog,
+     pt(thing.x+x,thing.y+y),
+     false)
+   end
+  end
+ end
+ 
  
  
  --open/close menu
@@ -659,6 +683,24 @@ function map_draw()
 --	 drawdebug_layer(i2col,10)
 	 
 	 
+--	 for x=0,15 do
+--	  for y=0,15 do
+-- 	for x=-15,tilesw+15 do
+--  	for y=-15,tilesh+15 do
+ 	for x=camx-16,camx+128,8 do
+  	for y=camy-16,camy+128,8 do
+  	 local p=pt(flr(x/8),flr(y/8))
+    if blackout 
+    or g(cp.fog,p)
+    then
+ 	   palt(0,false)
+ 	   spr(121,p.x*8,p.y*8) 
+ 	   palt(0,true)
+	   end
+	  end 
+	 end
+	 
+	 
 	 --hud elements
 	 color()
 	 cursor()
@@ -675,19 +717,8 @@ function map_draw()
    draw_cur_popup_info()
   end
  	
+-- 	print("cpu "..stat(1),0,64,0)
  	
-	 if blackout then
- 	 
- 	 for x=0,15 do
- 	  for y=0,15 do
- 	   palt(0,false)
- 	   spr(121,x*8,y*8) 
- 	   palt(0,true)
- 	  end 
- 	 end
- 	 
-	 end
-	 
 end
 
 
@@ -767,20 +798,20 @@ end
 
 
 --hash pt for use as keys
---assumes x,y are <255 (1 byte)
---packs y into the higher bits
---could also use the 16 bits decimal
+--assumes x,y are 2 byte ints
+--(signed, so approx +/-32,000)
+--packs y into the decimal bits
 --recall pico numbers are stored
 --like so: 1:15:16 sign:whole:decimal
 function pt2i(p)
- return bor(p.x,shl(p.y,8))
+ return bor(p.x,shr(p.y,16))
 end
---function i2pt(i)
--- local x=band(i,0b11111111)
--- local y=band(i,0b1111111100000000)
--- y=shr(y,8)
--- return pt(x,y)
---end
+function i2pt(i)
+ local x=band(i,0b1111111111111111)
+ local y=band(i,0b0000000000000000.1111111111111111)
+ y=shl(y,16)
+ return pt(x,y)
+end
 
 
 
@@ -1208,6 +1239,7 @@ function sort_by_y(t)
 end
 function draw_things()
  sort_by_y(things)
+ --tokens: this seems like it could be simplified?
  for i in all(things) do
  
   sprt=i.spr
@@ -1704,7 +1736,7 @@ function update_move_cursor()
 	   style="hot"
 	  end
 	  
-	  --enemy "castle
+	  --enemy castle
 	  --or hero in castle
 	  --but not empty enemy castle
 	  if obj_owner(obj)!=cp
@@ -3058,6 +3090,7 @@ end
 function update_static_hud()
 
  --todo: proper home for this?
+ --need to call in init as well as update
  ports={}
  i=1
  for c in all(cp.castles) do
