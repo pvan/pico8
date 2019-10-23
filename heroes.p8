@@ -544,20 +544,24 @@ function update_map_cursor()
  
  update_camera()
  
- if sel!=nil
- and sel.type=="hero" 
- then
-  if btnp(❎) 
-  and path!=nil 
-  and #path>0 
-  and ptequ(path[#path],cur)
-  then
-   move_hero()
-  else
-   update_move_cursor()
-  end
+ if not g(cp.fog,cur) then
+	 if sel!=nil
+	 and sel.type=="hero" 
+	 then
+	  if btnp(❎) 
+	  and path!=nil 
+	  and #path>0 
+	  and ptequ(path[#path],cur)
+	  then
+	   move_hero()
+	  else
+	   update_move_cursor()
+	  end
+	 else
+	  update_sel_cursor()
+	 end
  else
-  update_sel_cursor()
+  cur_spr=cur_sprs["arrow"]
  end
 
  --token: could set this at time 
@@ -672,21 +676,13 @@ function map_draw()
 		 end
 	 end
 	 
-	 if not hud_menu_open then
- 	 draw_cursor()
-	 end
-	 
-	 
+	 	 
 --	 drawdebug_zones()
 --	 drawdebug_layer(i2danger,8)
 --	 drawdebug_layer(i2hot,11)
 --	 drawdebug_layer(i2col,10)
 	 
 	 
---	 for x=0,15 do
---	  for y=0,15 do
--- 	for x=-15,tilesw+15 do
---  	for y=-15,tilesh+15 do
  	for x=camx-16,camx+128,8 do
   	for y=camy-16,camy+128,8 do
   	 local p=pt(flr(x/8),flr(y/8))
@@ -698,6 +694,11 @@ function map_draw()
  	   palt(0,true)
 	   end
 	  end 
+	 end
+	 
+	 
+	 if not hud_menu_open then
+ 	 draw_cursor()
 	 end
 	 
 	 
