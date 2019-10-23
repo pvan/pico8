@@ -220,6 +220,7 @@ function create_player(c)
  res.fog={}
  do_grid(tilesw+30,function(p)
   ptinc(p,pt(-15,-15))
+--  ptsub(p,15)
   s(res.fog,p,true)
  end)
    
@@ -504,6 +505,7 @@ function update_map()
  
   do_grid(size*2,function(p)
    ptinc(p,pt(-size,-size))
+--   ptsub(p,size)
    if abs(p.x)+abs(p.y)<size*2-1 then
     s(cp.fog,
      ptadd(p,thing),
@@ -819,7 +821,9 @@ function pt(x,y)
  return {["x"]=x,["y"]=y}
 end
 
-
+----7985 without vs 7989 with
+----not worth using unless we need 
+----to sub values from pts one more time
 ----very specialized token saver
 --function ptsub(p,v)
 -- ptinc(p,pt(-v,-v))
@@ -3493,7 +3497,7 @@ function init_data()
  do_grid(8,function(p)
   add(grid,p)
   if not evencol(p.x) then
-   add(grid,ptinc(p,pt(0,1)))
+   add(grid,ptadd(p,pt(0,1)))
   end
 	end)
 
