@@ -5,13 +5,14 @@ __lua__
 
 --todo:
 --make sure to rebuild zones after picking up items
---change type to int instead of string index
+--change obj.type to int instead of string index
+--check if do_grid is better as (p) or (x,y)
+--check if do_grid is better as 0,size or -size,size
 
 
 --big todos:
 --player select/multiplayer support
 --castles
---fog of war
 --main menu/level select
 --hero experience
 --battle debris / scenery
@@ -32,7 +33,6 @@ __lua__
 --maybe passing in list instead of returning one?
 --re-think zone code?
 --rethink map cursor code?
---way to iterate over an area using a pt? eg forarea(p,w,h) or something?
 
 
 
@@ -113,8 +113,6 @@ function _init()
 -- stop( not a or not b )
 	
 	cam=pt(0,0)
-	--camx=0
-	--camy=0
 
  init_data()
  
@@ -222,7 +220,7 @@ function create_player(c)
  res.fog={}
  do_grid(tilesw+30,function(p)
   ptinc(p,pt(-15,-15))
-   s(res.fog,p,true)
+  s(res.fog,p,true)
  end)
    
  return res
@@ -422,16 +420,11 @@ end
 
 function update_camera()
  --tokens
--- camgap = 32
--- if cur.x*8>camx+64+camgap then camx+=2 end
--- if cur.x*8<camx+64-camgap then camx-=2 end
--- if cur.y*8>camy+64+camgap then camy+=2 end
--- if cur.y*8<camy+64-camgap then camy-=2 end
  camgap = 4
- if cur.x>cam.x+8+camgap then cam.x+=1 end
- if cur.x<cam.x+8-camgap then cam.x-=1 end
- if cur.y>cam.y+8+camgap then cam.y+=1 end
- if cur.y<cam.y+8-camgap then cam.y-=1 end
+ if cur.x>cam.x+camgap then cam.x+=1 end
+ if cur.x<cam.x-camgap then cam.x-=1 end
+ if cur.y>cam.y+camgap then cam.y+=1 end
+ if cur.y<cam.y-camgap then cam.y-=1 end
 end
 
 
@@ -476,9 +469,7 @@ function update_map()
 	   sel.move-=5
 	   if (sel.move<0) sel.move=0
 	   --lock cam to hero?
-    cam=ptadd(sel,pt(-8,-8))
---	   camx=sel.x*8-64
---	   camy=sel.y*8-64
+	   cam=copy(sel)
 	   update_camera()
 	  end
 	  if #path==0 then
@@ -673,8 +664,7 @@ end
 
 function map_draw()
 
-  --8061
- 	camera(cam.x*8,cam.y*8)
+ 	camera(cam.x*8-64,cam.y*8-64)
 	
 	 draw_overworld()
 	 
@@ -704,8 +694,9 @@ function map_draw()
 --	 drawdebug_layer(i2hot,11)
 --	 drawdebug_layer(i2col,10)
 	 
-  do_grid(16,function(pin)
-   local p=ptadd(pin,cam)
+	 --7985
+	 --fog only inside borders
+  do_grid(tilesw-1,function(p)
    if blackout
    or g(cp.fog,p)
    then
@@ -714,6 +705,19 @@ function map_draw()
 	   palt(0,true)
    end
 	 end)
+	 
+--	 --7997
+--	 --fog over the 16 screen tiles
+--  do_grid(16,function(pin)
+--   p=ptadd(ptadd(pin,cam),pt(-8,-8))
+--   if blackout
+--   or g(cp.fog,p)
+--   then
+--	   palt(0,false)
+--	   spr(121,p.x*8,p.y*8)
+--	   palt(0,true)
+--   end
+--	 end)
 	 
 	 
 	 if not hud_menu_open then
@@ -3046,8 +3050,7 @@ function select(obj)
 	 if sel.type=="castle" then
 	  cur.y+=1
 	 end
-	 cam=ptadd(cur,pt(-8,-8))
---	 camx,camy=cur.x*8-64,cur.y*8-64
+	 cam=copy(cur)
  end
  lsel=sel
 end
