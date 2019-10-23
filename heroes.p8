@@ -224,7 +224,6 @@ function create_player(c)
  res.fog={}
  do_grid(tilesw+30,function(p)
   ptinc(p,pt(-15,-15))
---  ptsub(p,15)
   s(res.fog,p,true)
  end)
    
@@ -424,29 +423,13 @@ function move_hero()
 end
 
 function update_camera()
- --tokens
- camgap = 4
- --7985
--- if cur.x>cam.x+camgap then cam.x+=1 end
--- if cur.x<cam.x-camgap then cam.x-=1 end
--- if cur.y>cam.y+camgap then cam.y+=1 end
--- if cur.y<cam.y-camgap then cam.y-=1 end
-
- --7977
--- cam.x=max(cur.x-camgap,cam.x)
--- cam.y=max(cur.y-camgap,cam.y)
--- cam.x=min(cur.x+camgap,cam.x)
--- cam.y=min(cur.y+camgap,cam.y)
-
- --7963
+ --tokens: common limit func?
  cam.x=mid(cam.x,
-           cur.x-camgap,
-           cur.x+camgap)
-           
+           cur.x-4,
+           cur.x+4)
  cam.y=mid(cam.y,
-           cur.y-camgap,
-           cur.y+camgap)
- 
+           cur.y-4,
+           cur.y+4)
 end
 
 
@@ -526,7 +509,6 @@ function update_map()
  
   do_grid(size*2,function(p)
    ptinc(p,pt(-size,-size))
---   ptsub(p,size)
    if abs(p.x)+abs(p.y)<size*2-1 then
     s(cp.fog,
      ptadd(p,thing),
@@ -693,6 +675,7 @@ function map_draw()
 	 
 	 
 	 --draw path
+	 --tokens? change nx,dx to pts?
 	 if path!=nil and #path>1 then
 	  lx,ly=sel.x,sel.y
 		 for i=1,#path do
@@ -834,6 +817,11 @@ function ptadd(a,b)
 end
 
 function ptinc(p,amt)
+ --not this because p might be 
+ --a full obj (not just a pt)
+ --(or a shared ptr)
+ --(todo: test this? could save 4 tokens)tadd(p,amt) 
+
  p.x+=amt.x
  p.y+=amt.y
 end
@@ -841,14 +829,6 @@ end
 function pt(x,y)
  return {["x"]=x,["y"]=y}
 end
-
-----7985 without vs 7989 with
-----not worth using unless we need 
-----to sub values from pts one more time
-----very specialized token saver
---function ptsub(p,v)
--- ptinc(p,pt(-v,-v))
---end
 
 
 --hash pt for use as keys
@@ -2397,6 +2377,8 @@ function make_battle_team(x,unit)
  res.temp={} --used for sorting
  
  for m in all(res.mobs) do
+  m.flipx=x==8 --flip defenders at battle start
+  
 --  add(moblist,m)
   add(mobdrawlist,m)
   
@@ -2576,15 +2558,7 @@ function mob_attack(pos)
  local mob=activemob
  local enemy=mob_at_pos(pos)
  
--- if enemy==nil then
---  x,y=gxy2sxy(mob.x,mob.y)
---  circfill(x+5,y+5,1,1)
---  x,y=gxy2sxy(pos.x,pos.y)
---  circfill(x+5,y+5,1,8)
---  flip()
---  stop("no enemy")
--- end
- 
+ mob.flipx=enemy.x<mob.x
  
  --attack/hurt animation
  battle_draw(true)
@@ -2600,10 +2574,6 @@ function mob_attack(pos)
  end
  
  
--- if enemy.damage==nil then
---  --token: init this in init
---  enemy.damage=0
--- end
  enemy.damage+=mob_attacks[mob.id]
               *mob.count
  
@@ -2870,7 +2840,7 @@ function battle_draw(hidecursor)
   sx,sy=bgrid2screen(m)
   sx-=2
   sy-=10
-  draw_big_mob(m,sx,sy)
+  draw_big_mob(m,sx,sy,m.flipx)
  end
  
  
@@ -3420,10 +3390,10 @@ function draw_window(x,y,w,h)
 end
 
 
-function draw_big_mob(m,x,y)
+function draw_big_mob(m,x,y,flipx)
 -- rectfill2(x,y,16,20,14)
  spr(big_mob_sprs[m.id],
-     x+4,y+2,1,2)  
+     x+4,y+2,1,2,flipx)  
  pal(1,1)--reset possible flash
  print_mobnum(m,x+4,y+7,true)
 end
