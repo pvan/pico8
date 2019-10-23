@@ -492,11 +492,15 @@ function update_map()
  
  --udpate fog of war
  for thing in all(ports) do
-  for x=-3,3 do
-   for y=-3,3 do
-    s(cp.fog,
-     pt(thing.x+x,thing.y+y),
-     false)
+  local size=4
+  if (thing.type=="castle") size=5
+  for x=-size,size do
+   for y=-size,size do
+    if abs(x)+abs(y)<size*2-1 then
+     s(cp.fog,
+      pt(thing.x+x,thing.y+y),
+      false)
+    end
    end
   end
  end
