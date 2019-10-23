@@ -43,18 +43,18 @@ end
 
 
 --hash pt for use as keys
---assumes x,y are <255 (1 byte)
---packs y into the higher bits
---could also use the 16 bits decimal
+--assumes x,y are 2 byte ints
+--(signed, so approx +/-32,000)
+--packs y into the decimal bits
 --recall pico numbers are stored
 --like so: 1:15:16 sign:whole:decimal
 function pt2i(p)
- return bor(p.x,shl(p.y,8))
+ return bor(p.x,shr(p.y,16))
 end
 function i2pt(i)
- local x=band(i,0b11111111)
- local y=band(i,0b1111111100000000)
- y=shr(y,8)
+ local x=band(i,0b1111111111111111)
+ local y=band(i,0b0000000000000000.1111111111111111)
+ y=shl(y,16)
  return pt(x,y)
 end
 
