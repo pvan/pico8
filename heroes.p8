@@ -3,6 +3,11 @@ version 18
 __lua__
 
 
+--todo:
+--make sure to rebuild zones after picking up items
+--change type to int instead of string index
+
+
 --big todos:
 --player select/multiplayer support
 --castles
@@ -11,7 +16,6 @@ __lua__
 --hero experience
 --battle debris / scenery
 --search for todo keyword
---make sure to rebuild zones after picking up items
 
 
 --token saving:
@@ -178,19 +182,16 @@ function _init()
  --over anything else
  create_i2tile()
  
-	for x=0,tilesw do
- 	for y=0,tilesh do
- 	 p=pt(x,y)
- 	 if not tile_is_solid(p) 
- 	 and not g(i2hot,p)
- 	 then
- 	  if rnd_bw(1,100)<4 then
- 	   r=rnd_bw(1,#resources)
- 	   spawn(resources[r],x,y)
- 	  end
- 	 end
- 	end
-	end
+ do_grid(tilesw,function(p)
+	 if not tile_is_solid(p) 
+	 and not g(i2hot,p)
+	 then
+	  if rnd_bw(1,100)<4 then
+	   r=rnd_bw(1,#resources)
+	   spawn(resources[r],x,y)
+	  end
+	 end
+	end)
 	
 	
  --after populating map
@@ -219,11 +220,10 @@ function create_player(c)
  res["ai"]=false
  
  res.fog={}
- for x=-15,tilesw+15 do
-  for y=-15,tilesh+15 do
-   s(res.fog,pt(x,y),true)
-  end
- end 
+ do_grid(tilesw+30,function(p)
+  ptinc(p,pt(-15,-15))
+   s(res.fog,p,true)
+ end)
    
  return res
 end
@@ -500,24 +500,26 @@ function update_map()
  
  --udpate fog of war
  for thing in all(ports) do
+  --token: something like this?
+  --(if int index, might work)
+--  sizes.castle=5
+--  sizes.hero=4
+--  size=sizes[thing.type]
+
   local size=4
-  if (thing.type=="castle") size=5
-  do_grid(size,function(x,y)
-   if abs(x)+abs(y)<size*2-1 then
+  if thing.type=="castle" then
+   size=5
+  end
+ 
+  do_grid(size*2,function(p)
+   ptinc(p,pt(-size,-size))
+   if abs(p.x)+abs(p.y)<size*2-1 then
     s(cp.fog,
-     pt(thing.x+x,thing.y+y),
+     ptadd(p,thing),
      false)
    end
   end)
---  for x=-size,size do
---   for y=-size,size do
---    if abs(x)+abs(y)<size*2-1 then
---     s(cp.fog,
---      pt(thing.x+x,thing.y+y),
---      false)
---    end
---   end
---  end
+  
  end
  
  
@@ -702,21 +704,16 @@ function map_draw()
 --	 drawdebug_layer(i2hot,11)
 --	 drawdebug_layer(i2col,10)
 	 
---	  do_grid(size,function(x,y)
--- 	for x=camx-16,camx+128,8 do
---  	for y=camy-16,camy+128,8 do
- 	for x=0,16 do
-  	for y=0,16 do
-  	 local p=pt(x+cam.x,y+cam.y)
-    if blackout
-    or g(cp.fog,p)
-    then
- 	   palt(0,false)
- 	   spr(121,p.x*8,p.y*8)
- 	   palt(0,true)
-	   end
-	  end
-	 end
+  do_grid(16,function(pin)
+   local p=ptadd(pin,cam)
+   if blackout
+   or g(cp.fog,p)
+   then
+	   palt(0,false)
+	   spr(121,p.x*8,p.y*8)
+	   palt(0,true)
+   end
+	 end)
 	 
 	 
 	 if not hud_menu_open then
@@ -818,6 +815,11 @@ function pt(x,y)
  return {["x"]=x,["y"]=y}
 end
 
+
+----very specialized token saver
+--function ptsub(p,v)
+-- ptinc(p,pt(-v,-v))
+--end
 
 
 --hash pt for use as keys
@@ -955,15 +957,15 @@ function ms(name,count)
 end
 
 
---8045
+--8010
 --a bit of a convoluted way
 --to save a few tokens
 --when iterating over an area
 function do_grid(size,f)
- for x=-size,size do
-  for y=-size,size do
---   f(pt(x,y))
-   f(x,y)
+ for x=0,size do
+  for y=0,size do
+   f(pt(x,y))
+--   f(x,y)
   end
  end
 end
@@ -1126,16 +1128,14 @@ function create_i2tile()
  
  i2zone={}
  zonecount=10
- for x=0,tilesw-1 do
-  for y=0,tilesh-1 do
-   local p=pt(x,y)
-   if ok_to_zone(i2zone,p) then
-    --start new region (floodfill it)
-    floodfill(i2zone,p,zonecount)
-    zonecount+=1
-   end
+ 
+ do_grid(tilesw-1,function(p)
+  if ok_to_zone(i2zone,p) then
+   --start new region (floodfill it)
+   floodfill(i2zone,p,zonecount)
+   zonecount+=1
   end
- end
+ end)
  
  --make each hero their own zone too
  --but only if surrounded
@@ -3486,14 +3486,12 @@ function init_data()
  --pretty much just for
  --checking if p is on grid?
 	grid={}
-	for x=0,8 do 
-	 for y=0,8 do
-	  add(grid,pt(x,y))
-	  if not evencol(x) then
-	   add(grid,pt(x,y+1))
-	  end
-	 end
-	end
+ do_grid(8,function(p)
+  add(grid,p)
+  if not evencol(p.x) then
+   add(grid,ptinc(p,pt(0,1)))
+  end
+	end)
 
 
  --default to "end turn" option
