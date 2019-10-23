@@ -49,7 +49,7 @@ end
 --recall pico numbers are stored
 --like so: 1:15:16 sign:whole:decimal
 function pt2i(p)
- return bor(p.x,shr(p.y,16))
+ return bor(p.x,lshr(p.y,16))
 end
 function i2pt(i)
  local x=band(i,0b1111111111111111)
@@ -57,6 +57,30 @@ function i2pt(i)
  y=shl(y,16)
  return pt(x,y)
 end
+
+
+--some debug re pt2i
+ r=0
+ for x=-1,1 do
+  print(x,0,r)
+  print(tostr(x,true),10,r)
+  print(tostr(lshr(x,16),true),80,r)
+  r+=7
+ end
+ 
+ r=0
+ for x=-1,1 do
+  for y=-1,1 do
+   p=pt(x,y)
+   i=pt2i(p)
+   p2=i2pt(i)
+   print(p.x..","..p.y,0,r)
+   print(tostr(i,true),26,r)
+   print(p2.x..","..p2.y,80,r)
+   r+=7
+  end
+ end
+ 
 
 
 --get/set from arr using pt key
