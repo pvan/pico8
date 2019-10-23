@@ -3603,12 +3603,12 @@ function init_data()
 	 "goblins",
 	 "skeletons",
 	 "calavry",
-	 "elves",
 	 "peasants",
+	 "elves",
 	}
 	
 	mob_sprs={
-	 194,210,197,213,229,
+	 194,210,197,229,213,
 	}
 	
 	big_mob_sprs={
