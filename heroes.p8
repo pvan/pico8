@@ -1408,6 +1408,7 @@ end
 --global_walkable={}
 --global_goal=pt(-100,-100)
 function map_iswall(p)
+ if (g(cp.fog,p)) return true
  if attacking_a_mob then
   if has2(global_walkable,p) then 
    return false
