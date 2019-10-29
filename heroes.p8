@@ -3,17 +3,14 @@ version 18
 __lua__
 
 --bugs:
---picking up res next to hero
---moving into mob aggro space
 --flashing hero over fog of war (just need a full blackout)
---check: valid path but thru fog
---walking thru trees below skel area
---sometimes cannot move into adjacent danger zone
+--valid path but thru fog (need fix)
 
 
 --todo:
---try hero_move as flip() style
+--consider calling create_i2tile in update instead of as needed
 --make sure to rebuild zones after picking up items
+--try hero_move as flip() style
 --change obj.type to int instead of string index
 --check if do_grid is better as (p) or (x,y)
 --check if do_grid is better as 0,size or -size,size
@@ -45,8 +42,8 @@ __lua__
 --and make hot into pt? (other similar things? spr stats?)
 --consider a 1-level deep copy for copying lists of pointers?
 --maybe passing in list instead of returning one?
---re-think zone code?
---rethink map cursor code?
+--re-think zone code (done, any further improvements?)
+--rethink map cursor code? (see revised zone code: reachable)
 
 
 
@@ -703,11 +700,12 @@ function map_draw()
 	 end
 	 
 	 	 
-	 drawdebug_reach()
+--	 drawdebug_reach()
 --	 drawdebug_zones()
 --	 drawdebug_layer(i2danger,8)
 --	 drawdebug_layer(i2hot,11)
 --	 drawdebug_layer(i2col,10)
+	 
 	 
 	 --7985
 	 --fog only inside borders
@@ -848,12 +846,12 @@ end
 function pt2i(p)
  return bor(p.x,lshr(p.y,16))
 end
-function i2pt(i)
- local x=band(i,0b1111111111111111)
- local y=band(i,0b0000000000000000.1111111111111111)
- y=shl(y,16)
- return pt(x,y)
-end
+--function i2pt(i)
+-- local x=band(i,0b1111111111111111)
+-- local y=band(i,0b0000000000000000.1111111111111111)
+-- y=shl(y,16)
+-- return pt(x,y)
+--end
 
 
 
@@ -994,67 +992,16 @@ end
 --size of world
 tilesw=32
 tilesh=32
---worldw=(tilesw-1)*8
---worldh=(tilesh-1)*8
---worldborder=8
 
 
-----returns if tile p
-----is adjacent to any zone in zones
---function pnearzones(p,zones)
--- for z in all(zones) do
---  for d in all(cardinal) do
---   if g(i2zone,ptadd(p,d))==z
---   then return true end
---  end
--- end
--- return false 
---end
-
-----returns if any part of obj col
-----is adjacent to any zone in zones
---function objnearzones(obj,zones)
--- local ozones=objzones(obj)
--- for z in all(zones) do
---  if (has(ozones,z)) return true
--- end
--- 
--- local c=obj.col
--- for cx=0,c[3]-1 do
---  for cy=0,c[4]-1 do
---   local x=obj.x+c[1]+cx
---   local y=obj.y+c[2]+cy
---   local p=pt(x,y)
---   if not tile_is_solid(p) then
---    if pnearzones(p,zones) then
---     return true
---    end
---   end
---  end
--- end
--- return false
---end
-
---function ok_to_zone(res,p)
--- local i=pt2i(p)
--- return res[i]==nil and
---        not tile_is_solid(p) and
---        not i2danger[i]
---end
---function floodfill(res,p,v)
--- if (not ok_to_zone(res,p)) return
--- s(res,p,v)
--- for d in all(cardinal) do
---  floodfill(res,ptadd(p,d),v)
--- end
---end
 
 function floodfill2(res,p)
 
  s(res,p,true)
  
- --don't add neighbors if
- --adjacent to enemy mob
+ --force any danger zone spot
+ --to stop filling (lets us
+ --get one square into danger)
  if (g(i2danger,p)) return
  
  for d in all(cardinal) do
@@ -1066,30 +1013,6 @@ function floodfill2(res,p)
   end
  end
 end
-
-
-----return all zones adjacent 
-----to obj base x,y position
-----(basically just for heroes atm)
---function objzones(obj)
--- if (obj==nil) return {}
--- 
--- local res={}
--- for d in all(cardinal) do
---  local z=g(i2zone,ptadd(obj,d))
---  if z!=nil and not has(res,z)
---   then add(res,z) end
--- end
---  
--- --add zone of hero too
--- local z=g(i2zone,obj)
--- if z!=nil and not has(res,z)
---  then add(res,z) end
--- 
--- return res
---end
-
-
 
 
 
@@ -1168,32 +1091,9 @@ function create_i2tile()
  --(stops if spot adjacent to enemy)
  floodfill2(i2reachable,sel)
  --fill in obj adjacent to 
- --each spot 
- 
-
--- --8107
--- i2zone={}
--- zonecount=10
--- 
--- do_grid(tilesw-1,function(p)
---  if ok_to_zone(i2zone,p) then
---   --start new region (floodfill it)
---   floodfill(i2zone,p,zonecount)
---   zonecount+=1
---  end
--- end)
--- 
--- --make each hero their own zone too
--- --but only if surrounded
--- --(to fix edge case bug)
--- for plr in all(plrs) do
---  for h in all(plr.heroes) do
---	  if #objzones(h)==0 then
--- 		 s(i2zone,h,zonecount)
---    zonecount+=1
---   end
---  end
--- end
+ --each spot here?
+ --right now we handle it 
+ --in pathfind() and cursor code
  
 end
 
@@ -1203,6 +1103,7 @@ end
 --wrong, also for tile_is_solid
 function tmap_solid(p)
  local x,y=p.x,p.y
+ --feels like tokens here
  if x<0 or x>tilesw-1 or
     y<0 or y>tilesh-1 
  then
@@ -1424,16 +1325,16 @@ end
 
 
 -- some debug functions
-function drawdebug_reach()
- for i,v in pairs(i2reachable) do
-  p=i2pt(i)
-  local x,y=p.x,p.y
-  if not not v then
-   rectfill2(x*8+2,y*8+2,4,4,0)
-   rectfill2(x*8+3,y*8+3,2,2,11)
-  end
- end
-end
+--function drawdebug_reach()
+-- for i,v in pairs(i2reachable) do
+--  p=i2pt(i)
+--  local x,y=p.x,p.y
+--  if not not v then
+--   rectfill2(x*8+2,y*8+2,4,4,0)
+--   rectfill2(x*8+3,y*8+3,2,2,11)
+--  end
+-- end
+--end
 --function drawdebug_zones()
 -- for i,z in pairs(i2zone) do
 --  p=i2pt(i)
@@ -1486,8 +1387,8 @@ end
 
 --a* pathfinding
 
-global_walkable={}
-global_goal=pt(-100,-100)
+--global_walkable={}
+--global_goal=pt(-100,-100)
 function map_iswall(p)
  if attacking_a_mob then
   if has2(global_walkable,p) then 
@@ -1582,6 +1483,12 @@ function pathfind(start,goal,
  func_nei,
  func_dist)
  
+ 
+ --reset these
+	global_walkable={}
+	global_goal=pt(-100,-100)
+	 
+	 
  if (ptequ(start,goal)) return {}
  
  
