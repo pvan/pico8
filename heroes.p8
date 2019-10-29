@@ -181,6 +181,9 @@ function _init()
 	spawn("gold",8,16)
 	spawn("gold",6,10)
 	
+	--above gold near gobs
+	spawn("gems",7,15)
+	
 	--block grove
 	spawn("ore",22,20)
 --	spawn("mob2",22,20)
@@ -716,7 +719,7 @@ function map_draw()
 	 end
 	 
 	 	 
---	 drawdebug_reach()
+	 drawdebug_reach()
 --	 drawdebug_zones()
 --	 drawdebug_layer(i2danger,8)
 --	 drawdebug_layer(i2hot,11)
@@ -865,12 +868,12 @@ end
 function pt2i(p)
  return bor(p.x,lshr(p.y,16))
 end
---function i2pt(i)
--- local x=band(i,0b1111111111111111)
--- local y=band(i,0b0000000000000000.1111111111111111)
--- y=shl(y,16)
--- return pt(x,y)
---end
+function i2pt(i)
+ local x=band(i,0b1111111111111111)
+ local y=band(i,0b0000000000000000.1111111111111111)
+ y=shl(y,16)
+ return pt(x,y)
+end
 
 
 
@@ -1022,13 +1025,14 @@ function floodfill2(res,p)
  --force any danger zone spot
  --to stop filling (lets us
  --get one square into danger)
- if (g(i2danger,p)) return
+-- if (g(i2danger,p)) return
  
  for d in all(cardinal) do
   local testp=ptadd(p,d)
   if not tile_is_solid(testp) 
-  and g(res,testp)==nil
-  and not g(cp.fog,testp)
+  and g(res,testp)==nil   --dont add duplicate pts
+  and not g(cp.fog,testp) --dont walk through fog
+  and not g(i2danger,testp)  --now dont treat this as reachable
   then
    floodfill2(res,testp)
   end
@@ -1346,16 +1350,16 @@ end
 
 
 -- some debug functions
---function drawdebug_reach()
--- for i,v in pairs(i2reachable) do
---  p=i2pt(i)
---  local x,y=p.x,p.y
---  if not not v then
---   rectfill2(x*8+2,y*8+2,4,4,0)
---   rectfill2(x*8+3,y*8+3,2,2,11)
---  end
--- end
---end
+function drawdebug_reach()
+ for i,v in pairs(i2reachable) do
+  p=i2pt(i)
+  local x,y=p.x,p.y
+  if not not v then
+   rectfill2(x*8+2,y*8+2,4,4,0)
+   rectfill2(x*8+3,y*8+3,2,2,11)
+  end
+ end
+end
 --function drawdebug_zones()
 -- for i,z in pairs(i2zone) do
 --  p=i2pt(i)
@@ -1687,9 +1691,9 @@ end
 --cursor
 
 
-function obj_reachable(obj)
+function pt_adjacent_reach(p)
  for d in all(cardinal) do
-  if g(i2reachable,ptadd(obj,d)) then
+  if g(i2reachable,ptadd(p,d)) then
    return true
   end
  end
@@ -1710,44 +1714,36 @@ function update_move_cursor()
  --later things are higher priority
  
  --first reject any out of zone
- if not g(i2reachable,cur)
- then
+ if not g(i2reachable,cur) then
   style="arrow"
   
   --except allow mobs/heros
   --if adjacent to zone
-  if obj!=nil
-  and obj_reachable(obj)
-  then
+  if obj!=nil then
   
-	  if obj.type=="mob" 
-	  and ptequ(obj,cur)
-	  then
---	   if g(i2reachable,cur) then
---    if objnearzones(obj,selzones) then
---     if pnearzones(cur,selzones)
---     or ptequ(obj,cur)
---     then
-   	  style="attack"
---  	  end
---	   end
+   --mob is special case compared
+   --to hero/treasure below
+	  if obj.type=="mob" then
+	   if ptequ(obj,cur)
+	   or (not tile_is_solid(cur)
+	       and pt_adjacent_reach(cur))
+ 	  then
+   	 style="attack"
+	   end
 	  end
 	  
-	  if obj.type=="hero" 
---	  and objnearzones(obj,selzones)
---	  and obj!=sel
-	  then
- 	  if obj_owner(obj)==cp then
-	    style="trade"
-	   else
-	    style="attack"
- 	  end
- 	 end
-	  
-	  if obj.type=="treasure" 
---	  and objnearzones(obj,selzones)
-	  then
-	   style="hot"
+	  if pt_adjacent_reach(cur) then
+		  if obj.type=="hero" then
+	 	  if obj_owner(obj)==cp then
+		    style="trade"
+		   else
+		    style="attack"
+	 	  end
+	 	 end
+		  
+		  if obj.type=="treasure" then
+		   style="hot"
+		  end
 	  end
 	  
   end
