@@ -4,8 +4,6 @@ __lua__
 
 
 --todo:
---make sure to rebuild zones after picking up items
---try hero_move as flip() style
 --change obj.type to int instead of string index
 --check if do_grid is better as (p) or (x,y)
 --check if do_grid is better as 0,size or -size,size
@@ -422,13 +420,56 @@ function pickup(obj)
 end
     
     
-movespeed=2
 function move_hero()
- if sel.move>0 then
---  del(path,path[1]) --skip square we're on
-  moving=true
-  movingdelay=movespeed
+
+ while sel.move>0 
+ and path[1]!=nil
+ do
+  
+  local p=path[1]
+  local obj=g(mapobj,p)
+	 del(path,p)
+	  
+  --always move if open space
+  if not tile_is_solid(p) then
+			sfx(58,-1,1,1)
+			--token:ptset()?
+			sel.x=p.x
+			sel.y=p.y
+			sel.move-=5
+			if (sel.move<0) sel.move=0
+			--lock cam to hero?
+			cam=copy(sel)
+			update_camera()
+			update_fog()
+  end
+  
+  map_draw()
+  flip()
+  flip()
+  flip()
+ 
+  --special case for obj in p
+  if obj!=nil then
+   if obj.type=="hero" then
+    if obj_owner(obj)==cp then
+	    hero_trade(sel,obj)
+	   else
+     start_battle(sel,obj)
+    end
+   elseif obj.type=="mob" then
+    start_battle(sel,obj)
+   elseif obj.type=="treasure" then
+    pickup(obj)
+   else
+    --add other obj here
+   end
+  end
+  
  end
+ 
+ create_i2tile()
+ 
 end
 
 function update_camera()
@@ -445,58 +486,6 @@ end
 
 function update_map()
   
- 
- if moving then
-  movingdelay-=1
-  if (movingdelay>0) then 
-   return
-  else
-   movingdelay=movespeed
-  end
-  
-  local p=path[1]
-  if sel.move<=0 
-  or p==nil
-  then
-   moving=false
-   --rebuild zones after move!
-		 create_i2tile()
-  else
-   local obj=g(mapobj,p)
-	  del(path,p)
-	  
-   --always move if open space
-   if not tile_is_solid(p) then
-				sfx(58,-1,1,1)
-				--token:ptset()?
-				sel.x=p.x
-				sel.y=p.y
-				sel.move-=5
-				if (sel.move<0) sel.move=0
-				--lock cam to hero?
-				cam=copy(sel)
-				update_camera()
-   end
-  
-	  --special case for obj in p
-	  if obj!=nil then
-	   if obj.type=="hero" then
-	    if obj_owner(obj)==cp then
- 	    hero_trade(sel,obj)
- 	   else
-	     start_battle(sel,obj)
-	    end
-	   elseif obj.type=="mob" then
-	    start_battle(sel,obj)
-	   elseif obj.type=="treasure" then
-	    pickup(obj)
-	   else
-	    --add other obj here
-	   end
-	  end
-	 end
- end
- 
  
  --now using ports for fog too
  update_static_hud()
@@ -753,7 +742,7 @@ function map_draw()
    draw_cur_popup_info()
   end
   
-  --7844
+  
 	 --when switching players
 	 --(so no hidden info revealed)
 	 if blackout then
@@ -2059,7 +2048,7 @@ function end_with_loser(loser)
  
  
  path=nil --var also used in map
- moving=false --todo: better way?
+-- moving=false --todo: better way?
  
  
  --turn these off
