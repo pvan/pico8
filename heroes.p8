@@ -2,6 +2,11 @@ pico-8 cartridge // http://www.pico-8.com
 version 18
 __lua__
 
+--bugs:
+--picking up res next to hero
+--moving into mob aggro space
+--flashing hero over fog of war (just need a full blackout)
+
 
 --todo:
 --make sure to rebuild zones after picking up items
@@ -19,6 +24,7 @@ __lua__
 --castles
 --main menu/level select
 --hero experience
+--spells
 --battle debris / scenery
 --search for todo keyword
 
@@ -190,7 +196,7 @@ function _init()
 	 then
 	  if rnd_bw(1,100)<4 then
 	   r=rnd_bw(1,#resources)
-	   spawn(resources[r],x,y)
+	   spawn(resources[r],p.x,p.y)
 	  end
 	 end
 	end)
