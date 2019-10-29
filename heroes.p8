@@ -439,7 +439,17 @@ function update_camera()
 end
 
 
-
+function sel_steps_to(p)
+ sfx(58,-1,1,1)
+ --token:ptset()?
+ sel.x=p.x
+ sel.y=p.y
+ sel.move-=5
+ if (sel.move<0) sel.move=0
+ --lock cam to hero?
+ cam=copy(sel)
+ update_camera()
+end
 
 function update_map()
 
@@ -450,45 +460,44 @@ function update_map()
   else
    movingdelay=movespeed
   end
+  
   local p=path[1]
   local obj=g(mapobj,p)
   if sel.move>0 then
 	  del(path,p)
-	  if obj!=nil and
-		  (obj.type=="hero" or
-		   obj.type=="mob" or
-		   obj.type=="treasure")
-	  then
+	  if obj!=nil then
+	  
+	   --even if obj, still move
+	   --if space is open (eg hot or danger spot)
+	   if not g(i2col,p) then
+	    sel_steps_to(p)
+	   end
+	   
 	   if obj.type=="hero" then
 	    if obj_owner(obj)==cp then
  	    hero_trade(sel,obj)
  	   else
 	     start_battle(sel,obj)
 	    end
-	   end
-	   if obj.type=="mob" then
+	   elseif obj.type=="mob" then
 	    start_battle(sel,obj)
-	   end
-	   if obj.type=="treasure" then
+	   elseif obj.type=="treasure" then
 	    pickup(obj)
+	   else
+	    --add other obj here
 	   end
+	   
 	  else
- 	  sfx(58,-1,1,1)
- 	  --token:ptset()?
-	   sel.x=p.x
-	   sel.y=p.y
-	   sel.move-=5
-	   if (sel.move<0) sel.move=0
-	   --lock cam to hero?
-	   cam=copy(sel)
-	   update_camera()
+	   --no object in p
+ 	  sel_steps_to(p)
 	  end
+	  
 	  if #path==0 then
 	   moving=false
 	   --rebuild zones after move!
 			 create_i2tile()
 	  end
-	 else
+	 else --out of movement
    moving=false
    --rebuild zones after move!
 		 create_i2tile()
@@ -1791,8 +1800,8 @@ function update_move_cursor()
 	  --or hero in castle
 	  --but not empty enemy castle
 	  if obj_owner(obj)!=cp
+	  and obj.type=="castle"
 	  and #obj.army>0
---	  and obj.type=="castle"
 	  then
 	   style="attack"
 	  end
