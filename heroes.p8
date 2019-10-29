@@ -6,6 +6,8 @@ __lua__
 --picking up res next to hero
 --moving into mob aggro space
 --flashing hero over fog of war (just need a full blackout)
+--check: valid path but thru fog
+--walking thru trees below skel area
 
 
 --todo:
@@ -439,17 +441,6 @@ function update_camera()
 end
 
 
-function sel_steps_to(p)
- sfx(58,-1,1,1)
- --token:ptset()?
- sel.x=p.x
- sel.y=p.y
- sel.move-=5
- if (sel.move<0) sel.move=0
- --lock cam to hero?
- cam=copy(sel)
- update_camera()
-end
 
 function update_map()
 
@@ -462,17 +453,31 @@ function update_map()
   end
   
   local p=path[1]
-  local obj=g(mapobj,p)
-  if sel.move>0 then
+  if sel.move<=0 
+  or p==nil
+  then
+   moving=false
+   --rebuild zones after move!
+		 create_i2tile()
+  else
+   local obj=g(mapobj,p)
 	  del(path,p)
-	  if obj!=nil then
 	  
-	   --even if obj, still move
-	   --if space is open (eg hot or danger spot)
-	   if not g(i2col,p) then
-	    sel_steps_to(p)
-	   end
-	   
+   --always move if open space
+   if not g(i2col,p) then
+				sfx(58,-1,1,1)
+				--token:ptset()?
+				sel.x=p.x
+				sel.y=p.y
+				sel.move-=5
+				if (sel.move<0) sel.move=0
+				--lock cam to hero?
+				cam=copy(sel)
+				update_camera()
+   end
+  
+	  --special case for obj in p
+	  if obj!=nil then
 	   if obj.type=="hero" then
 	    if obj_owner(obj)==cp then
  	    hero_trade(sel,obj)
@@ -486,21 +491,7 @@ function update_map()
 	   else
 	    --add other obj here
 	   end
-	   
-	  else
-	   --no object in p
- 	  sel_steps_to(p)
 	  end
-	  
-	  if #path==0 then
-	   moving=false
-	   --rebuild zones after move!
-			 create_i2tile()
-	  end
-	 else --out of movement
-   moving=false
-   --rebuild zones after move!
-		 create_i2tile()
 	 end
  end
 
