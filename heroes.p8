@@ -4,11 +4,9 @@ __lua__
 
 --bugs:
 --flashing hero over fog of war (just need a full blackout)
---valid path but thru fog (need fix)
 
 
 --todo:
---consider calling create_i2tile in update instead of as needed
 --make sure to rebuild zones after picking up items
 --try hero_move as flip() style
 --change obj.type to int instead of string index
@@ -100,6 +98,11 @@ function set_player(p)
   },{
    close_dialog
   })
+  
+ --a bit awkward, but we need
+ --to update fog before tiles
+ update_fog()
+ create_i2tile()
   
 end
 
@@ -442,7 +445,8 @@ end
 
 
 function update_map()
-
+  
+ 
  if moving then
   movingdelay-=1
   if (movingdelay>0) then 
@@ -493,36 +497,14 @@ function update_map()
 	  end
 	 end
  end
-
-
+ 
+ 
  --now using ports for fog too
  update_static_hud()
  
- 
- --udpate fog of war
- for thing in all(ports) do
-  --token: something like this?
-  --(if int index, might work)
---  sizes.castle=5
---  sizes.hero=4
---  size=sizes[thing.type]
-
-  local size=4
-  if thing.type=="castle" then
-   size=5
-  end
- 
-  do_grid(size*2,function(p)
-   ptinc(p,pt(-size,-size))
-   if abs(p.x)+abs(p.y)<size*2-1 then
-    s(cp.fog,
-     ptadd(p,thing),
-     false)
-   end
-  end)
-  
- end
- 
+ --note relies on ports
+ --from update_static_hud()
+ update_fog()
  
  
  --open/close menu
@@ -551,6 +533,40 @@ function update_map()
   update_map_cursor()
  end
  
+ 
+end
+
+
+--ideally this doesn't need
+--to be a function, but for
+--now just calling it before
+--create_i2tile when setting player
+--since create_i2 needs updated fog
+function update_fog()
+
+ --update fog of war
+ for thing in all(ports) do
+  --token: something like this?
+  --(if int index, might work)
+--  sizes.castle=5
+--  sizes.hero=4
+--  size=sizes[thing.type]
+
+  local size=4
+  if thing.type=="castle" then
+   size=5
+  end
+ 
+  do_grid(size*2,function(p)
+   ptinc(p,pt(-size,-size))
+   if abs(p.x)+abs(p.y)<size*2-1 then
+    s(cp.fog,
+     ptadd(p,thing),
+     false)
+   end
+  end)
+  
+ end
  
 end
 
@@ -775,6 +791,9 @@ function _draw()
  
 	 
 	draw_dialog()
+	
+	--cpu
+--	print(stat(1),0,64)
  
 end
 
@@ -994,7 +1013,8 @@ tilesw=32
 tilesh=32
 
 
-
+--used for creating valid
+--reachable spots for pathfinding
 function floodfill2(res,p)
 
  s(res,p,true)
@@ -1008,6 +1028,7 @@ function floodfill2(res,p)
   local testp=ptadd(p,d)
   if not tile_is_solid(testp) 
   and g(res,testp)==nil
+  and not g(cp.fog,testp)
   then
    floodfill2(res,testp)
   end
