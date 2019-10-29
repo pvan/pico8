@@ -703,10 +703,11 @@ function map_draw()
 	 end
 	 
 	 	 
-	 drawdebug_zones()
+	 drawdebug_reach()
+--	 drawdebug_zones()
 --	 drawdebug_layer(i2danger,8)
 --	 drawdebug_layer(i2hot,11)
-	 drawdebug_layer(i2col,10)
+--	 drawdebug_layer(i2col,10)
 	 
 	 --7985
 	 --fog only inside borders
@@ -776,7 +777,6 @@ function _draw()
  
 	 
 	draw_dialog()
-	
  
 end
 
@@ -994,83 +994,100 @@ end
 --size of world
 tilesw=32
 tilesh=32
-worldw=(tilesw-1)*8
-worldh=(tilesh-1)*8
+--worldw=(tilesw-1)*8
+--worldh=(tilesh-1)*8
+--worldborder=8
 
-worldborder=8
 
+----returns if tile p
+----is adjacent to any zone in zones
+--function pnearzones(p,zones)
+-- for z in all(zones) do
+--  for d in all(cardinal) do
+--   if g(i2zone,ptadd(p,d))==z
+--   then return true end
+--  end
+-- end
+-- return false 
+--end
 
---returns if tile p
---is adjacent to any zone in zones
-function pnearzones(p,zones)
- for z in all(zones) do
-  for d in all(cardinal) do
-   if g(i2zone,ptadd(p,d))==z
-   then return true end
+----returns if any part of obj col
+----is adjacent to any zone in zones
+--function objnearzones(obj,zones)
+-- local ozones=objzones(obj)
+-- for z in all(zones) do
+--  if (has(ozones,z)) return true
+-- end
+-- 
+-- local c=obj.col
+-- for cx=0,c[3]-1 do
+--  for cy=0,c[4]-1 do
+--   local x=obj.x+c[1]+cx
+--   local y=obj.y+c[2]+cy
+--   local p=pt(x,y)
+--   if not tile_is_solid(p) then
+--    if pnearzones(p,zones) then
+--     return true
+--    end
+--   end
+--  end
+-- end
+-- return false
+--end
+
+--function ok_to_zone(res,p)
+-- local i=pt2i(p)
+-- return res[i]==nil and
+--        not tile_is_solid(p) and
+--        not i2danger[i]
+--end
+--function floodfill(res,p,v)
+-- if (not ok_to_zone(res,p)) return
+-- s(res,p,v)
+-- for d in all(cardinal) do
+--  floodfill(res,ptadd(p,d),v)
+-- end
+--end
+
+function floodfill2(res,p)
+
+ s(res,p,true)
+ 
+ --don't add neighbors if
+ --adjacent to enemy mob
+ if (g(i2danger,p)) return
+ 
+ for d in all(cardinal) do
+  local testp=ptadd(p,d)
+  if not tile_is_solid(testp) 
+  and g(res,testp)==nil
+  then
+   floodfill2(res,testp)
   end
  end
- return false 
-end
-
---returns if any part of obj col
---is adjacent to any zone in zones
-function objnearzones(obj,zones)
- local ozones=objzones(obj)
- for z in all(zones) do
-  if (has(ozones,z)) return true
- end
- 
- local c=obj.col
- for cx=0,c[3]-1 do
-  for cy=0,c[4]-1 do
-   local x=obj.x+c[1]+cx
-   local y=obj.y+c[2]+cy
-   local p=pt(x,y)
-   if not tile_is_solid(p) then
-    if pnearzones(p,zones) then
-     return true
-    end
-   end
-  end
- end
- return false
-end
-
-function ok_to_zone(res,p)
- local i=pt2i(p)
- return res[i]==nil and
-        not tile_is_solid(p) and
-        not i2danger[i]
-end
-function floodfill(res,p,v)
- if (not ok_to_zone(res,p)) return
- s(res,p,v)
- for d in all(cardinal) do
-  floodfill(res,ptadd(p,d),v)
- end
 end
 
 
---return all zones adjacent 
---to obj base x,y position
---(basically just for heroes atm)
-function objzones(obj)
- if (obj==nil) return {}
- 
- local res={}
- for d in all(cardinal) do
-  local z=g(i2zone,ptadd(obj,d))
-  if z!=nil and not has(res,z)
-   then add(res,z) end
- end
-  
- --add zone of hero too
- local z=g(i2zone,obj)
- if z!=nil and not has(res,z)
-  then add(res,z) end
- 
- return res
-end
+----return all zones adjacent 
+----to obj base x,y position
+----(basically just for heroes atm)
+--function objzones(obj)
+-- if (obj==nil) return {}
+-- 
+-- local res={}
+-- for d in all(cardinal) do
+--  local z=g(i2zone,ptadd(obj,d))
+--  if z!=nil and not has(res,z)
+--   then add(res,z) end
+-- end
+--  
+-- --add zone of hero too
+-- local z=g(i2zone,obj)
+-- if z!=nil and not has(res,z)
+--  then add(res,z) end
+-- 
+-- return res
+--end
 
 
 
@@ -1141,30 +1158,42 @@ function create_i2tile()
  end
  
  
- --create i2zone
+ --create reachable zone
+ --(for selected object)
  
- i2zone={}
- zonecount=10
+ --valid for selected hero only
+ --need check if sel nil here?
+ i2reachable={}
+ --fill empty space
+ --(stops if spot adjacent to enemy)
+ floodfill2(i2reachable,sel)
+ --fill in obj adjacent to 
+ --each spot 
  
- do_grid(tilesw-1,function(p)
-  if ok_to_zone(i2zone,p) then
-   --start new region (floodfill it)
-   floodfill(i2zone,p,zonecount)
-   zonecount+=1
-  end
- end)
- 
- --make each hero their own zone too
- --but only if surrounded
- --(to fix edge case bug)
- for plr in all(plrs) do
-  for h in all(plr.heroes) do
-	  if #objzones(h)==0 then
- 		 s(i2zone,h,zonecount)
-    zonecount+=1
-   end
-  end
- end
+
+-- --8107
+-- i2zone={}
+-- zonecount=10
+-- 
+-- do_grid(tilesw-1,function(p)
+--  if ok_to_zone(i2zone,p) then
+--   --start new region (floodfill it)
+--   floodfill(i2zone,p,zonecount)
+--   zonecount+=1
+--  end
+-- end)
+-- 
+-- --make each hero their own zone too
+-- --but only if surrounded
+-- --(to fix edge case bug)
+-- for plr in all(plrs) do
+--  for h in all(plr.heroes) do
+--	  if #objzones(h)==0 then
+-- 		 s(i2zone,h,zonecount)
+--    zonecount+=1
+--   end
+--  end
+-- end
  
 end
 
@@ -1395,23 +1424,32 @@ end
 
 
 -- some debug functions
-
-function drawdebug_zones()
- for i,z in pairs(i2zone) do
+function drawdebug_reach()
+ for i,v in pairs(i2reachable) do
   p=i2pt(i)
   local x,y=p.x,p.y
-  rectfill2(x*8+2,y*8+2,4,4,0)
-  rectfill2(x*8+3,y*8+3,2,2,z)
+  if not not v then
+   rectfill2(x*8+2,y*8+2,4,4,0)
+   rectfill2(x*8+3,y*8+3,2,2,11)
+  end
  end
 end
-----for i2xxx arrays
-function drawdebug_layer(lyr,c)
- for k,v in pairs(lyr) do
-  p=i2pt(k)
-  local x,y=p.x,p.y
-  rect2(x*8+1,y*8+1,6,6,c)
- end
-end
+--function drawdebug_zones()
+-- for i,z in pairs(i2zone) do
+--  p=i2pt(i)
+--  local x,y=p.x,p.y
+--  rectfill2(x*8+2,y*8+2,4,4,0)
+--  rectfill2(x*8+3,y*8+3,2,2,z)
+-- end
+--end
+------for i2xxx arrays
+--function drawdebug_layer(lyr,c)
+-- for k,v in pairs(lyr) do
+--  p=i2pt(k)
+--  local x,y=p.x,p.y
+--  rect2(x*8+1,y*8+1,6,6,c)
+-- end
+--end
 --function drawdebug_tilecol()
 -- for x=0,tilesw-1 do
 --  for y=0,tilesh-1 do
@@ -1534,7 +1572,7 @@ function s(arr,p,val)
 end
 
 
---input: pt(x,y) tile indices
+--input: pt(x,y) tile positions
 --returns: path as list of pts
 --caller should check for failure
 --by checking if path=={}
@@ -1721,13 +1759,21 @@ end
 --cursor
 
 
+function obj_reachable(obj)
+ for d in all(cardinal) do
+  if g(i2reachable,ptadd(obj,d)) then
+   return true
+  end
+ end
+ return false
+end
 
 
 function update_move_cursor()
  local obj=g(mapobj,cur)
- local selzones=objzones(sel)
+-- local selzones=objzones(sel)
  
- 
+ --tokens: just set directly
  cur_obj=obj
 -- set_obj_for_popup(obj)
  
@@ -1736,28 +1782,32 @@ function update_move_cursor()
  --later things are higher priority
  
  --first reject any out of zone
- if not has(selzones,
-            g(i2zone,cur)) 
+ if not g(i2reachable,cur)
  then
   style="arrow"
   
   --except allow mobs/heros
   --if adjacent to zone
-  if obj!=nil then
+  if obj!=nil
+  and obj_reachable(obj)
+  then
   
-	  if obj.type=="mob" then
-    if objnearzones(obj,selzones) then
-     if pnearzones(cur,selzones)
-     or ptequ(obj,cur)
-     then
+	  if obj.type=="mob" 
+	  and ptequ(obj,cur)
+	  then
+--	   if g(i2reachable,cur) then
+--    if objnearzones(obj,selzones) then
+--     if pnearzones(cur,selzones)
+--     or ptequ(obj,cur)
+--     then
    	  style="attack"
-  	  end
-	   end
+--  	  end
+--	   end
 	  end
 	  
 	  if obj.type=="hero" 
-	  and objnearzones(obj,selzones)
-	  and obj!=sel
+--	  and objnearzones(obj,selzones)
+--	  and obj!=sel
 	  then
  	  if obj_owner(obj)==cp then
 	    style="trade"
@@ -1767,7 +1817,7 @@ function update_move_cursor()
  	 end
 	  
 	  if obj.type=="treasure" 
-	  and objnearzones(obj,selzones)
+--	  and objnearzones(obj,selzones)
 	  then
 	   style="hot"
 	  end
@@ -1779,14 +1829,20 @@ function update_move_cursor()
   --default to walkable
   style="horse"
   
-  if tile_is_solid(cur) then
-   style="arrow"
-  end
+  --solid shouldn't be in reachable
+--  if tile_is_solid(cur) then
+--   style="arrow"
+--  end
   
   --object, but what kind?
   if obj!=nil then
 	  if g(i2hot,cur) then
 	   style="hot"
+	  end
+	  
+	  --mob danger area
+	  if obj.type=="mob" then
+	   style="attack"
 	  end
 	  
 	  --enemy castle
@@ -3059,6 +3115,8 @@ function select(obj)
 	 cam=copy(cur)
  end
  lsel=sel
+ 
+ create_i2tile()
 end
 
 
