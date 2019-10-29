@@ -2,9 +2,6 @@ pico-8 cartridge // http://www.pico-8.com
 version 18
 __lua__
 
---bugs:
---flashing hero over fog of war (just need a full blackout)
-
 
 --todo:
 --make sure to rebuild zones after picking up items
@@ -13,7 +10,6 @@ __lua__
 --check if do_grid is better as (p) or (x,y)
 --check if do_grid is better as 0,size or -size,size
 --no fog on borders is cannon, but some problems:
---  blackout needs revisiton
 --  sprites that overlap border
 --  (is it just best to switch back to fog over border??)
 
@@ -719,37 +715,21 @@ function map_draw()
 	 end
 	 
 	 	 
-	 drawdebug_reach()
+--	 drawdebug_reach()
 --	 drawdebug_zones()
 --	 drawdebug_layer(i2danger,8)
 --	 drawdebug_layer(i2hot,11)
 --	 drawdebug_layer(i2col,10)
 	 
 	 
-	 --7985
+	 
 	 --fog only inside borders
   do_grid(tilesw-1,function(p)
-   if blackout
-   or g(cp.fog,p)
-   then
-	   palt(0,false)
-	   spr(121,p.x*8,p.y*8)
-	   palt(0,true)
+   if g(cp.fog,p) then
+	   drw_bspr(121,p)
    end
 	 end)
 	 
---	 --7997
---	 --fog over the 16 screen tiles
---  do_grid(16,function(pin)
---   p=ptadd(ptadd(pin,cam),pt(-8,-8))
---   if blackout
---   or g(cp.fog,p)
---   then
---	   palt(0,false)
---	   spr(121,p.x*8,p.y*8)
---	   palt(0,true)
---   end
---	 end)
 	 
 	 
 	 if not hud_menu_open then
@@ -772,6 +752,16 @@ function map_draw()
   if not hud_menu_open then
    draw_cur_popup_info()
   end
+  
+  --7844
+	 --when switching players
+	 --(so no hidden info revealed)
+	 if blackout then
+	  do_grid(16,function(p)
+	   drw_bspr(121,p)
+		 end)
+		end
+	 
  	
 -- 	print("cpu "..stat(1),0,64,0)
  	
@@ -1006,6 +996,20 @@ function do_grid(size,f)
   end
  end
 end
+
+
+
+
+--draw sprite id at tile pos p
+--with black color visible
+function drw_bspr(id,p)
+-- palt(0,not binvis)
+ palt(0,false)
+ spr(id,p.x*8,p.y*8)
+ palt(0,true)
+end
+
+
 -->8
 --overworld/pathfinding/cursor
 
