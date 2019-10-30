@@ -7,6 +7,7 @@ __lua__
 --change obj.type to int instead of string index
 --tile spr func? (with mirror?)
 --flash of overworld (just tiles and border) after movement (sometimes)
+--path not showing for adajacent moves?? (and diag too sometimes?)
 
 
 --big todos:
@@ -419,8 +420,9 @@ end
     
 function move_hero()
 
- while sel.move>0 
- and path[1]!=nil
+ while sel.move>0
+-- and path[1]!=nil
+ and #path>0
  do
   
   local p=path[1]
@@ -682,7 +684,7 @@ function map_draw()
 	 
 	 --draw path
 	 --tokens? change nx,dx to pts?
-	 if path!=nil and #path>1 then
+	 if path!=nil and #path>0 then
 	  lx,ly=sel.x,sel.y
 		 for i=1,#path do
 		  nx,ny=path[i].x,path[i].y
