@@ -8,7 +8,6 @@ __lua__
 ---moving to second object seems to skip a space?
 ---crash on testhouse (and probably anything with a hotspot)
 ---if battle, will jump to next player's turn before done
----hide path on ai's turn (leave for debugging though?)
 --also needs a number of improvements:
 ---need to use last player's fog of war for visibility
 ---and hide movement if not visible
@@ -800,7 +799,9 @@ function map_draw()
 	 --draw path
 	 --7861 (both ways)
 	 --tokens? change nx,dx to pts?
-	 if path!=nil and #path>0 then
+	 if path!=nil and #path>0 
+	 and not cp.ai --turn off to see ai path
+	 then
 --	  lx,ly=sel.x,sel.y
 	  local l=copy(sel)
 		 for i=1,#path do
