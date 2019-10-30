@@ -7,7 +7,6 @@ __lua__
 --change obj.type to int instead of string index
 --tile spr func? (with mirror?)
 --flash of overworld (just tiles and border) after movement (sometimes)
---path not showing for adajacent moves?? (and diag too sometimes?)
 
 
 --big todos:
@@ -683,12 +682,15 @@ function map_draw()
 	 
 	 
 	 --draw path
+	 --7861 (both ways)
 	 --tokens? change nx,dx to pts?
 	 if path!=nil and #path>0 then
-	  lx,ly=sel.x,sel.y
+--	  lx,ly=sel.x,sel.y
+	  local l=copy(sel)
 		 for i=1,#path do
-		  nx,ny=path[i].x,path[i].y
-		  dx,dy=nx-lx,ny-ly
+--		  nx,ny=path[i].x,path[i].y
+		  local n=copy(path[i])
+		  local dx,dy=n.x-l.x,n.y-l.y
 		  if dx==0 then
 		   if (dy<0) sprt=144 yflip=false
 		   if (dy>0) sprt=144 yflip=true
@@ -697,8 +699,9 @@ function map_draw()
 		   if (dx>0) sprt=160 xflip=true
 		  end
 		  if (i==#path) sprt=128
-	 	 spr(sprt,nx*8,ny*8,1,1,xflip,yflip)
-		  lx,ly=nx,ny
+	 	 spr(sprt,n.x*8,n.y*8,1,1,xflip,yflip)
+--		  lx,ly=nx,ny
+    l=copy(sel)
 		 end
 	 end
 	 
