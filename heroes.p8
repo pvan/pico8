@@ -5,11 +5,8 @@ __lua__
 
 --todo:
 --change obj.type to int instead of string index
---check if do_grid is better as (p) or (x,y)
---check if do_grid is better as 0,size or -size,size
---no fog on borders is cannon, but some problems:
---  sprites that overlap border
---  (is it just best to switch back to fog over border??)
+--tile spr func? (with mirror?)
+--flash of overworld (just tiles and border) after movement (sometimes)
 
 
 --big todos:
@@ -440,7 +437,7 @@ function move_hero()
 			if (sel.move<0) sel.move=0
 			--lock cam to hero?
 			cam=copy(sel)
-			update_camera()
+			limit_camera()
 			update_fog()
   end
   
@@ -472,7 +469,7 @@ function move_hero()
  
 end
 
-function update_camera()
+function limit_camera()
  --tokens: common limit func?
  cam.x=mid(cam.x,
            cur.x-4,
@@ -568,7 +565,7 @@ function update_map_cursor()
   0,tilesh-1)
  
  
- update_camera()
+ limit_camera()
  
  if not g(cp.fog,cur) then
 	 if sel!=nil
@@ -718,6 +715,13 @@ function map_draw()
 	   drw_bspr(121,p)
    end
 	 end)
+	 
+	 --hack to cover up sprs that
+	 --flood over into border but
+	 --are hidden behind fog of war
+	 for x=0,tilesw do
+	  
+	 end
 	 
 	 
 	 
@@ -973,7 +977,6 @@ function ms(name,count)
 end
 
 
---8010
 --a bit of a convoluted way
 --to save a few tokens
 --when iterating over an area
@@ -1207,6 +1210,8 @@ function del_obj(obj)
 end
 
 function obj_owner(obj)
+ --tokens: just check both always
+ --check ports somehow instead?
  if obj.type=="hero" then
 	 for plr in all(plrs) do
 	  if has(plr.heroes,obj) then
@@ -1238,7 +1243,23 @@ function sort_by_y(t)
   end
  end
 end
-function draw_things()
+
+
+function draw_overworld()
+
+
+ --border around world
+ cls(13)
+ rect(-1,-1,tilesw*8,tilesh*8,1)
+ rect(-2,-2,tilesw*8+1,tilesh*8+1,1)
+
+ 
+ map(0,0, 0,0 ,32,32)
+ 
+ 
+ 
+ --draw_things()--
+ 
  sort_by_y(things)
  --tokens: this seems like it could be simplified?
  for i in all(things) do
@@ -1248,19 +1269,44 @@ function draw_things()
    sprt=res_spr(i.subtype)
   end
   
+  --prevent bleeding into border
+  --if pos is covered by fog
+  --todo: is pos enough to check?
+  if g(cp.fog,i) then
+   --note clip isn't affected by
+   --camear(), so we have to 
+   --awkwardly offset it ourselves
+   
+   --tokens: this one call is 36 (32 now)
+   --(try tl cam pos again? would only save 4 tokens?)
+   --(try tl cam in real x,y? would save 12)
+   --7866
+--   clip(-cam.x*8+64,
+--        -cam.y*8+64,
+--        tilesw*8-cam.x*8+64,
+--        tilesh*8-cam.x*8+64)
+   
+   --7862
+   local xof=-cam.x*8+64
+   local yof=-cam.y*8+64
+   clip(xof,
+        yof,
+        tilesw*8+xof,
+        tilesh*8+yof)
+  end
+  
   spr(sprt,
       i.x*8+i.sprx,
       i.y*8+i.spry,
       i.sprw,i.sprh)
       
-  --flash border of selected
+  --flash edge of selected
   if ptequ(sel,i) then
    flashcols={1,1,1,13,12,13}
    pal(1,flashcols[flash(#flashcols)])
   end
       
   if i.type=="hero" then
-  
    local c=obj_owner(i).color
    pal(8,c)
    spr(228,
@@ -1277,7 +1323,6 @@ function draw_things()
 	      i.x*8+i.sprx,
 	      i.y*8+i.spry,
 	      i.sprw,i.sprh)
-   
   end
   
   if i.type=="castle" then
@@ -1293,49 +1338,10 @@ function draw_things()
    pal(8,8)
   end
   
-  --reset border hl
-  pal()
-   
+  pal()  --reset spr edge hl
+  clip() --reset border fog clip
  end
-end
-
-
-
-function draw_overworld()
-
- cls(13)
- rect(-1,-1,tilesw*8,tilesh*8,1)
- rect(-2,-2,tilesw*8+1,tilesh*8+1,1)
--- for x=camx,camx+128,8 do
---  for y=camy,camy+128,8 do
---   if x<0 or x>128 or
---      y<0 or y>128 
---   then
---    spr(112,x,y)
---   end
---  end
--- end
  
--- --border around world
--- --(see worldborder)
--- for x=0,tilesw-1 do
---  spr(97, x*8, -8)
---  spr(97, x*8, worldh+8)
--- end
--- for y=0,tilesh-1 do
---  spr(96, -8, y*8)
---  spr(96, worldw+8, y*8)
--- end
--- spr(64, -8,-8)
--- spr(65, worldw+8,-8)
--- spr(80, -8,worldh+8)
--- spr(81, worldw+8,worldh+8)
-
-
- 
- map(0,0, 0,0 ,32,32)
- 
- draw_things()
 
 end
 
