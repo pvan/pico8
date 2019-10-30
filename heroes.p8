@@ -3,10 +3,27 @@ version 18
 __lua__
 
 
+--player ai todos:
+--rather buggy:
+---moving to second object seems to skip a space?
+---crash on testhouse (and probably anything with a hotspot)
+---if battle, will jump to next player's turn before done
+--also needs a number of improvements:
+---need to use last player's fog of war for visibility
+---and hide movement if not visible
+---hide battles without a player involved
+---when nothing to pickup, move to spot at edge of fog
+---(move to spot that reveals the most fog? towards enemies?)
+---don't move to mines (etc) already owned
+---only battle if ai thinks it can win
+---evaluate when to pickup units and how to distribute them
+    
+
 --todo:
 --change obj.type to int instead of string index
 --tile spr func? (with mirror?)
---flash of overworld (just tiles and border) after movement (sometimes)
+--flash of overworld (just tiles and border) after movement (sometimes) (related to flip() method?)
+--when full map revealed, creating reachable is too slow to do every frame (done when menu open bc port gets reselected every frame)
 
 
 --big todos:
@@ -81,19 +98,89 @@ function set_player(p)
  hud_menu_open=false
  actl_menu_y=0
  
- blackout=true
+-- blackout=true
 
+  
+ --a bit awkward, but we need
+ --to update fog before tiles
+ update_fog()
+ create_i2tile()
+ 
+
+ if cp.ai then
+  
+  --basic ai value function
+  --combine with battle?
+  ltarget=nil
+  for h in all(cp.heroes) do
+   while h.move>0 do
+   
+    --find new target
+		  local min_dist=0x7fff --max signed int
+		  local target=nil
+	   for t in all(things) do
+	    if not ptequ(h,t) 
+	    and t.type!="castle"
+	    and not g(cp.fog,t)
+	    and t!=ltarget
+	    then
+		    --todo: eval targets by value
+		    --todo: euclidean dist?
+		    local dist=map_dist(h,t)
+		    if dist<min_dist then
+		     min_dist=dist
+		     target=t
+		    end
+	    end
+	   end
+	   if target==nil then
+--	    cls()
+--	    stop("no target?")
+     visible={}
+     do_grid(tilesw,function(p)
+      if not g(cp.fog,p) then
+       add(visible,p)
+      end
+     end)
+     target=visible[
+      rnd_bw(1,#visible)]
+	   end
+	   
+	   if target==ltarget then
+	    cls()
+	    stop("same target?")
+	   end
+	   ltarget=target
+	   
+	   --move towards new target
+	   sel=h
+	   create_path(target)
+	   if #path<1 then
+	    cls()
+	    stop(target.type)
+	   end
+	   move_hero()
+	   
+	  end
+  end
+  
+  --bug:
+  --don't do this if we're
+  --in a battle with player,
+  --until the battle is over
+  end_turn()
+  
+ end
+ 
+ 
+ --player controlled turn
+ 
  open_dialog({
    colorstrings[cp.color].." player's turn",
    "   ok"
   },{
    close_dialog
   })
-  
- --a bit awkward, but we need
- --to update fog before tiles
- update_fog()
- create_i2tile()
   
 end
 
@@ -130,6 +217,8 @@ function _init()
  red_plr=create_player(8)
  green_plr=create_player(11)
  blue_plr=create_player(12)
+ 
+ green_plr.ai=true
  
  plrs={
   red_plr,
@@ -229,6 +318,7 @@ function create_player(c)
  do_grid(tilesw+30,function(p)
   ptinc(p,pt(-15,-15))
   s(res.fog,p,true)
+--  s(res.fog,p,false)
  end)
    
  return res
@@ -446,11 +536,15 @@ function move_hero()
   flip()
   flip()
   flip()
+  flip()--go slow for testing ai
+  flip()
+  flip()
  
   --special case for obj in p
   if obj!=nil then
    if obj.type=="hero" then
     if obj_owner(obj)==cp then
+     --todo: ai support for trade?
 	    hero_trade(sel,obj)
 	   else
      start_battle(sel,obj)
@@ -609,32 +703,37 @@ function update_map_cursor()
   if sel.movep!=nil then
    if not ptequ(sel.movep,lselmv)
    then
-    --token
-    --todo: need copies or 
-    --can we just pass raw pts?
-    --i think raw points
-	   p1=copy(sel)
-	   p2=copy(sel.movep)
-	   targ=g(mapobj,p2)
-	   ignore=nil
-	   if targ!=nil and
-	      (targ.type=="mob" or
- 	      targ.type=="hero" or
- 	      targ.type=="treasure")
-	   then
-	    ignore=targ
-	   end
-	   path=pathfind(
-	    p1,
-	    p2,
-	    ignore,
-	    map_neighbors,
-	    map_dist)
-	   del(path,path[1])
+    create_path(sel.movep)
    end
   end
 	 lselmv=copy(sel.movep)
  end
+end
+
+
+function create_path(p)
+ --token
+ --todo: need copies or 
+ --can we just pass raw pts?
+ --i think raw points
+-- p1=copy(sel)
+-- p2=copy(p)
+ targ=g(mapobj,p)
+ ignore=nil
+ if targ!=nil and
+    (targ.type=="mob" or
+     targ.type=="hero" or
+     targ.type=="treasure")
+ then
+  ignore=targ
+ end
+ path=pathfind(
+  sel,
+  p,
+  ignore,
+  map_neighbors,
+  map_dist)
+ del(path,path[1])
 end
 
 
@@ -720,14 +819,6 @@ function map_draw()
 	   drw_bspr(121,p)
    end
 	 end)
-	 
-	 --hack to cover up sprs that
-	 --flood over into border but
-	 --are hidden behind fog of war
-	 for x=0,tilesw do
-	  
-	 end
-	 
 	 
 	 
 	 if not hud_menu_open then
@@ -856,12 +947,12 @@ end
 function pt2i(p)
  return bor(p.x,lshr(p.y,16))
 end
-function i2pt(i)
- local x=band(i,0b1111111111111111)
- local y=band(i,0b0000000000000000.1111111111111111)
- y=shl(y,16)
- return pt(x,y)
-end
+--function i2pt(i)
+-- local x=band(i,0b1111111111111111)
+-- local y=band(i,0b0000000000000000.1111111111111111)
+-- y=shl(y,16)
+-- return pt(x,y)
+--end
 
 
 
@@ -1346,7 +1437,6 @@ function draw_overworld()
   pal()  --reset spr edge hl
   clip() --reset border fog clip
  end
- 
 
 end
 
@@ -1354,16 +1444,16 @@ end
 
 
 -- some debug functions
-function drawdebug_reach()
- for i,v in pairs(i2reachable) do
-  p=i2pt(i)
-  local x,y=p.x,p.y
-  if not not v then
-   rectfill2(x*8+2,y*8+2,4,4,0)
-   rectfill2(x*8+3,y*8+3,2,2,11)
-  end
- end
-end
+--function drawdebug_reach()
+-- for i,v in pairs(i2reachable) do
+--  p=i2pt(i)
+--  local x,y=p.x,p.y
+--  if not not v then
+--   rectfill2(x*8+2,y*8+2,4,4,0)
+--   rectfill2(x*8+3,y*8+3,2,2,11)
+--  end
+-- end
+--end
 --function drawdebug_zones()
 -- for i,z in pairs(i2zone) do
 --  p=i2pt(i)
