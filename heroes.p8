@@ -8,11 +8,12 @@ __lua__
 ---moving to second object seems to skip a space?
 ---crash on testhouse (and probably anything with a hotspot)
 ---if battle, will jump to next player's turn before done
+---hide path/cursor on ai's turn (leave for debugging though?)
 --also needs a number of improvements:
 ---need to use last player's fog of war for visibility
 ---and hide movement if not visible
 ---hide battles without a player involved
----when nothing to pickup, move to spot at edge of fog
+---when nothing to pickup and no fog, figure out a new target
 ---(move to spot that reveals the most fog? towards enemies?)
 ---don't move to mines (etc) already owned
 ---only battle if ai thinks it can win
@@ -133,13 +134,22 @@ function set_player(p)
 		    end
 	    end
 	   end
+	   
+	   --random if nothing to grab
 	   if target==nil then
 --	    cls()
 --	    stop("no target?")
      visible={}
      do_grid(tilesw,function(p)
       if not g(cp.fog,p) then
-       add(visible,p)
+       --only use spots adjacent to fog
+       --todo: if no fog, need new method
+       for d in all(cardinal) do
+        if g(cp.fog,ptadd(p,d)) then
+         add(visible,p)
+         break
+        end
+       end
       end
      end)
      target=visible[
@@ -156,6 +166,10 @@ function set_player(p)
 	   sel=h
 	   create_path(target)
 	   if #path<1 then
+	    --not sure why we get here
+	    --sometimes...
+	    --sometimes nil
+	    --sometimes testhouse(hot spot issue?)
 	    cls()
 	    stop(target.type)
 	   end
