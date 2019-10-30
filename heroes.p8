@@ -8,7 +8,7 @@ __lua__
 ---moving to second object seems to skip a space?
 ---crash on testhouse (and probably anything with a hotspot)
 ---if battle, will jump to next player's turn before done
----hide path/cursor on ai's turn (leave for debugging though?)
+---hide path on ai's turn (leave for debugging though?)
 --also needs a number of improvements:
 ---need to use last player's fog of war for visibility
 ---and hide movement if not visible
@@ -579,6 +579,9 @@ function move_hero()
 end
 
 function limit_camera()
+ 
+ if (cp.ai) cur=copy(sel)
+ 
  --tokens: common limit func?
  cam.x=mid(cam.x,
            cur.x-4,
@@ -833,6 +836,10 @@ function map_draw()
 	   drw_bspr(121,p)
    end
 	 end)
+	 
+	 
+	 --the rest is for player's only?
+	 if (cp.ai) return
 	 
 	 
 	 if not hud_menu_open then
