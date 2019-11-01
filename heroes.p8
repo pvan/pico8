@@ -706,14 +706,24 @@ function update_map_cursor()
 -- if lselmv==nil then
 --  lselmv=pt(999,999)
 -- end
+-- --7935
+-- if sel!=nil then
+--  if sel.movep!=nil then
+--   if not ptequ(sel.movep,lselmv)
+--   then
+--    create_path(sel.movep)
+--   end
+--  end
+--	 lselmv=copy(sel.movep)
+-- end
+ --7931
  if sel!=nil then
-  if sel.movep!=nil then
-   if not ptequ(sel.movep,lselmv)
-   then
-    create_path(sel.movep)
-   end
+  if not ptequ(sel.movep,
+               path[#path])
+  and sel.movep!=nil
+  then
+   create_path(sel.movep)
   end
-	 lselmv=copy(sel.movep)
  end
 end
 
