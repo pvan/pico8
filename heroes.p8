@@ -329,8 +329,8 @@ function create_player(c)
  res.fog={}
  do_grid(tilesw+30,function(p)
   ptinc(p,pt(-15,-15))
-  s(res.fog,p,true)
---  s(res.fog,p,false)
+--  s(res.fog,p,true)
+  s(res.fog,p,false)
  end)
    
  return res
@@ -3151,6 +3151,11 @@ end
 
 lsel="no obj"
 function select(obj)
+
+ --fix slowdown from hud menu 
+ --calling this every frame
+ if (sel==obj) return
+ 
  sel=obj
  if (obj==nil) return
  if sel!=lsel then
@@ -3159,6 +3164,7 @@ function select(obj)
 	  cur.y+=1
 	 end
 	 cam=copy(cur)
+	 frame=15--reset flash (start on highlight)
  end
  lsel=sel
  
@@ -3429,10 +3435,10 @@ end
 
 
 
+--token: combine these?
 function flashamt()
- return flash(2,5)-1
+ return flash(2)-1
 end
-
 --counts from 1 to amt, change every f frames
 function flash(amt,f)
  f = f or 5 --default value
