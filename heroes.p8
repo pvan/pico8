@@ -273,6 +273,9 @@ function _init()
 	spawn("gold",6,10)
 	
 	--above gold near gobs
+	spawn("mercury",3,6)
+	
+	--above gold near gobs
 	spawn("gems",7,15)
 	
 	--block grove
@@ -1167,37 +1170,42 @@ function create_i2tile()
     is_hotspot=
       x==it.x+it.hot[1] and 
       y==it.y+it.hot[2] 
-      
-    --map of objects
-    s(mapobj,p,it)
-      
+    
+    
     --map of hot spots
     if is_hotspot then
      i2hot[i]=true
     end
     
-    --set all as solid col
-    --except hot spot and mobs
-    if not is_hotspot 
-    and it.type!="mob"
-    then
-     i2col[i]=true
-    end
-    
-    --treasure is solid 
-    --even on hotspot
-    --(todo: cleaner way?)
-    if it.type=="treasure" then
-     i2col[i]=true
-    end
     
     --special case for castle wings
     if it.type=="castle" and 
       ((cx==0 and cy==0) or
        (cx==4 and cy==0))
     then
-     i2col[i]=nil
-     s(mapobj,p,nil)
+--     i2col[i]=nil
+--     s(mapobj,p,nil)
+    else
+    
+	    --map of objects
+	    s(mapobj,p,it)
+	    
+	    --set all as solid col
+	    --except hot spot and mobs
+	    if not is_hotspot 
+	    and it.type!="mob"
+	    then
+	     i2col[i]=true
+	    end
+	    
+    end
+    
+    
+    --treasure is solid 
+    --even on hotspot
+    --(todo: cleaner way?)
+    if it.type=="treasure" then
+     i2col[i]=true
     end
     
     if it.type=="mob" then
