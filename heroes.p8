@@ -22,7 +22,6 @@ __lua__
 --todo:
 --change obj.type to int instead of string index
 --tile spr func? (with mirror?)
---flash of overworld (just tiles and border) after movement (sometimes) (related to flip() method?)
 --when full map revealed, creating reachable is too slow to do every frame (done when menu open bc port gets reselected every frame)
 
 
@@ -573,6 +572,12 @@ function move_hero()
   
  end
  
+ --create_i2tile can be slow
+ --when map revealed
+ --so make sure to draw map
+ --first or we'll get flashing
+ --todo: better solution?
+ map_draw()
  create_i2tile()
  
 end
