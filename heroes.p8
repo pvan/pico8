@@ -20,11 +20,13 @@ __lua__
     
 
 --todo:
+--danger zone makes path ignore solid tiles (skel eg)
 --change obj.type to int instead of string index
 --tile spr func? (with mirror?)
 
 
 --big todos:
+--mines
 --player select/multiplayer support
 --castles
 --main menu/level select
@@ -95,8 +97,6 @@ function set_player(p)
  
  hud_menu_open=false
  actl_menu_y=0
- 
--- blackout=true
 
   
  --a bit awkward, but we need
@@ -106,86 +106,14 @@ function set_player(p)
  
 
  if cp.ai then
-  
-  --basic ai value function
-  --combine with battle?
-  ltarget=nil
-  for h in all(cp.heroes) do
-   while h.move>0 do
-   
-    --find new target
-		  local min_dist=0x7fff --max signed int
-		  local target=nil
-	   for t in all(things) do
-	    if not ptequ(h,t) 
-	    and t.type!="castle"
-	    and not g(cp.fog,t)
-	    and t!=ltarget
-	    then
-		    --todo: eval targets by value
-		    --todo: euclidean dist?
-		    local dist=map_dist(h,t)
-		    if dist<min_dist then
-		     min_dist=dist
-		     target=t
-		    end
-	    end
-	   end
-	   
-	   --random if nothing to grab
-	   if target==nil then
---	    cls()
---	    stop("no target?")
-     visible={}
-     do_grid(tilesw,function(p)
-      if not g(cp.fog,p) then
-       --only use spots adjacent to fog
-       --todo: if no fog, need new method
-       for d in all(cardinal) do
-        if g(cp.fog,ptadd(p,d)) then
-         add(visible,p)
-         break
-        end
-       end
-      end
-     end)
-     target=visible[
-      rnd_bw(1,#visible)]
-	   end
-	   
-	   if target==ltarget then
-	    cls()
-	    stop("same target?")
-	   end
-	   ltarget=target
-	   
-	   --move towards new target
-	   sel=h
-	   create_path(target)
-	   if #path<1 then
-	    --not sure why we get here
-	    --sometimes...
-	    --sometimes nil
-	    --sometimes testhouse(hot spot issue?)
-	    cls()
-	    stop(target.type)
-	   end
-	   move_hero()
-	   
-	  end
-  end
-  
-  --bug:
-  --don't do this if we're
-  --in a battle with player,
-  --until the battle is over
-  end_turn()
-  
+  return
  end
  
- 
+  
  --player controlled turn
  
+ blackout=true
+
  open_dialog({
    colorstrings[cp.color].." player's turn",
    "   ok"
@@ -331,8 +259,8 @@ function create_player(c)
  res.fog={}
  do_grid(tilesw+30,function(p)
   ptinc(p,pt(-15,-15))
---  s(res.fog,p,true)
-  s(res.fog,p,false)
+  s(res.fog,p,true)
+--  s(res.fog,p,false)
  end)
    
  return res
@@ -520,13 +448,15 @@ function pickup(obj)
  del(things,obj)
 end
     
-    
 function move_hero()
+ moving=true
+end
+function move_hero_tick()
 
- while sel.move>0
+ if sel.move>0
 -- and path[1]!=nil
  and #path>0
- do
+ then
   
   local p=path[1]
   local obj=g(mapobj,p)
@@ -546,13 +476,13 @@ function move_hero()
 			update_fog()
   end
   
-  map_draw()
-  flip()
-  flip()
-  flip()
-  flip()--go slow for testing ai
-  flip()
-  flip()
+--  map_draw()
+--  flip()
+--  flip()
+--  flip()
+--  flip()--go slow for testing ai
+--  flip()
+--  flip()
  
   --special case for obj in p
   if obj!=nil then
@@ -570,19 +500,16 @@ function move_hero()
    else
     --add other obj here
    end
+  sel.movep=nil
+   moving=false
+   create_i2tile()
   end
-  
+ 
+ else
+  sel.movep=nil
+  create_i2tile()
+  moving=false
  end
- 
- sel.movep=nil
- 
- --create_i2tile can be slow
- --when map revealed
- --so make sure to draw map
- --first or we'll get flashing
- --todo: better solution?
- map_draw()
- create_i2tile()
  
 end
 
@@ -599,10 +526,110 @@ function limit_camera()
            cur.y+4)
 end
 
+function ai_tick()
 
+ --basic ai value function
+ --combine with battle?
+ ltarget=nil
+ for h in all(cp.heroes) do
+  if h.move>0 then
+  
+   --find new target
+	  local min_dist=0x7fff --max signed int
+	  local target=nil
+   for t in all(things) do
+    if not ptequ(h,t) 
+    and t.type!="castle"
+    and not g(cp.fog,t)
+    and t!=ltarget
+    then
+	    --todo: eval targets by value
+	    --todo: euclidean dist?
+	    local dist=map_dist(h,t)
+	    if dist<min_dist then
+	     min_dist=dist
+	     target=t
+	    end
+    end
+   end
+   
+   --random if nothing to grab
+   if target==nil then
+--	    cls()
+--	    stop("no target?")
+    visible={}
+    do_grid(tilesw,function(p)
+     if not g(cp.fog,p) then
+      --only use spots adjacent to fog
+      --todo: if no fog, need new method
+      for d in all(cardinal) do
+       if g(cp.fog,ptadd(p,d)) then
+        add(visible,p)
+        break
+       end
+      end
+     end
+    end)
+    target=visible[
+     rnd_bw(1,#visible)]
+   end
+   
+   if target==ltarget then
+    cls()
+    stop("same target?")
+   end
+   ltarget=target
+   
+   --move towards new target
+   sel=h
+   create_path(target)
+   if #path<1 then
+    --not sure why we get here
+    --sometimes...
+    --sometimes nil
+    --sometimes testhouse(hot spot issue?)
+    cls()
+    stop(target.type)
+   end
+   move_hero()
+   
+  end
+ end
+ 
+ --bug:
+ --don't do this if we're
+ --in a battle with player,
+ --until the battle is over
+ 
+ --using "moving" as flag here
+ --to see if we still have
+ --a hero with movement
+ --(less tokens than another var)
+ if not moving then
+  end_turn()
+ end
+ 
+end
 
 function update_map()
   
+ if moving then
+  if frame%5==0 then
+   move_hero_tick()
+  end 
+ else
+ 
+  --only choose new action
+  --if not already moving
+  --(could change to make
+  -- better at adapting)
+	 if cp.ai then
+	  ai_tick()
+	  return
+	 end
+	 
+ end
+ 
  
  --now using ports for fog too
  update_static_hud()
