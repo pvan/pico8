@@ -22,7 +22,6 @@ __lua__
 --todo:
 --change obj.type to int instead of string index
 --tile spr func? (with mirror?)
---when full map revealed, creating reachable is too slow to do every frame (done when menu open bc port gets reselected every frame)
 
 
 --big todos:
@@ -702,19 +701,6 @@ function update_map_cursor()
  else
   cur_spr=cur_sprs["arrow"]
  end
-
- --token: could set this at time 
- --sel is set (looks like 3 spots?)
- --
- --clear path if sel change
- --note lsel2 default is not nil
- --bc sel could be nil and
- --we want to detect changes
- lsel2=lsel2 or "no object" --set if nil 
- if (lsel2!=sel and sel!=nil) then
-  path={}
- end
- lsel2=sel
 
  --needed if ptequ doesn't check nil
 -- if lselmv==nil then
@@ -3149,7 +3135,6 @@ end
 
 
 
-lsel="no obj"
 function select(obj)
 
  --fix slowdown from hud menu 
@@ -3158,17 +3143,19 @@ function select(obj)
  
  sel=obj
  if (obj==nil) return
- if sel!=lsel then
-  cur=copy(sel) --only need x,y but cheaper to copy entire
-	 if sel.type=="castle" then
-	  cur.y+=1
-	 end
-	 cam=copy(cur)
-	 frame=15--reset flash (start on highlight)
- end
- lsel=sel
  
- create_i2tile()
+ cur=copy(sel) --only need x,y but cheaper to copy entire
+ if sel.type=="castle" then
+  cur.y+=1
+ end
+ 
+ cam=copy(cur)--snap to new selection
+ 
+ frame=15--reset flash (start on highlight)
+
+ path={}--new sel means new path
+ 
+ create_i2tile()--need new i2reachable
 end
 
 
