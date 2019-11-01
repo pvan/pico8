@@ -571,6 +571,8 @@ function move_hero()
   
  end
  
+ sel.movep=nil
+ 
  --create_i2tile can be slow
  --when map revealed
  --so make sure to draw map
@@ -702,21 +704,6 @@ function update_map_cursor()
   cur_spr=cur_sprs["arrow"]
  end
 
- --needed if ptequ doesn't check nil
--- if lselmv==nil then
---  lselmv=pt(999,999)
--- end
--- --7935
--- if sel!=nil then
---  if sel.movep!=nil then
---   if not ptequ(sel.movep,lselmv)
---   then
---    create_path(sel.movep)
---   end
---  end
---	 lselmv=copy(sel.movep)
--- end
- --7931
  if sel!=nil then
   if not ptequ(sel.movep,
                path[#path])
@@ -725,6 +712,7 @@ function update_map_cursor()
    create_path(sel.movep)
   end
  end
+ 
 end
 
 
