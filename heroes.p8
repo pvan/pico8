@@ -5,7 +5,6 @@ __lua__
 
 --player ai todos:
 --rather buggy:
----crash on testhouse (and probably anything with a hotspot)
 ---if battle, will jump to next player's turn before done
 --also needs a number of improvements:
 ---need to use last player's fog of war for visibility
@@ -19,14 +18,12 @@ __lua__
     
 
 --todo:
---switch resources to int based id
 --danger zone makes path ignore solid tiles (skel eg)
 --change obj.type to int instead of string index
 --tile spr func? (with mirror?)
 
 
 --big todos:
---mines
 --player select/multiplayer support
 --castles
 --main menu/level select
@@ -201,6 +198,9 @@ function _init()
 	spawn("gold",7,16)
 	spawn("gold",8,16)
 	spawn("gold",6,10)
+	
+	spawn("gold",28,6)
+	spawn("mine_ore",30,8)
 	
 	--above gold near gobs
 	spawn("mercury",3,6)
@@ -534,29 +534,46 @@ end
 
 function ai_tick()
 
+ --todo: consider: instead of
+ --searching every frame, maybe
+ --create list of dist/values 
+ --when floodfilling region?
+ --(basically calc dist to every space?)
+
  --basic ai value function
  --combine with battle?
  ltarget=nil
  for h in all(cp.heroes) do
   if h.move>0 then
   
+   local blacklist={}
+   ::search_for_obj::
+   
    --find new target
 	  local min_dist=0x7fff --max signed int
 	  local target=nil
    for t in all(things) do
-    if not ptequ(h,t) 
-    and t.type!="castle"
-    and not g(cp.fog,t)
-    and t!=ltarget
-    then
-	    --todo: eval targets by value
-	    --todo: euclidean dist?
-	    local dist=map_dist(h,t)
-	    if dist<min_dist then
-	     min_dist=dist
-	     target=t
+    if not has(blacklist,t) then
+     if t.type=="mine" and
+        t.owner==cp 
+     then
+      --don't grab your own mines
+     else
+		    if not ptequ(h,t) 
+		    and t.type!="castle"
+		    and not g(cp.fog,t)
+		    and t!=ltarget
+		    then
+			    --todo: eval targets by value
+			    --todo: euclidean dist?
+			    local dist=map_dist(h,t)
+			    if dist<min_dist then
+			     min_dist=dist
+			     target=t
+			    end
+			   end
 	    end
-    end
+	   end
    end
    
    --random if nothing to grab
@@ -586,17 +603,35 @@ function ai_tick()
    end
    ltarget=target
    
-   --move towards new target
-   sel=h
-   create_path(target)
-   if #path<1 then
-    --not sure why we get here
-    --sometimes...
-    --sometimes nil
-    --sometimes testhouse(hot spot issue?)
-    cls()
-    stop(target.type)
+   --go to hot spot if exists
+   destpos=copy(target)
+   if destpos.hot!=nil then
+    destpos.x+=destpos.hot[1]
+    destpos.y+=destpos.hot[2]
    end
+   
+   --move to new target
+   sel=h
+   create_path(destpos)
+   if #path<1 then
+    --seems to occur when no
+    --path can be found
+    --eg mine is visible,
+    --but front is covered in fog
+    --sometimes [nil] ???
+--    cls()
+--    stop("unable to path to "..destpos.type)
+    
+    --todo: should still move
+    --towards obj if in fog?
+    --but not if blocked by obj
+    
+    --if can't path to obj,
+    --blacklist it and search again
+    add(blacklist,target)
+    goto search_for_obj
+   end
+   
    move_hero()
    
   end
@@ -4124,9 +4159,9 @@ __map__
 7e7e7d7e7e7e7e7e7e7e7e987e7d7e7e7e7d7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 7e7e7ea77e7e7eb87e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7d7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7d7e7e7e7e7e7e7d7e7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 7e7d7e7d7d7e7e7e7ea87e7e7e7e977e7e6e7e7e7e6e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-7e7d7e7e857e977e7e7e7e7e7ea87e7e7e7d7e6e6e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-7e7e7e857e7e7e7e7e7d7d877e7e7e7e7d6e6e6e6e7e7e7e6f6f7f7f7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-7e7e857e7e7d7e7d7d7e7e7e7d7e7e7e6e6e6e6e7d7e7e6f6f6f7f7f7f7f7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+7e7d7e7e857e977e7e7e7e7e7ea87e7e7e7d7e6e6e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e837e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+7e7e7e857e7e7e7e7e7d7d877e7e7e7e7d6e6e6e6e7e7e7e6f6f7f7f7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e837e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+7e7e857e7e7d7e7d7d7e7e7e7d7e7e7e6e6e6e6e7d7e7e6f6f6f7f7f7f7f7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e83838300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e6e6e6e6e6e6e7e7e6f6f6f7f7f7f7f7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 7e7e7e7d847e7e7e7e857e7e7e7e7e7e7e7d6e7e6e7d7e6f6f6f7f7f7f7f7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 7e7e7e83857e7e7e83847e7e7e7e7e7e7e7e7e7d7d7d7e7e6f6f7f7f7f7e7e7e7e7e7e7e7e7e7d7d7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7d7e7e7e7e7e7e7e7e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
