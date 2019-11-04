@@ -939,8 +939,7 @@ function end_turn()
   and t.owner==cp
   then
    local resnmae=res_names[t.subtype]
-   t.owner[resnmae]+=1
---    mine_incs[i.subtype]
+   t.owner[resnmae]+=mine_incs[t.subtype]
   end
  end
  
@@ -3752,7 +3751,7 @@ function init_data()
 	 212,
 	}
 	
-	mine_incs={10,2,2,1,1,1}
+	mine_incs={100,2,2,1,1,1,1}
 	
 	
 
@@ -3893,28 +3892,28 @@ function init_data()
 	 },
 	 --need their own map spr
 	 --(not mountain mines)
-	 ["mine_mercury"]={
-	  ["type"]="mine",
-	  ["subtype"]=7, --"mercury"
-	  ["spr"]=142,
-	  ["sprx"]=0,
-	  ["spry"]=0,
-	  ["sprw"]=2,
-	  ["sprh"]=2,
-	  ["col"]={0,0,2,2},
-	  ["hot"]={1,1},
-	 },
-	 ["mine_wood"]={
-	  ["type"]="mine",
-	  ["subtype"]=2, --"wood"
-	  ["spr"]=64,
-	  ["sprx"]=0,
-	  ["spry"]=0,
-	  ["sprw"]=2,
-	  ["sprh"]=2,
-	  ["col"]={0,0,2,2},
-	  ["hot"]={1,1},
-	 },
+--	 ["mine_mercury"]={
+--	  ["type"]="mine",
+--	  ["subtype"]=7, --"mercury"
+--	  ["spr"]=142,
+--	  ["sprx"]=0,
+--	  ["spry"]=0,
+--	  ["sprw"]=2,
+--	  ["sprh"]=2,
+--	  ["col"]={0,0,2,2},
+--	  ["hot"]={1,1},
+--	 },
+--	 ["mine_wood"]={
+--	  ["type"]="mine",
+--	  ["subtype"]=2, --"wood"
+--	  ["spr"]=64,
+--	  ["sprx"]=0,
+--	  ["spry"]=0,
+--	  ["sprw"]=2,
+--	  ["sprh"]=2,
+--	  ["col"]={0,0,2,2},
+--	  ["hot"]={1,1},
+--	 },
 	 ["mine_"]={
 	  ["type"]="mine",
 	  ["spr"]=174,
@@ -3968,13 +3967,16 @@ function init_data()
 	 r=res_names[i]
 	 if i!=1 then --gold
 	  archetypes[r]=copy(archetypes.gold)
-	  archetypes[r].subtype=i
+	  archetypes[r].subtype=i 
 	 end
-	 if i!=2 --wood
-	 and i!=7 --mercury
-	 then
-	  archetypes["mine_"..r]=copy(archetypes.mine_)
-   archetypes["mine_"..r].subtype=i
+	 
+	 archetypes["mine_"..r]=copy(archetypes.mine_)
+  archetypes["mine_"..r].subtype=i
+	 if i==2 then --wood
+	  archetypes["mine_"..r].spr=64
+	 end
+	 if i==7 then --mercury
+	  archetypes["mine_"..r].spr=142
   end
 	end
 
