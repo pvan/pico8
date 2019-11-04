@@ -226,8 +226,8 @@ function _init()
 	 and not g(i2hot,p)
 	 then
 	  if rnd_bw(1,100)<4 then
-	   r=rnd_bw(1,#resources)
-	   spawn(resources[r],p.x,p.y)
+	   r=rnd_bw(1,7) --#resources
+	   spawn(res_names[r],p.x,p.y)
 	  end
 	 end
 	end)
@@ -444,8 +444,10 @@ function pickup(obj)
  --should only get here 
  --with type==treasure
  sfx(57)
- if has(resources,obj.subtype) then
-  cp[obj.subtype]+=obj.amount
+ resstr=res_names[obj.subtype]
+ if has(res_names,resstr) then
+-- if obj.subtype<=7
+  cp[resstr]+=obj.amount
  end
  del(things,obj)
 end
@@ -936,10 +938,9 @@ function end_turn()
   if t.type=="mine"
   and t.owner==cp
   then
-   t.owner[t.subtype]+=1
---    mine_income[
---     indexof(resources,
---      i.subtype)]
+   local resnmae=res_names[t.subtype]
+   t.owner[resnmae]+=1
+--    mine_incs[i.subtype]
   end
  end
  
@@ -1348,7 +1349,7 @@ function spawn(name,tx,ty)
  
  if res.type=="treasure" then
   res.amount=rnd_bw(1,4)
-  if res.subtype=="gold" then
+  if res.subtype==1 then --gold
    res.amount*=50
   end
  end
@@ -1440,7 +1441,7 @@ function draw_overworld()
  
   sprt=i.spr
   if i.type=="treasure" then
-   sprt=res_spr(i.subtype)
+   sprt=res_sprs[i.subtype]
   end
   
   --prevent bleeding into border
@@ -1468,11 +1469,13 @@ function draw_overworld()
       i.sprw,i.sprh)
       
   if i.type=="mine" then
-   if i.subtype!="mercury"
-   and i.subtype!="wood"
+   if i.subtype!=7
+   and i.subtype!=2
+--   if i.subtype!="mercury"
+--   and i.subtype!="wood"
    then
     --minecart resource
-    spr(res_spr(i.subtype),
+    spr(res_sprs[i.subtype],
       i.x*8+2,
       i.y*8+3)
     spr(218,
@@ -3346,15 +3349,12 @@ function draw_cur_popup_info()
    end
   elseif cur_obj.type=="treasure" 
   then
-   map_desc=cur_obj.subtype
+   map_desc=res_names[cur_obj.subtype]
    
   elseif cur_obj.type=="mine"
   then
    map_desc=
-    mine_names[
-     indexof( --switch to int-based resoruces
-      resources,
-      cur_obj.subtype)]
+    mine_names[cur_obj.subtype]
    
   else
    map_desc=cur_obj.type
@@ -3509,20 +3509,20 @@ end
 
 --todo: token: shouldn't need this
 --map from id to spr directly
-function res_spr(n)
- return res_sprs[
-  indexof(res_names,n)]
-end
+--function res_spr(n)
+-- return res_sprs[
+--  indexof(res_names,n)]
+--end
 function d_res_bar()
 
  rectfill2(0,0, 128,9, 6)
  
- for i=1,#res_names do
+ for i=1,7 do --all resources
   local name=res_names[i]
-  res_spr(name)
+--  res_spr(name)
 	 local x = 17*i-9
-	 if (name=="gold") x=0
-	 spr(res_spr(name),x,0)
+	 if (i==1) x=0 --gold
+	 spr(res_sprs[i],x,0)
 	 print(cp[name],x+9,2,0)
 	end
 end
@@ -3733,6 +3733,15 @@ function init_data()
 	 "gems",
 	 "mercury",
 	}
+	mine_names={
+	 "gold mine",
+	 "sawmill",
+	 "ore mine",
+	 "sulfur mine",
+	 "crystal mine",
+	 "gem mine",
+	 "alchemist lab",
+	}
 	res_sprs={
 	 242,
 	 195,
@@ -3742,6 +3751,10 @@ function init_data()
 	 196,
 	 212,
 	}
+	
+	mine_incs={10,2,2,1,1,1}
+	
+	
 
 	--token: probably a better way
 	-- to generate these
@@ -3807,32 +3820,6 @@ function init_data()
 
 
  --other
-	
-	resources=
-	copy(res_names)
---	{
---	 "gold",
---	 "wood",
---	 "ore",
---	 "gems",
---	 "sulfur",
---	 "mercury",
---	 "crystal",
---	}
-	
---	mine_income={
---	 100,2,2,1,1,1,1
---	}
-	
-	mine_names={
-	 "gold mine",
-	 "sawmill",
-	 "ore mine",
-	 "gem mine",
-	 "sulfur mine",
-	 "alchemist lab",
-	 "crystal mine",
-	}
 	
 	
 	colorstrings={
@@ -3904,9 +3891,11 @@ function init_data()
 	   ms("peasants",250)
 	  },
 	 },
+	 --need their own map spr
+	 --(not mountain mines)
 	 ["mine_mercury"]={
 	  ["type"]="mine",
-	  ["subtype"]="mercury",
+	  ["subtype"]=7, --"mercury"
 	  ["spr"]=142,
 	  ["sprx"]=0,
 	  ["spry"]=0,
@@ -3917,7 +3906,7 @@ function init_data()
 	 },
 	 ["mine_wood"]={
 	  ["type"]="mine",
-	  ["subtype"]="wood",
+	  ["subtype"]=2, --"wood"
 	  ["spr"]=64,
 	  ["sprx"]=0,
 	  ["spry"]=0,
@@ -3926,16 +3915,6 @@ function init_data()
 	  ["col"]={0,0,2,2},
 	  ["hot"]={1,1},
 	 },
---	 ["mine_"]={
---	  ["type"]="mine",
---	  ["spr"]=198,
---	  ["sprx"]=0,
---	  ["spry"]=0,
---	  ["sprw"]=3,
---	  ["sprh"]=3,
---	  ["col"]={0,0,3,3},
---	  ["hot"]={1,2},
---	 },
 	 ["mine_"]={
 	  ["type"]="mine",
 	  ["spr"]=174,
@@ -3970,7 +3949,7 @@ function init_data()
 	 },
 	 ["gold"]={
 	  ["type"]="treasure",
-	  ["subtype"]="gold",
+	  ["subtype"]=1, --gold
 	  ["amount"]=rnd_bw(1,4)*50,
 	  ["spr"]=242,
 	  ["sprx"]=0,
@@ -3983,16 +3962,19 @@ function init_data()
 	}
 	
 	--dup some similar archetypes
-	for r in all(resources) do
-	 if r!="gold" then
+	--8187
+--	for r in all(resources) do
+	for i=1,7 do
+	 r=res_names[i]
+	 if i!=1 then --gold
 	  archetypes[r]=copy(archetypes.gold)
-	  archetypes[r].subtype=r
+	  archetypes[r].subtype=i
 	 end
-	 if r!="wood" 
-	 and r!="mercury"
+	 if i!=2 --wood
+	 and i!=7 --mercury
 	 then
 	  archetypes["mine_"..r]=copy(archetypes.mine_)
-   archetypes["mine_"..r].subtype=r
+   archetypes["mine_"..r].subtype=i
   end
 	end
 
@@ -4085,14 +4067,14 @@ __gfx__
 011f11111ffffff13333333333315399a99a333b999ad3dd3333333333b63633333dd33300000666777766677766dd67776777776600000001122d55555d4410
 001110001ffffff13333333333311139399915339999135333333333b333b36333111133000016776666776777ddd6d7776766667700000001224555454dd441
 00000000111111113333333333333115399915131995115333333333336363b3333333330001366677776667176d6dd71767777777b00000112555555555dd45
-0000000000000000333333333333333311531113151333333333333333333333333333330013b677667777676766d6d76767666777b000001225555554555225
-1111100001110000333333333333a9a9111d63d3111333d3333333333333333333333333013b3b667776666777d6dd67776777777bbb00001211555555522125
+0000000000000000333333333333333311531113151333333333333333333333333333330013b677667777676766d6d76767666777b000001225555554555555
+1111100001110000333333333333a9a9111d63d3111333d3333333333333333333333333013b3b667776666777d6dd67776777777bbb00001211555555522225
 1fff100011f10000333333333339999a3336d36da331d36d33333333333333333333366301b3b3bbbb777767776d66d7776667bbbbbbb0001211111111121125
-1f1110001ff111103333333333349a99a9ad61d6a9add1d633333333333333333333dd661b3b3bbbbbbb333777d67667776bbbbbbbbbb000121d111166121161
-1f1000001f1fff1133333333333499a9a9ad63dda9aad3dd33333333333333333311d66613b3b3bbbbbbb333bb667773bbbbbbbbbbbbb000011ddd6666161161
-11100000111ffff13333333331114999999ad3dda99ad3dd333333333333333333d66111013b3bbbb3bbbbbbbb766763bbbbbbbbbbbb0000001ddd6666d11611
-0000000001f11ff133333333331115539999135339991353333333333333333333dd6333001bbbbbbb33bbbbb76677673bbbbbbbbb000000661dddd66dd16110
-0000000001f11f11333333333331bb5119951153399511513333333333333333111111330000000bbbbbbbbbb667767673bbbbbb000000001111dddd11661100
+1f1110001ff111103333333333349a99a9ad61d6a9add1d633333333333333333333dd661b3b3bbbbbbb333777d67667776bbbbbbbbbb000011d111166121121
+1f1000001f1fff1133333333333499a9a9ad63dda9aad3dd33333333333333333311d66613b3b3bbbbbbb333bb667773bbbbbbbbbbbbb000001ddd6666161161
+11100000111ffff13333333331114999999ad3dda99ad3dd333333333333333333d66111013b3bbbb3bbbbbbbb766763bbbbbbbbbbbb0000001ddd6666211611
+0000000001f11ff133333333331115539999135339991353333333333333333333dd6333001bbbbbbb33bbbbb76677673bbbbbbbbb000000661ddd2262216110
+0000000001f11f11333333333331bb5119951153399511513333333333333333111111330000000bbbbbbbbbb667767673bbbbbb000000001111dd2211661100
 000000000111111033333333333bbb111513333311533333333333333333333333333333000000000000bbbb6666666663bbb000000000000116611111111000
 0111100001111000001111000001111100000000001d11110000000000000000000000000dddddd0eeeeeeee0000000000000000000000000000000000011100
 11ff100011ff1000011bb100011155510111111000199121000000555000000000000000dddffdddeee11eee000000000000000000000000000000000011f110
