@@ -15,10 +15,12 @@ __lua__
 ---don't move to mines (etc) already owned
 ---only battle if ai thinks it can win
 ---evaluate when to pickup units and how to distribute them
-    
+
+--pathing bugs:
+--danger zone makes path ignore solid tiles (skel eg)
+--unable to pick up obj in dange zone
 
 --todo:
---danger zone makes path ignore solid tiles (skel eg)
 --change obj.type to int instead of string index
 --tile spr func? (with mirror?)
 
@@ -199,6 +201,11 @@ function _init()
 	spawn("gold",8,16)
 	spawn("gold",6,10)
 	
+	--in gob danger
+	spawn("gems",6,13) --(can't pickup)
+	spawn("gems",7,14) --(can pickup)
+	
+	--near enemy
 	spawn("gold",28,6)
 	spawn("mine_ore",30,8)
 	
@@ -1625,6 +1632,7 @@ end
 function map_iswall(p)
  if (g(cp.fog,p)) return true
  if attacking_a_mob then
+--  if (tile_is_solid(p)) return true
   if has2(global_walkable,p) then 
    return false
   end
@@ -1742,7 +1750,8 @@ function pathfind(start,goal,
 --	  attacking_a_mob=false
 --	 end
 	 
-	 attacking_a_mob=ptequ(goal,goal_mob)
+--	 attacking_a_mob=ptequ(goal,goal_mob)
+	 attacking_a_mob=goal_mob.type=="mob"
  
  
   --global_goal is only used
