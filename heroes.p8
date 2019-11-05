@@ -16,9 +16,6 @@ __lua__
 ---only battle if ai thinks it can win
 ---evaluate when to pickup units and how to distribute them
 
---pathing bugs:
---danger zone makes path ignore solid tiles (skel eg)
---unable to pick up obj in dange zone
 
 --todo:
 --change obj.type to int instead of string index
@@ -127,20 +124,12 @@ function random_starting_army()
  return {
   ms("peasants",rnd_bw(10,20)),
   ms("elves",rnd_bw(5,10)),
---  {"skeletons",rnd_bw(1000,2000)},
  }
 end
 
 
 function _init()
 -- music(0)
- 
--- --quick test area
--- a=pt(1,1)
--- b=pt(1,2)
--- cls()
--- stop( not (a and b) )
--- stop( not a or not b )
 	
 	cam=pt(0,0)
 
@@ -199,15 +188,16 @@ function _init()
 	spawn("gold",2,1)
 	spawn("gold",7,16)
 	spawn("gold",8,16)
-	spawn("gold",6,10)
+--	spawn("gold",6,10)
 	
 	--in gob danger
 	spawn("gems",6,13) --(can't pickup)
 	spawn("gems",7,14) --(can pickup)
+	spawn("gems",5,14) --left
 	
-	--near enemy
-	spawn("gold",28,6)
-	spawn("mine_ore",30,8)
+--	--near enemy
+--	spawn("gold",28,6)
+--	spawn("mine_ore",30,8)
 	
 	--above gold near gobs
 	spawn("mercury",3,6)
@@ -216,7 +206,7 @@ function _init()
 	spawn("gems",7,15)
 	
 	--block grove
-	spawn("ore",22,20)
+--	spawn("ore",22,20)
 --	spawn("mob2",22,20)
 
 	--block hero in castle test
@@ -497,6 +487,8 @@ function move_hero_tick()
  
   --special case for obj in p
   if obj!=nil then
+   --token: try array of functions
+   --instead of if statements?
    if obj.type=="hero" then
     if obj_owner(obj)==cp then
      --todo: ai support for trade?
@@ -782,7 +774,8 @@ function update_map_cursor()
   cur_spr=cur_sprs["arrow"]
  end
 
- if sel!=nil then
+ --todo: audit
+ if sel!=nil and path!=nil then
   if not ptequ(sel.movep,
                path[#path])
   and sel.movep!=nil
@@ -795,28 +788,12 @@ end
 
 
 function create_path(p)
- --token
- --todo: need copies or 
- --can we just pass raw pts?
- --i think raw points
--- p1=copy(sel)
--- p2=copy(p)
- targ=g(mapobj,p)
- ignore=nil
- if targ!=nil and
-    (targ.type=="mob" or
-     targ.type=="hero" or
-     targ.type=="treasure")
- then
-  ignore=targ
- end
  path=pathfind(
   sel,
   p,
-  ignore,
   map_neighbors,
   map_dist)
- del(path,path[1])
+ del(path,path[1]) --token?
 end
 
 
@@ -965,7 +942,7 @@ function _draw()
 	
 	--cpu
 --	print(stat(1),0,64)
- 
+	
 end
 
 
@@ -1214,20 +1191,22 @@ tilesh=32
 --reachable spots for pathfinding
 function floodfill2(res,p)
 
- s(res,p,true)
+-- s(res,p,true)
+ add(res,p)
  
  --force any danger zone spot
  --to stop filling (lets us
  --get one square into danger)
--- if (g(i2danger,p)) return
+ if (g(i2danger,p)) return
  
  for d in all(cardinal) do
   local testp=ptadd(p,d)
-  if not tile_is_solid(testp) 
-  and g(res,testp)==nil   --dont add duplicate pts
-  and not g(cp.fog,testp) --dont walk through fog
-  and not g(i2danger,testp)  --now dont treat this as reachable
+  if tile_is_solid(testp) 
+  or has2(res,testp) --dont add duplicate pts
+  or g(cp.fog,testp) --dont walk through fog
+--  and not g(i2danger,testp)  --now dont treat this as reachable
   then
+  else
    floodfill2(res,testp)
   end
  end
@@ -1239,6 +1218,12 @@ end
 --maps tile xy to obj,col,hot,etc
 function create_i2tile()
 
+ --todo: try i2* as lists
+ --intead of maps?
+ --slower access (has2() vs g())
+ --but maybe less tokens
+ --maybe mix? eg i2danger maps to mob?
+  
  mapobj={}
 --	i2obj={}
 	i2col={}    --all collisions
@@ -1254,6 +1239,11 @@ function create_i2tile()
     y=it.y+c[2]+cy
     p=pt(x,y)
     i=pt2i(p)
+    
+    --todo: simplify obj
+    --no col even?
+    --(just special case for castle/mines?)
+    --hotspot is implied by base position?
     
     is_hotspot=
       x==it.x+it.hot[1] and 
@@ -1275,13 +1265,16 @@ function create_i2tile()
 --     s(mapobj,p,nil)
     else
     
-	    --map of objects
+	    --careful not to overwrite
+	    --other thigns here
+	    --(mobs now are only their
+	    -- own square and not all adj)
 	    s(mapobj,p,it)
 	    
 	    --set all as solid col
 	    --except hot spot and mobs
 	    if not is_hotspot 
-	    and it.type!="mob"
+--	    and it.type!="mob" --now danger is not part of mob
 	    then
 	     i2col[i]=true
 	    end
@@ -1297,7 +1290,11 @@ function create_i2tile()
     end
     
     if it.type=="mob" then
-     i2danger[i]=true
+--     i2danger[i]=true
+     for n in all(eightway) do
+      s(i2danger,ptadd(p,n),true)
+     end
+--     s(i2danger,p,true) --don't treat mob sq as danger for now
     end
     
    end
@@ -1319,9 +1316,44 @@ function create_i2tile()
  --right now we handle it 
  --in pathfind() and cursor code
  
+ --todo: token:
+ --better to have i2reachable
+ --be i2* style (a table)
+ --or just list of coordinates?
+ --eg g(i2reach,p)
+ --vs has2(i2reach,p)
+ --and for p in all(reach)
+ --vs  for p,v in all(reach)
+ 
+ --todo: try making treas/hero/mob
+ --not in i2col, but just stop
+ --reachable search when reached (like danger)
+ 
+ orig_reach=copy(i2reachable)
+ for p in all(orig_reach) do
+  --not diagonals bc pathing
+  --doesn't cut corners
+  for n in all(cardinal) do
+   local np=ptadd(p,n)
+   local obj=g(mapobj,np)
+		 if obj!=nil then
+		  if (obj_interactable(obj)
+    		  and not g(i2danger,p)) --don't try to pick things up after walking through danger
+		  or obj.type=="mob"
+    then
+     add(i2reachable,np)
+    end
+   end
+  end
+ end
+ 
 end
 
-
+function obj_interactable(o)
+ return o.type=="hero" or
+        o.type=="mob" or
+        o.type=="treasure"
+end
 
 --basically just for debug
 --wrong, also for tile_is_solid
@@ -1564,15 +1596,12 @@ end
 
 
 
--- some debug functions
+---- some debug functions
 --function drawdebug_reach()
--- for i,v in pairs(i2reachable) do
---  p=i2pt(i)
---  local x,y=p.x,p.y
---  if not not v then
---   rectfill2(x*8+2,y*8+2,4,4,0)
---   rectfill2(x*8+3,y*8+3,2,2,11)
---  end
+---- for i,v in pairs(i2reachable) do
+-- for p in all(i2reachable) do
+--  rectfill2(p.x*8+2,p.y*8+2,4,4,0)
+--  rectfill2(p.x*8+3,p.y*8+3,2,2,11)
 -- end
 --end
 --function drawdebug_zones()
@@ -1631,26 +1660,15 @@ end
 --global_goal=pt(-100,-100)
 function map_iswall(p)
  if (g(cp.fog,p)) return true
- if attacking_a_mob then
---  if (tile_is_solid(p)) return true
-  if has2(global_walkable,p) then 
-   return false
-  end
- else
-  if g(i2danger,p)
-  and ptequ(p,global_goal)
-  then
-   return false
-  end
- end
--- if has2(global_walkable,p) 
--- and (ptequ(p,global_goal)
--- or ptequ(p,global_ignore_center))
--- then
---  return false
--- end
+ 
+ if (ptequ(p,global_goal)) return false
+
  if (tile_is_solid(p)) return true
- if (g(i2danger,p)) return true
+ 
+ if not attacking_mob then
+  if (g(i2danger,p)) return true
+ end
+ 
 end
 function clear(p)
  return not map_iswall(p)
@@ -1721,77 +1739,23 @@ end
 --by checking if path=={}
 --also can pass in obj to ignore
 function pathfind(start,goal,
- goal_mob,
  func_nei,
  func_dist)
  
  
  --reset these
-	global_walkable={}
-	global_goal=pt(-100,-100)
+--	global_goal=pt(-100,-100)
+ local targ=g(mapobj,goal)
+	attacking_mob=
+	 targ!=nil and
+	 targ.type=="mob"
+ global_goal=goal
 	 
 	 
  if (ptequ(start,goal)) return {}
  
  
- --this special ignore case
- --is all just for mobs
- --theres two cases:
- --walking to mob (attacking)
- --or walking next to mob
-	if goal_mob!=nil then
 	 
---	 if ptequ(goal,goal_mob) then
---	  --in this case, ignore
---	  --all the danger squares,
---	  --just find path to center
---	  attacking_a_mob=true
---	 else
---	  attacking_a_mob=false
---	 end
-	 
---	 attacking_a_mob=ptequ(goal,goal_mob)
-	 attacking_a_mob=goal_mob.type=="mob"
- 
- 
-  --global_goal is only used
-  --if we are trying to walk
-  --specifically into danger
-  --but not attack directly
-  
-	 --remember this so we
-	 --can allow walking into 
-	 --danger zone of mobs
-	 --(but only if it's our goal)
-	 global_goal=goal
-	 
- 
-  --global_walkable is 
-  --only used if trying to 
-  --walk to center of mob
-  --(attacking_a_mob)
-  
-	 --basically an ok-list
-	 --(so we can walk over our)
-	 --(goal collider if needed)
-	 global_walkable={}
- 
-  --token: func that generates
-  --list of points from rect
-  --and and offset point?
-  c=goal_mob.col
-	 for cx=0,c[3]-1 do
-	  for cy=0,c[4]-1 do
-	   x=goal_mob.x+c[1]+cx
-	   y=goal_mob.y+c[2]+cy
-	   p=pt(x,y)
-    add(global_walkable,p)
-   end
-  end
-  
-  
- end
- 
  
  
  
@@ -1909,14 +1873,14 @@ end
 --cursor
 
 
-function pt_adjacent_reach(p)
- for d in all(cardinal) do
-  if g(i2reachable,ptadd(p,d)) then
-   return true
-  end
- end
- return false
-end
+--function pt_adjacent_reach(p)
+-- for d in all(cardinal) do
+--  if g(i2reachable,ptadd(p,d)) then
+--   return true
+--  end
+-- end
+-- return false
+--end
 
 
 function update_move_cursor()
@@ -1932,49 +1896,27 @@ function update_move_cursor()
  --later things are higher priority
  
  --first reject any out of zone
- if not g(i2reachable,cur) then
+-- if not g(i2reachable,cur) then
+ if not has2(i2reachable,cur) then
   style="arrow"
   
-  --except allow mobs/heros
-  --if adjacent to zone
-  if obj!=nil then
+  --todo: consider i2reach
+  --as a map from pos 
+  --to cursor style?
+  --(and effect even?)
   
-   --mob is special case compared
-   --to hero/treasure below
-	  if obj.type=="mob" then
-	   if ptequ(obj,cur)
-	   or (not tile_is_solid(cur)
-	       and pt_adjacent_reach(cur))
- 	  then
-   	 style="attack"
-	   end
-	  end
-	  
-	  if pt_adjacent_reach(cur) then
-		  if obj.type=="hero" then
-	 	  if obj_owner(obj)==cp then
-		    style="trade"
-		   else
-		    style="attack"
-	 	  end
-	 	 end
-		  
-		  if obj.type=="treasure" then
-		   style="hot"
-		  end
-	  end
-	  
-  end
  else
   --handle in-zone things
   
   --default to walkable
   style="horse"
   
-  --solid shouldn't be in reachable
---  if tile_is_solid(cur) then
---   style="arrow"
---  end
+  --mob danger area
+--	  if obj.type=="mob" then
+  if g(i2danger,cur) then
+   style="attack"
+  end
+  
   
   --object, but what kind?
   if obj!=nil then
@@ -1982,10 +1924,19 @@ function update_move_cursor()
 	   style="hot"
 	  end
 	  
-	  --mob danger area
+	  --or use danger check?
+	  --and set mob pos as danger?
 	  if obj.type=="mob" then
 	   style="attack"
 	  end
+  
+	  if obj.type=="hero" then
+ 	  if obj_owner(obj)==cp then
+	    style="trade"
+	   else
+	    style="attack"
+ 	  end
+ 	 end
 	  
 	  --enemy castle
 	  --or hero in castle
@@ -1996,7 +1947,9 @@ function update_move_cursor()
 	  then
 	   style="attack"
 	  end
+
   end
+  
 
  end
  
@@ -2023,6 +1976,12 @@ function update_move_cursor()
   or style=="attack"
   or style=="trade"
   then
+   if ptequ(cur,obj) then
+    cur=copy(obj)
+    --kludge to pass goal
+    --obj to pathfind
+    --(to know if it's a mob)
+   end
    sel.movep=copy(cur)
 --   sel["movep"]=copy(cur)
 --   sel["movex"]=cur.x
@@ -2682,7 +2641,7 @@ function mob_move(p)
  
  while dist>0 do
  
-  path=pathfind(m,p,nil,
+  path=pathfind(m,p,
    b_neighbors,
    grid_dist)
   for step in all(path) do
@@ -3734,6 +3693,18 @@ function init_data()
 		pt( 1, 1),
 	}
 	
+	--create from appending?
+	eightway={
+		pt(-1,0),
+		pt( 1,0),
+		pt(0,-1),
+		pt(0, 1),
+		pt(-1,-1),
+		pt( 1,-1),
+		pt(-1, 1),
+		pt( 1, 1),
+	}
+	
 	
 	group_numbers={
 	 5,10,20,50,100,250,500,1000
@@ -3975,7 +3946,8 @@ function init_data()
 	  ["spry"]=0,
 	  ["sprw"]=1,
 	  ["sprh"]=1,
-	  ["col"]={-1,-1,3,3},
+--	  ["col"]={-1,-1,3,3},
+	  ["col"]={0,0,1,1},
 	  ["hot"]={0,0},
 	  ["group"]=ms("goblins",40)
 	 },
@@ -3986,7 +3958,8 @@ function init_data()
 	  ["spry"]=0,
 	  ["sprw"]=1,
 	  ["sprh"]=1,
-	  ["col"]={-1,-1,3,3},
+--	  ["col"]={-1,-1,3,3},
+	  ["col"]={0,0,1,1},
 	  ["hot"]={0,0},
 	  ["group"]=ms("skeletons",15)
 	 },
