@@ -16,6 +16,8 @@ __lua__
 ---only battle if ai thinks it can win
 ---evaluate when to pickup units and how to distribute them
 
+--bug:
+--something with path after battle
 
 --todo:
 --change obj.type to int instead of string index
@@ -241,19 +243,19 @@ function create_player(c)
  --tokens: use . isntead of []
  --or return {[""]=} format?
  local res={}
- res["color"]=c
- res["gold"]=200
- res["wood"]=10
- res["ore"]=10
- res["gems"]=5
- res["sulfur"]=5
- res["mercury"]=5
- res["crystal"]=5
+ res.color=c
+ res.gold=200
+ res.wood=10
+ res.ore=10
+ res.gems=5
+ res.sulfur=5
+ res.mercury=5
+ res.crystal=5
  
- res["heroes"]={}
- res["castles"]={}
+ res.heroes={}
+ res.castles={}
  
- res["ai"]=false
+ res.ai=false
  
  res.fog={}
  do_grid(tilesw+30,function(p)
@@ -1013,7 +1015,7 @@ function ptinc(p,amt)
 end
 
 function pt(x,y)
- return {["x"]=x,["y"]=y}
+ return {x=x,y=y}
 end
 
 
@@ -1146,8 +1148,8 @@ end
 --todo: change name to id?
 function ms(name,count)
  return {
-  ["id"]=indexof(mob_names,name),
-  ["count"]=count
+  id=indexof(mob_names,name),
+  count=count
  }
 end
 
@@ -1977,15 +1979,12 @@ function update_move_cursor()
   or style=="trade"
   then
    if ptequ(cur,obj) then
+	   --kludge to pass goal
+	   --obj to pathfind
+	   --(to know if it's a mob)
     cur=copy(obj)
-    --kludge to pass goal
-    --obj to pathfind
-    --(to know if it's a mob)
    end
    sel.movep=copy(cur)
---   sel["movep"]=copy(cur)
---   sel["movex"]=cur.x
---   sel["movey"]=cur.y
   end
  end
  
@@ -3793,13 +3792,13 @@ function init_data()
 
 	--cursor sprites
 	cur_sprs={
-	 ["castle"]=145,
-	 ["hero"]=161,
-	 ["arrow"]=208,
-	 ["horse"]=177,
-	 ["hot"]=192,
-	 ["trade"]=224,
-	 ["attack"]=240,
+	 castle=145,
+	 hero=161,
+	 arrow=208,
+	 horse=177,
+	 hot=192,
+	 trade=224,
+	 attack=240,
 	}
 	
 	--mob stats
@@ -3874,106 +3873,78 @@ function init_data()
 	// is relative to the x,y pos
 	// not the collider (col) pos
 	archetypes={
-	 ["castle"]={
-	  ["type"]="castle",
-	  ["select"]=true,
-	  ["port"]=202,
-	  ["spr"]=137,
-	  ["sprx"]=-2*8,
-	  ["spry"]=-2*8,
-	  ["sprw"]=5,
-	  ["sprh"]=4,
-	  ["col"]={-2,-1,5,3},
-	  ["hot"]={0,1},
+	 castle={
+	  type="castle",
+	  select=true,
+	  port=202,
+	  spr=137,
+	  sprx=-2*8,
+	  spry=-2*8,
+	  sprw=5,
+	  sprh=4,
+	  col={-2,-1,5,3},
+	  hot={0,1},
 	 },
-	 ["hero"]={
-	  ["type"]="hero",
-	  ["select"]=true,
-	  ["id"]=1,
---	  ["port"]=201,
---	  ["spr"]=66,
-	  ["sprx"]=-4,
-	  ["spry"]=-4,
-	  ["sprw"]=2,
-	  ["sprh"]=2,
-	  ["col"]={0,0,1,1},
-	  ["hot"]={-100,-100},
-	  ["move"]=100,
-	  ["army"]={
+	 hero={
+	  type="hero",
+	  select=true,
+	  id=1,
+	  sprx=-4,
+	  spry=-4,
+	  sprw=2,
+	  sprh=2,
+	  col={0,0,1,1},
+	  hot={-100,-100},
+	  move=100,
+	  army={
 	   ms("calavry",20),
 	   ms("elves",40),
 	   ms("peasants",250)
 	  },
 	 },
-	 --need their own map spr
-	 --(not mountain mines)
---	 ["mine_mercury"]={
---	  ["type"]="mine",
---	  ["subtype"]=7, --"mercury"
---	  ["spr"]=142,
---	  ["sprx"]=0,
---	  ["spry"]=0,
---	  ["sprw"]=2,
---	  ["sprh"]=2,
---	  ["col"]={0,0,2,2},
---	  ["hot"]={1,1},
---	 },
---	 ["mine_wood"]={
---	  ["type"]="mine",
---	  ["subtype"]=2, --"wood"
---	  ["spr"]=64,
---	  ["sprx"]=0,
---	  ["spry"]=0,
---	  ["sprw"]=2,
---	  ["sprh"]=2,
---	  ["col"]={0,0,2,2},
---	  ["hot"]={1,1},
---	 },
-	 ["mine_"]={
-	  ["type"]="mine",
-	  ["spr"]=174,
-	  ["sprx"]=0,
-	  ["spry"]=0,
-	  ["sprw"]=2,
-	  ["sprh"]=2,
-	  ["col"]={0,0,2,2},
-	  ["hot"]={1,1},
+	 mine_={
+	  type="mine",
+	  spr=174,
+	  sprx=0,
+	  spry=0,
+	  sprw=2,
+	  sprh=2,
+	  col={0,0,2,2},
+	  hot={1,1},
 	 },
-	 ["mob"]={
-	  ["type"]="mob",
-	  ["spr"]=194,
-	  ["sprx"]=0,
-	  ["spry"]=0,
-	  ["sprw"]=1,
-	  ["sprh"]=1,
---	  ["col"]={-1,-1,3,3},
-	  ["col"]={0,0,1,1},
-	  ["hot"]={0,0},
-	  ["group"]=ms("goblins",40)
+	 mob={
+	  type="mob",
+	  spr=194,
+	  sprx=0,
+	  spry=0,
+	  sprw=1,
+	  sprh=1,
+	  col={0,0,1,1},
+	  hot={0,0},
+	  group=ms("goblins",40)
 	 },
-	 ["mob2"]={
-	  ["type"]="mob",
-	  ["spr"]=210,
-	  ["sprx"]=0,
-	  ["spry"]=0,
-	  ["sprw"]=1,
-	  ["sprh"]=1,
---	  ["col"]={-1,-1,3,3},
-	  ["col"]={0,0,1,1},
-	  ["hot"]={0,0},
-	  ["group"]=ms("skeletons",15)
+	 mob2={
+	  type="mob",
+	  spr=210,
+	  sprx=0,
+	  spry=0,
+	  sprw=1,
+	  sprh=1,
+	  col={0,0,1,1},
+	  hot={0,0},
+	  group=ms("skeletons",15)
 	 },
-	 ["gold"]={
-	  ["type"]="treasure",
-	  ["subtype"]=1, --gold
-	  ["amount"]=rnd_bw(1,4)*50,
-	  ["spr"]=242,
-	  ["sprx"]=0,
-	  ["spry"]=0,
-	  ["sprw"]=1,
-	  ["sprh"]=1,
-	  ["col"]={0,0,1,1},
-	  ["hot"]={0,0},
+	 gold={
+	  type="treasure",
+	  subtype=1, --gold
+	  amount=rnd_bw(1,4)*50,
+	  spr=242,
+	  sprx=0,
+	  spry=0,
+	  sprw=1,
+	  sprh=1,
+	  col={0,0,1,1},
+	  hot={0,0},
 	 },
 	}
 	
