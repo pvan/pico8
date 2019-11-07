@@ -4,23 +4,14 @@ __lua__
 
 
 --player ai todos:
---rather buggy:
----if battle, will jump to next player's turn before done
---also needs a number of improvements:
 ---need to use last player's fog of war for visibility
 ---and hide movement if not visible
----hide battles without a player involved
 ---when nothing to pickup and no fog, figure out a new target
 ---(move to spot that reveals the most fog? towards enemies?)
----don't move to mines (etc) already owned
 ---only battle if ai thinks it can win
 ---evaluate when to pickup units and how to distribute them
 
---bug:
-
 --todo:
---change obj.type to int instead of string index
---tile spr func? (with mirror?)
 
 
 --big todos:
@@ -41,12 +32,12 @@ __lua__
 --consolidate hud rendering? tried and failed
 --areas marked "token"
 --spr functions, eg spr_mirx(id,x,y), spr_pal(spr,x,y,c1,c2)?
---would making col into obj save?
+--tile spr func? (with mirror?)
+--would making col into obj save? (we removed col all together)
 --and make hot into pt? (other similar things? spr stats?)
 --consider a 1-level deep copy for copying lists of pointers?
 --maybe passing in list instead of returning one?
---re-think zone code (done, any further improvements?)
---rethink map cursor code? (see revised zone code: reachable)
+--change obj.type to int instead of string index
 
 
 
@@ -202,6 +193,7 @@ function _init()
 	spawn("gems",5,14) --left
 	
 --	--near enemy
+	spawn("mob2",26,8)
 --	spawn("gold",28,6)
 --	spawn("mine_ore",30,8)
 	
@@ -556,26 +548,21 @@ function ai_tick()
 	  local min_dist=0x7fff --max signed int
 	  local target=nil
    for t in all(things) do
-    if not has(blacklist,t) then
-     if t.type=="mine" and
-        t.owner==cp 
-     then
-      --don't grab your own mines
-     else
-		    if not ptequ(h,t) 
-		    and t.type!="castle"
-		    and not g(cp.fog,t)
-		    and t!=ltarget
-		    then
-			    --todo: eval targets by value
-			    --todo: euclidean dist?
-			    local dist=map_dist(h,t)
-			    if dist<min_dist then
-			     min_dist=dist
-			     target=t
-			    end
-			   end
-	    end
+    if not has(blacklist,t) 
+    and obj_owner(t)!=cp
+    then
+	    if not ptequ(h,t)
+	    and not g(cp.fog,t)
+	    and t!=ltarget
+	    then
+		    --todo: eval targets by value
+		    --todo: euclidean dist?
+		    local dist=map_dist(h,t)
+		    if dist<min_dist then
+		     min_dist=dist
+		     target=t
+		    end
+		   end
 	   end
    end
    
@@ -2177,17 +2164,21 @@ function end_with_loser(loser)
   "",
   "",
   "done"}
- while true do
-  battle_draw()
-  draw_dialog()
-  draw_army_s(l_cas,61)
-  draw_army_s(r_cas,81)
-  flip()
-  frame+=1
-  if btn(❎) and btnx_wasup then
-   break
-  end
-  btnx_wasup=not btn(❎)
+ if player_battle then
+	 while true do
+	  battle_draw()
+	  draw_dialog()
+	  draw_army_s(l_cas,61)
+	  draw_army_s(r_cas,81)
+	  if player_battle then
+	   flip()
+	  end
+	  frame+=1
+	  if btn(❎) and btnx_wasup then
+	   break
+	  end
+	  btnx_wasup=not btn(❎)
+	 end
  end
  
  diag_open=false
@@ -2334,8 +2325,6 @@ function from_unit(x,unit)
  return mobs
 end
 
-
-
 --start/init rolled into one
 function start_battle(l,r)
 
@@ -2344,7 +2333,15 @@ function start_battle(l,r)
  
  
  main_update=battle_update
- main_draw=battle_draw
+ 
+ if is_plr_ai(obj_owner(l))
+ and is_plr_ai(obj_owner(r)) 
+ then
+  player_battle=false
+ else
+  player_battle=true
+  main_draw=battle_draw
+ end
 
  
  --l is always hero
@@ -2568,9 +2565,11 @@ function mob_move(p)
   for step in all(bpath) do
    --token: ptset
    m.x,m.y=step.x,step.y
-   for i=1,3 do
-		  battle_draw(true)
-		  flip()
+   if player_battle then
+    for i=1,3 do
+ 		  battle_draw(true)
+ 		  flip()
+ 		 end
 		 end
   end
   
@@ -2590,13 +2589,15 @@ end
 function mob_die(mob)
 
  --death animation
- for i=1,20 do
-  local m=mob
-  local sx,sy=bgrid2screen(m)
-  pal(8,0)
-  spr(11,sx,sy)
-  pal()
-  flip()
+ if player_battle then
+	 for i=1,20 do
+	  local m=mob
+	  local sx,sy=bgrid2screen(m)
+	  pal(8,0)
+	  spr(11,sx,sy)
+	  pal()
+	  flip()
+	 end
  end
  
  if mob==activemob then
@@ -2647,16 +2648,18 @@ function mob_attack(pos)
  mob.flipx=enemy.x<mob.x
  
  --attack/hurt animation
- battle_draw(true)
- for i=1,20 do
-  local a=mob
-  local sx,sy=bgrid2screen(a)
-  spr(43,sx,sy)
-  
-  local d=enemy
-  local sx,sy=bgrid2screen(d)
-  spr(11,sx,sy)
-  flip()
+ if player_battle then
+	 battle_draw(true)
+	 for i=1,20 do
+	  local a=mob
+	  local sx,sy=bgrid2screen(a)
+	  spr(43,sx,sy)
+	  
+	  local d=enemy
+	  local sx,sy=bgrid2screen(d)
+	  spr(11,sx,sy)
+	  flip()
+	 end
  end
  
  
@@ -2757,6 +2760,7 @@ function battle_update()
  --better place for this?
  cur_obj=nil
  
+ --debug win button
  if btn(🅾️) and btn(❎) then
   bbb.mobs={}
  end
@@ -2867,6 +2871,7 @@ end
 
 function battle_draw(hidecursor)
 
+	camera()
 	cls(3)
 	
 	--todo: token:
