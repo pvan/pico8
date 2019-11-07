@@ -4,8 +4,6 @@ __lua__
 
 
 --player ai todos:
----need to use last player's fog of war for visibility
----and hide movement if not visible
 ---when nothing to pickup and no fog, figure out a new target
 ---(move to spot that reveals the most fog? towards enemies?)
 ---only battle if ai thinks it can win
@@ -71,9 +69,16 @@ function set_sel()
 end
 
 function set_player(p)
+ lp=cp
  cp=p
  
- set_sel()
+ --player whose fog is visible
+ --(current player if not ai
+ --(otherwise, last player)
+ --consider making blackout
+ --for all ai turns if two players
+ vp=cp
+ if (cp.ai) vp=lp
  
  --reset for this turn
  for h in all(cp.heroes) do
@@ -90,6 +95,14 @@ function set_player(p)
  --a bit awkward, but we need
  --to update fog before tiles
  update_fog()
+ 
+ --and need to set sel after fog
+ --since whether we snap cam
+ --depends on if in fog or not
+ set_sel()
+ 
+ --and set sel and fog before
+ --we create our tiles/reachable area
  create_i2tile()
  
 
@@ -463,16 +476,18 @@ function move_hero_tick()
 	  
   --always move if open space
   if not tile_is_solid(p) then
-			sfx(58,-1,1,1)
 			--token:ptset()?
 			sel.x=p.x
 			sel.y=p.y
 			sel.move-=5
 			if (sel.move<0) sel.move=0
 			--lock cam to hero?
-			cam=copy(sel)
-			limit_camera()
-			update_fog()
+			if p_can_see(sel) then
+				sfx(58,-1,1,1)
+				cam=copy(sel)
+				limit_camera()
+				update_fog()
+			end
   end
  
   --special case for obj in p
@@ -516,7 +531,7 @@ end
 
 function limit_camera()
  
- if (cp.ai) cur=copy(sel)
+-- if (cp.ai) cur=copy(sel)
  
  --tokens: common limit func?
  cam.x=mid(cam.x,
@@ -642,12 +657,26 @@ function ai_tick()
  
 end
 
+
+function p_can_see(p)
+ return not g(vp.fog,p)
+end
+--function p_can_see(p)
+-- return cp.ai
+-- and lp!=nil
+-- and not g(lp.fog,p)
+--end
+
 function update_map()
-  
+ 
  if moving then
-  if frame%5==0 then --token (use flash?)
+  if p_can_see(sel) then
+   if frame%5==0 then --token (use flash?)
+    move_hero_tick()
+   end 
+  else
    move_hero_tick()
-  end 
+  end
  else
  
   --only choose new action
@@ -656,11 +685,15 @@ function update_map()
   -- better at adapting)
 	 if cp.ai then
 	  ai_tick()
-	  return
 	 end
 	 
  end
  
+ --feels like there should be
+ --a better way to do this
+ if cp.ai then
+  return
+ end
  
  --now using ports for fog too
  update_static_hud()
@@ -861,7 +894,7 @@ function map_draw()
 	 
 	 --fog only inside borders
   do_grid(tilesw-1,function(p)
-   if g(cp.fog,p) then
+   if g(vp.fog,p) then
 	   drw_bspr(121,p)
    end
 	 end)
@@ -1488,7 +1521,7 @@ function draw_overworld()
  rect(-2,-2,tilesw*8+1,tilesh*8+1,1)
 
  
- map(0,0, 0,0 ,32,32)
+ map(0,0,0,0,32,32)
  
  
  
@@ -1506,7 +1539,7 @@ function draw_overworld()
   --prevent bleeding into border
   --if pos is covered by fog
   --todo: is pos enough to check?
-  if g(cp.fog,i) then
+  if g(vp.fog,i) then
    --note clip isn't affected by
    --camear(), so we have to 
    --awkwardly offset it ourselves
@@ -3144,7 +3177,9 @@ function select(obj)
   cur.y+=1
  end
  
- cam=copy(cur)--snap to new selection
+ if p_can_see(cur) then
+  cam=copy(cur)--snap to new selection
+ end
  
  frame=15--reset flash (start on highlight)
 
