@@ -18,6 +18,8 @@ __lua__
 
 --bug:
 --something with path after battle
+--(make obj not col might fix?)
+--check speed of reachable creation when no fog
 
 --todo:
 --change obj.type to int instead of string index
@@ -222,7 +224,7 @@ function _init()
  
  do_grid(tilesw,function(p)
 	 if not tile_is_solid(p) 
-	 and not g(i2hot,p)
+--	 and not g(i2hot,p)
 	 then
 	  if rnd_bw(1,100)<4 then
 	   r=rnd_bw(1,7) --#resources
@@ -873,7 +875,7 @@ function map_draw()
 --	 drawdebug_zones()
 --	 drawdebug_layer(i2danger,8)
 --	 drawdebug_layer(i2hot,11)
---	 drawdebug_layer(i2col,10)
+	 drawdebug_layer(i2col,10)
 	 
 	 
 	 
@@ -1028,12 +1030,12 @@ end
 function pt2i(p)
  return bor(p.x,lshr(p.y,16))
 end
---function i2pt(i)
--- local x=band(i,0b1111111111111111)
--- local y=band(i,0b0000000000000000.1111111111111111)
--- y=shl(y,16)
--- return pt(x,y)
---end
+function i2pt(i)
+ local x=band(i,0b1111111111111111)
+ local y=band(i,0b0000000000000000.1111111111111111)
+ y=shl(y,16)
+ return pt(x,y)
+end
 
 
 
@@ -1229,79 +1231,142 @@ function create_i2tile()
  mapobj={}
 --	i2obj={}
 	i2col={}    --all collisions
-	i2hot={}    --building activation points
+--	i2hot={}    --building activation points
 	i2danger={} --mob attack squares
 
- for i=1,#things do
-  it=things[i]
-  c=it.col
-  for cx=0,c[3]-1 do
-   for cy=0,c[4]-1 do
-    x=it.x+c[1]+cx
-    y=it.y+c[2]+cy
-    p=pt(x,y)
-    i=pt2i(p)
-    
-    --todo: simplify obj
-    --no col even?
-    --(just special case for castle/mines?)
-    --hotspot is implied by base position?
-    
-    is_hotspot=
-      x==it.x+it.hot[1] and 
-      y==it.y+it.hot[2] 
-    
-    
-    --map of hot spots
-    if is_hotspot then
-     i2hot[i]=true
-    end
-    
-    
-    --special case for castle wings
-    if it.type=="castle" and 
-      ((cx==0 and cy==0) or
-       (cx==4 and cy==0))
-    then
---     i2col[i]=nil
---     s(mapobj,p,nil)
-    else
-    
-	    --careful not to overwrite
-	    --other thigns here
-	    --(mobs now are only their
-	    -- own square and not all adj)
-	    s(mapobj,p,it)
-	    
-	    --set all as solid col
-	    --except hot spot and mobs
-	    if not is_hotspot 
---	    and it.type!="mob" --now danger is not part of mob
-	    then
-	     i2col[i]=true
-	    end
-	    
-    end
-    
-    
-    --treasure is solid 
-    --even on hotspot
-    --(todo: cleaner way?)
-    if it.type=="treasure" then
-     i2col[i]=true
-    end
-    
-    if it.type=="mob" then
---     i2danger[i]=true
-     for n in all(eightway) do
-      s(i2danger,ptadd(p,n),true)
-     end
---     s(i2danger,p,true) --don't treat mob sq as danger for now
-    end
-    
-   end
+
+
+ for it in all(things) do  
+  s(mapobj,it,it)
+  s(i2col,it,true)
+
+  --8047
+--  spots={
+--   mob=eightway,
+--   castle=castle_col,
+--   mine=mine_col}
+--  i2={
+--   mob=i2danger,
+--   castle=i2col,
+--   mine=i2col}
+--  maybemap={
+--   mob={},
+--   castle=mapobj,
+--   mine=mapobj}
+--  if has(it.type,spots) then
+--		 for n in all(spots[it.type]) do
+--		  local p=ptadd(it,n)
+--		  s(i2[it.type],p,true)
+--		  s(maybemap[it.type],p,it)
+--		 end
+--  end
+
+  --8046
+  spots={}
+  i2={}
+  maybemap={}
+  if it.type=="mob" then
+   spots=eightway
+   i2=i2danger
   end
+  if it.type=="castle" then
+   spots=castle_col
+   i2=i2col
+   maybemap=mapobj
+  end
+  if it.type=="mine" then
+   spots=mine_col
+   i2=i2col
+   maybemap=mapobj
+  end
+  for n in all(spots) do
+   local p=ptadd(it,n)
+   s(i2,p,true)
+   s(maybemap,p,it)
+  end
+  
+  
  end
+ 
+  
+  --8094 before it all
+-- for i=1,#things do
+--  it=things[i]
+--  
+--  
+--  if it.col==nil then
+--   it.col={0,0,1,1}
+--  end
+--  
+--  c=it.col
+--  for cx=0,c[3]-1 do
+--   for cy=0,c[4]-1 do
+--   
+--    x=it.x+c[1]+cx
+--    y=it.y+c[2]+cy
+--    p=pt(x,y)
+--    i=pt2i(p)
+--    
+--    --todo: simplify obj
+--    --no col even?
+--    --(just special case for castle/mines?)
+--    --hotspot is implied by base position?
+--    
+--    is_hotspot=
+--      x==it.x+it.hot[1] and 
+--      y==it.y+it.hot[2] 
+--    
+--    
+--    --map of hot spots
+--    if is_hotspot then
+--     i2hot[i]=true
+--    end
+--    
+--    
+--    --special case for castle wings
+--    if it.type=="castle" and 
+--      ((cx==0 and cy==0) or
+--       (cx==4 and cy==0))
+--    then
+----     i2col[i]=nil
+----     s(mapobj,p,nil)
+--    else
+--    
+--	    --careful not to overwrite
+--	    --other thigns here
+--	    --(mobs now are only their
+--	    -- own square and not all adj)
+--	    s(mapobj,p,it)
+--	    
+--	    --set all as solid col
+--	    --except hot spot and mobs
+--	    if not is_hotspot 
+----	    and it.type!="mob" --now danger is not part of mob
+--	    then
+--	     i2col[i]=true
+--	    end
+--	    
+--    end
+--    
+--    
+----    --treasure is solid 
+----    --even on hotspot
+----    --(todo: cleaner way?)
+----    if it.type=="treasure" then
+----     i2col[i]=true
+----    end
+--    
+--    if it.type=="mob" then
+----     i2danger[i]=true
+--     for n in all(eightway) do
+--      s(i2danger,ptadd(p,n),true)
+--     end
+----     s(i2danger,p,true) --don't treat mob sq as danger for now
+--    end
+--    
+--   end
+--  end
+-- end
  
  
  --create reachable zone
@@ -1614,14 +1679,14 @@ end
 --  rectfill2(x*8+3,y*8+3,2,2,z)
 -- end
 --end
-------for i2xxx arrays
---function drawdebug_layer(lyr,c)
--- for k,v in pairs(lyr) do
---  p=i2pt(k)
---  local x,y=p.x,p.y
---  rect2(x*8+1,y*8+1,6,6,c)
--- end
---end
+----for i2xxx arrays
+function drawdebug_layer(lyr,c)
+ for k,v in pairs(lyr) do
+  p=i2pt(k)
+  local x,y=p.x,p.y
+  rect2(x*8+1,y*8+1,6,6,c)
+ end
+end
 --function drawdebug_tilecol()
 -- for x=0,tilesw-1 do
 --  for y=0,tilesh-1 do
@@ -1893,6 +1958,7 @@ function update_move_cursor()
  cur_obj=obj
 -- set_obj_for_popup(obj)
  
+ local on_hot=ptequ(cur,obj)
  
  --note the fall-thru effect here
  --later things are higher priority
@@ -1922,7 +1988,8 @@ function update_move_cursor()
   
   --object, but what kind?
   if obj!=nil then
-	  if g(i2hot,cur) then
+--	  if g(i2hot,cur) then
+	  if on_hot then
 	   style="hot"
 	  end
 	  
@@ -1961,7 +2028,7 @@ function update_move_cursor()
  if obj!=nil
  and obj_owner(obj)==cp 
  and obj.type=="castle" 
- and not g(i2hot,cur) --but still not this
+ and not on_hot --but still not this
  then 
   style="castle"
   if btnp(❎)
@@ -1978,7 +2045,7 @@ function update_move_cursor()
   or style=="attack"
   or style=="trade"
   then
-   if ptequ(cur,obj) then
+   if on_hot then
 	   --kludge to pass goal
 	   --obj to pathfind
 	   --(to know if it's a mob)
@@ -3339,7 +3406,7 @@ function draw_cur_popup_info()
     
   elseif cur_obj.type=="mob"
   then
-   if g(i2hot,cur) then
+   if ptequ(cur,obj) then
     --token
 	   stack=cur_obj.group
 	   map_desc=vague_number(stack.count)
@@ -3704,6 +3771,26 @@ function init_data()
 		pt( 1, 1),
 	}
 	
+	castle_col={
+		pt(-2,0),
+		pt(-2,-1),
+		pt(2,0),
+		pt(2,-1),
+		pt(-1,0),
+		pt( 1,0),
+		pt(-1,-1),
+		pt( 0,-1),
+		pt( 1,-1),
+		pt(-1,-2),
+		pt( 0,-2),
+		pt( 1,-2),
+	}
+ mine_col={
+		pt(-1,-1),
+		pt( 0,-1),
+		pt(-1,0),
+	}
+	
 	
 	group_numbers={
 	 5,10,20,50,100,250,500,1000
@@ -3879,11 +3966,9 @@ function init_data()
 	  port=202,
 	  spr=137,
 	  sprx=-2*8,
-	  spry=-2*8,
+	  spry=-3*8,
 	  sprw=5,
 	  sprh=4,
-	  col={-2,-1,5,3},
-	  hot={0,1},
 	 },
 	 hero={
 	  type="hero",
@@ -3893,8 +3978,6 @@ function init_data()
 	  spry=-4,
 	  sprw=2,
 	  sprh=2,
-	  col={0,0,1,1},
-	  hot={-100,-100},
 	  move=100,
 	  army={
 	   ms("calavry",20),
@@ -3905,12 +3988,10 @@ function init_data()
 	 mine_={
 	  type="mine",
 	  spr=174,
-	  sprx=0,
-	  spry=0,
+	  sprx=-8,
+	  spry=-8,
 	  sprw=2,
 	  sprh=2,
-	  col={0,0,2,2},
-	  hot={1,1},
 	 },
 	 mob={
 	  type="mob",
@@ -3919,8 +4000,6 @@ function init_data()
 	  spry=0,
 	  sprw=1,
 	  sprh=1,
-	  col={0,0,1,1},
-	  hot={0,0},
 	  group=ms("goblins",40)
 	 },
 	 mob2={
@@ -3930,8 +4009,6 @@ function init_data()
 	  spry=0,
 	  sprw=1,
 	  sprh=1,
-	  col={0,0,1,1},
-	  hot={0,0},
 	  group=ms("skeletons",15)
 	 },
 	 gold={
@@ -3943,8 +4020,6 @@ function init_data()
 	  spry=0,
 	  sprw=1,
 	  sprh=1,
-	  col={0,0,1,1},
-	  hot={0,0},
 	 },
 	}
 	
