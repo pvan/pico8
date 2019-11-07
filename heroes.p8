@@ -481,13 +481,10 @@ function move_hero_tick()
 			update_fog()
   end
   
---  map_draw()
---  flip()
---  flip()
---  flip()
---  flip()--go slow for testing ai
---  flip()
---  flip()
+  local mob=g(i2danger,p)
+  if mob then
+   start_battle(sel,mob)
+  end
  
   --special case for obj in p
   if obj!=nil then
@@ -1236,9 +1233,7 @@ function create_i2tile()
 
 
 
- for it in all(things) do  
-  s(mapobj,it,it)
-  s(i2col,it,true)
+ for it in all(things) do
 
   --8047
 --  spots={
@@ -1261,6 +1256,8 @@ function create_i2tile()
 --		 end
 --  end
 
+  s(mapobj,it,it)
+   
   --8046
   spots={}
   i2={}
@@ -1268,105 +1265,28 @@ function create_i2tile()
   if it.type=="mob" then
    spots=eightway
    i2=i2danger
-  end
-  if it.type=="castle" then
+   s(i2col,it,true)
+  elseif it.type=="castle" then
    spots=castle_col
    i2=i2col
    maybemap=mapobj
-  end
-  if it.type=="mine" then
+  elseif it.type=="mine" then
    spots=mine_col
    i2=i2col
    maybemap=mapobj
+  else 
+   s(i2col,it,true)
   end
   for n in all(spots) do
    local p=ptadd(it,n)
-   s(i2,p,true)
+   s(i2,p,it)
    s(maybemap,p,it)
   end
   
   
  end
  
-  
-  --8094 before it all
--- for i=1,#things do
---  it=things[i]
---  
---  
---  if it.col==nil then
---   it.col={0,0,1,1}
---  end
---  
---  c=it.col
---  for cx=0,c[3]-1 do
---   for cy=0,c[4]-1 do
---   
---    x=it.x+c[1]+cx
---    y=it.y+c[2]+cy
---    p=pt(x,y)
---    i=pt2i(p)
---    
---    --todo: simplify obj
---    --no col even?
---    --(just special case for castle/mines?)
---    --hotspot is implied by base position?
---    
---    is_hotspot=
---      x==it.x+it.hot[1] and 
---      y==it.y+it.hot[2] 
---    
---    
---    --map of hot spots
---    if is_hotspot then
---     i2hot[i]=true
---    end
---    
---    
---    --special case for castle wings
---    if it.type=="castle" and 
---      ((cx==0 and cy==0) or
---       (cx==4 and cy==0))
---    then
-----     i2col[i]=nil
-----     s(mapobj,p,nil)
---    else
---    
---	    --careful not to overwrite
---	    --other thigns here
---	    --(mobs now are only their
---	    -- own square and not all adj)
---	    s(mapobj,p,it)
---	    
---	    --set all as solid col
---	    --except hot spot and mobs
---	    if not is_hotspot 
-----	    and it.type!="mob" --now danger is not part of mob
---	    then
---	     i2col[i]=true
---	    end
---	    
---    end
---    
---    
-----    --treasure is solid 
-----    --even on hotspot
-----    --(todo: cleaner way?)
-----    if it.type=="treasure" then
-----     i2col[i]=true
-----    end
---    
---    if it.type=="mob" then
-----     i2danger[i]=true
---     for n in all(eightway) do
---      s(i2danger,ptadd(p,n),true)
---     end
-----     s(i2danger,p,true) --don't treat mob sq as danger for now
---    end
---    
---   end
---  end
--- end
+ --8094 before it all
  
  
  --create reachable zone
