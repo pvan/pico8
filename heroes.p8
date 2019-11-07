@@ -781,8 +781,7 @@ function update_map_cursor()
  if sel!=nil 
  and sel.movep!=nil
  then
-  if path==nil
-  or not ptequ(sel.movep,
+  if not ptequ(sel.movep,
                path[#path])
   then
    create_path(sel.movep)
@@ -2212,12 +2211,6 @@ function end_with_loser(loser)
  btnx_wasup=false
  
  
- --reset these map vars
- --(feels out of place)
- path=nil --var also used in map
- moving=false --todo: better way?
- 
- 
  --turn these off
  activemob=nil
  bcur.x=1000
@@ -2404,6 +2397,10 @@ end
 
 --start/init rolled into one
 function start_battle(l,r)
+
+ --stop hero movement
+ moving=false --todo: better place/way?
+ 
  
  main_update=battle_update
  main_draw=battle_draw
@@ -2624,10 +2621,10 @@ function mob_move(p)
  
  while dist>0 do
  
-  path=pathfind(m,p,
+  local bpath=pathfind(m,p,
    b_neighbors,
    grid_dist)
-  for step in all(path) do
+  for step in all(bpath) do
    --token: ptset
    m.x,m.y=step.x,step.y
    for i=1,3 do
