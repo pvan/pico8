@@ -17,13 +17,12 @@ __lua__
 ---evaluate when to pickup units and how to distribute them
 
 --bug:
---something with path after battle
---(make obj not col might fix?)
 --icon on hero self (need inspect function)
 
 --todo:
 --change obj.type to int instead of string index
 --tile spr func? (with mirror?)
+--hero should be drawn over adj obj maybe?
 
 
 --big todos:
@@ -760,9 +759,11 @@ function update_map_cursor()
 	 if sel!=nil
 	 and sel.type=="hero" 
 	 then
-	  if btnp(❎) 
+	  if btnp(❎)
+	  --todo: func to check if
+	  --path exists and ends on p? 
 	  and path!=nil 
-	  and #path>0 
+	  and #path>0 --dont need?
 	  and ptequ(path[#path],cur)
 	  then
 	   move_hero()
@@ -776,11 +777,13 @@ function update_map_cursor()
   cur_spr=cur_sprs["arrow"]
  end
 
- --todo: audit
- if sel!=nil and path!=nil then
-  if not ptequ(sel.movep,
+ --tokens here? this feels awkward
+ if sel!=nil 
+ and sel.movep!=nil
+ then
+  if path==nil
+  or not ptequ(sel.movep,
                path[#path])
-  and sel.movep!=nil
   then
    create_path(sel.movep)
   end
@@ -2209,8 +2212,10 @@ function end_with_loser(loser)
  btnx_wasup=false
  
  
+ --reset these map vars
+ --(feels out of place)
  path=nil --var also used in map
--- moving=false --todo: better way?
+ moving=false --todo: better way?
  
  
  --turn these off
