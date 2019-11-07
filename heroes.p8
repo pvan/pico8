@@ -1198,7 +1198,12 @@ function floodfill2(res,p)
  --force any danger zone spot
  --to stop filling (lets us
  --get one square into danger)
- if (g(i2danger,p)) return
+ mob=g(i2danger,p)
+ if mob then
+  --but also add that mob
+  s(res,mob,true)
+  return
+ end
  
  for d in all(cardinal) do
   local testp=ptadd(p,d)
@@ -1216,7 +1221,6 @@ function floodfill2(res,p)
 	 if obj!=nil then
 	  if (obj_interactable(obj)
 	  		  and not g(i2danger,p)) --don't try to pick things up after walking through danger
-	  or obj.type=="mob"
 	  then
 	   s(res,testp,true)
 	  end
