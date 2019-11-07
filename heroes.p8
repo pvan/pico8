@@ -1210,7 +1210,6 @@ function floodfill2(res,p)
   if tile_is_solid(testp) 
   or g(res,testp) --dont add duplicate pts
   or g(cp.fog,testp) --dont walk through fog
---  and not g(i2danger,testp)  --now dont treat this as reachable
   then
   else
    floodfill2(res,testp)
@@ -1218,13 +1217,18 @@ function floodfill2(res,p)
   
   --add adjacent objects
   local obj=g(mapobj,testp)
-	 if obj!=nil then
-	  if (obj_interactable(obj)
-	  		  and not g(i2danger,p)) --don't try to pick things up after walking through danger
-	  then
-	   s(res,testp,true)
-	  end
-	 end
+	 if obj!=nil
+  --todo: are we adding
+  --duplicate spots here?
+  --(if we reach obj from 2 places)
+	 and obj_interactable(obj)
+	 --we don't need to check if
+	 --this obj is only accessable
+	 --from danger zone, bc danger
+	 --has early exit above
+  then
+   s(res,testp,true)
+  end
 	 
  end
 end
