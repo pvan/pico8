@@ -17,9 +17,6 @@ __lua__
 ---evaluate when to pickup units and how to distribute them
 
 --bug:
---icon on hero self (need inspect function)
---green castle in fog clipping
---popup info not hiding in fog
 
 --todo:
 --change obj.type to int instead of string index
@@ -1527,15 +1524,14 @@ function draw_overworld()
    --camear(), so we have to 
    --awkwardly offset it ourselves
    
-   --tokens: this one call is 36 (32 now)
+   --tokens: this one call is 36 (22 now)
    --(try tl cam pos again? would only save 4 tokens?)
    --(try tl cam in real x,y? would save 12)
-   local xof=-cam.x*8+64
-   local yof=-cam.y*8+64
-   clip(xof,
-        yof,
-        tilesw*8+xof,
-        tilesh*8+yof)
+   clip(-cam.x*8+64,
+        -cam.y*8+64,
+        tilesw*8,
+        tilesh*8)
+ 	
   end
   
   spr(sprt,
@@ -1914,6 +1910,9 @@ function update_cursor_spr()
  elseif style=="hero" then
 		if obj_and_friend then
 		 style="trade"
+		 if obj==sel then
+		  style="hero"
+		 end
 		else
 		 style="attack"
 		end
@@ -3253,7 +3252,9 @@ function draw_cur_popup_info()
  
 
  --map item description
- if cur_obj!=nil then
+ if cur_obj!=nil 
+ and not g(cp.fog,cur)
+ then
  
   --text descrip
   
