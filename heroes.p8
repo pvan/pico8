@@ -18,6 +18,8 @@ __lua__
 
 --bug:
 --icon on hero self (need inspect function)
+--green castle in fog clipping
+--popup info not hiding in fog
 
 --todo:
 --change obj.type to int instead of string index
@@ -170,6 +172,11 @@ function _init()
  green_plr.castles[1]=tc
  green_plr.heroes[1]=
  	spawn("hero",tc.x,tc.y+1)
+ 	
+ --test castle attack/walk-in
+-- tc2=spawn("castle",3+6,5+2)
+-- tc2.army=random_starting_army()
+-- green_plr.castles[2]=tc2
  	
  tc=spawn("castle",20,22)
  tc.army=random_starting_army()
@@ -759,10 +766,7 @@ function update_map_cursor()
 	 and sel.type=="hero" 
 	 then
 	  if btnp(❎)
-	  --todo: func to check if
-	  --path exists and ends on p? 
-	  and path!=nil 
-	  and #path>0 --dont need?
+	  and path!=nil
 	  and ptequ(path[#path],cur)
 	  then
 	   move_hero()
@@ -1193,18 +1197,23 @@ tilesh=32
 --used for creating valid
 --reachable spots for pathfinding
 function floodfill2(res,p)
-
- s(res,p,true)
  
  --force any danger zone spot
  --to stop filling (lets us
  --get one square into danger)
- mob=g(i2danger,p)
+ local mob=g(i2danger,p)
+ 
+ --try to do this here? tokens
+-- s(res,p,mob?"attack:"horse")
+ 
  if mob then
-  --but also add that mob
-  s(res,mob,true)
+  s(res,p,"attack")
+  s(res,mob,"attack") --but also add that mob
   return
  end
+ 
+ --might be overridden in cursor
+ s(res,p,"horse")
  
  for d in all(cardinal) do
   local testp=ptadd(p,d)
@@ -1228,7 +1237,7 @@ function floodfill2(res,p)
 	 --from danger zone, bc danger
 	 --has early exit above
   then
-   s(res,testp,true)
+   s(res,testp,obj.type)
   end
 	 
  end
@@ -1545,8 +1554,8 @@ function draw_overworld()
    then
     --minecart resource
     spr(res_sprs[i.subtype],
-      i.x*8+2,
-      i.y*8+3)
+      i.x*8-6,
+      i.y*8-5)
     spr(218,
       i.x*8,
       i.y*8,2,2)
@@ -1886,105 +1895,74 @@ function update_move_cursor()
  local obj=g(mapobj,cur)
 -- local selzones=objzones(sel)
  
+ local obj_and_friend=
+  obj and
+  obj_owner(obj)==cp
+ 
  --tokens: just set directly
  cur_obj=obj
--- set_obj_for_popup(obj)
+
+ --goal: only get obj here
+ --or in floodfill, not both
+ --goal2: combine this with
+ --updt_sel_cur (eg no i2reachable)
  
- local on_hot=ptequ(cur,obj)
+ style=g(i2reachable,cur)
  
- --note the fall-thru effect here
- --later things are higher priority
+ --i2reachable is set
+ --in floodfill and could be
+ --any obj.type 
+ --or "attack" (if danger/mob)
+ --or "horse" if empty space
+ --or nil if not reachable
  
- --first reject any out of zone
- if not g(i2reachable,cur) then
--- if not has2(i2reachable,cur) then
+ if style==nil then 
   style="arrow"
-  
-  --todo: consider i2reach
-  --as a map from pos 
-  --to cursor style?
-  --(and effect even?)
-  
- else
-  --handle in-zone things
-  
-  --default to walkable
-  style="horse"
-  
-  --mob danger area
---	  if obj.type=="mob" then
-  if g(i2danger,cur) then
-   style="attack"
+  if obj_and_friend then
+   style=obj.type
   end
-  
-  
-  --object, but what kind?
-  if obj!=nil then
---	  if g(i2hot,cur) then
-	  if on_hot then
-	   style="hot"
-	  end
-	  
-	  --or use danger check?
-	  --and set mob pos as danger?
-	  if obj.type=="mob" then
-	   style="attack"
-	  end
-  
-	  if obj.type=="hero" then
- 	  if obj_owner(obj)==cp then
-	    style="trade"
-	   else
-	    style="attack"
- 	  end
- 	 end
-	  
-	  --enemy castle
-	  --or hero in castle
-	  --but not empty enemy castle
-	  if obj_owner(obj)!=cp
-	  and obj.type=="castle"
-	  and #obj.army>0
-	  then
-	   style="attack"
-	  end
-
-  end
-  
-
+ elseif style=="hero" then
+		if obj_and_friend then
+		 style="trade"
+		else
+		 style="attack"
+		end
+	elseif style=="horse" then
+	 if obj!=nil then
+ 	 style="hot"
+ 	 
+ 	 --kind of special case
+ 	 --for attacking enemy castles
+ 	 --note: i don't think we need
+ 	 --to actually check if castle
+-- 	 if obj.type=="castle"
+			if not obj_and_friend 
+			and obj.army
+			then
+			 style="attack"
+			end
+			
+ 	end
  end
  
- --select castles anywhere 
- --(in or out of zone)
- --but only your own
- if obj!=nil
- and obj_owner(obj)==cp 
- and obj.type=="castle" 
- and not on_hot --but still not this
- then 
-  style="castle"
-  if btnp(❎)
---  and obj_owner(obj)==cp
-  then
-   sel=obj
-  end
- end
-
  
- if btnp(❎) then
-  if style=="horse" 
-  or style=="hot"
-  or style=="attack"
-  or style=="trade"
-  then
-   if on_hot then
-	   --kludge to pass goal
-	   --obj to pathfind
-	   --(to know if it's a mob)
-    cur=copy(obj)
-   end
-   sel.movep=copy(cur)
+ local walkable={
+  "horse",
+  "hot",
+  "treasure",
+  "attack",
+  "trade",
+ }
+ if btnp(❎) 
+ and has(walkable,style) 
+ then
+  if on_hot then
+	  --kludge to pass goal
+	  --obj to pathfind
+	  --(to know if it's a mob)
+   cur=copy(obj)
   end
+  sel.movep=copy(cur)
  end
  
  cur_spr=cur_sprs[style]
@@ -3663,6 +3641,13 @@ end
 function init_data()
 
 
+-- --for cursor icon
+-- cursor_type={
+--  castle="castle",
+--  hero="trade
+-- }
+
+
  --pretty much just for
  --checking if p is on grid?
 	grid={}
@@ -3817,6 +3802,7 @@ function init_data()
 	 arrow=208,
 	 horse=177,
 	 hot=192,
+	 treasure=192, --always hot cursor, less tokens to do it like this
 	 trade=224,
 	 attack=240,
 	}
