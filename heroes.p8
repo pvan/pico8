@@ -872,7 +872,7 @@ function map_draw()
 --	 drawdebug_zones()
 --	 drawdebug_layer(i2danger,8)
 --	 drawdebug_layer(i2hot,11)
-	 drawdebug_layer(i2col,10)
+--	 drawdebug_layer(i2col,10)
 	 
 	 
 	 
@@ -1027,12 +1027,12 @@ end
 function pt2i(p)
  return bor(p.x,lshr(p.y,16))
 end
-function i2pt(i)
- local x=band(i,0b1111111111111111)
- local y=band(i,0b0000000000000000.1111111111111111)
- y=shl(y,16)
- return pt(x,y)
-end
+--function i2pt(i)
+-- local x=band(i,0b1111111111111111)
+-- local y=band(i,0b0000000000000000.1111111111111111)
+-- y=shl(y,16)
+-- return pt(x,y)
+--end
 
 
 
@@ -1298,10 +1298,6 @@ function create_i2tile()
  --fill empty space
  --(stops if spot adjacent to enemy)
  floodfill2(i2reachable,sel)
- --fill in obj adjacent to 
- --each spot here?
- --right now we handle it 
- --in pathfind() and cursor code
  
  --todo: token:
  --better to have i2reachable
@@ -1311,10 +1307,6 @@ function create_i2tile()
  --vs has2(i2reach,p)
  --and for p in all(reach)
  --vs  for p,v in all(reach)
- 
- --todo: try making treas/hero/mob
- --not in i2col, but just stop
- --reachable search when reached (like danger)
  
  orig_reach=copy(i2reachable)
  for p in all(orig_reach) do
@@ -1600,13 +1592,13 @@ end
 -- end
 --end
 ----for i2xxx arrays
-function drawdebug_layer(lyr,c)
- for k,v in pairs(lyr) do
-  p=i2pt(k)
-  local x,y=p.x,p.y
-  rect2(x*8+1,y*8+1,6,6,c)
- end
-end
+--function drawdebug_layer(lyr,c)
+-- for k,v in pairs(lyr) do
+--  p=i2pt(k)
+--  local x,y=p.x,p.y
+--  rect2(x*8+1,y*8+1,6,6,c)
+-- end
+--end
 --function drawdebug_tilecol()
 -- for x=0,tilesw-1 do
 --  for y=0,tilesh-1 do
@@ -3312,6 +3304,10 @@ end
 
 function draw_cur_popup_info()
 
+ --token: set this when creating
+ --i2reachable or i2* data??
+ 
+
  --map item description
  if cur_obj!=nil then
  
@@ -3326,15 +3322,12 @@ function draw_cur_popup_info()
     
   elseif cur_obj.type=="mob"
   then
-   if ptequ(cur,obj) then
-    --token
-	   stack=cur_obj.group
-	   map_desc=vague_number(stack.count)
-	    ..mob_names[stack.id]
-	    .." ["..stack.count.."]"
-	  else
-	   map_desc=nil
-   end
+   --token
+   stack=cur_obj.group
+   map_desc=vague_number(stack.count)
+    ..mob_names[stack.id]
+    .." ["..stack.count.."]"
+    
   elseif cur_obj.type=="treasure" 
   then
    map_desc=res_names[cur_obj.subtype]
