@@ -22,7 +22,6 @@ __lua__
 --todo:
 --change obj.type to int instead of string index
 --tile spr func? (with mirror?)
---hero should be drawn over adj obj maybe?
 
 
 --big todos:
@@ -1446,18 +1445,36 @@ function obj_owner(obj)
 end
 
 
+--for about 30 tokens we
+--can make heros draw over
+--nearby objects.. is it worth it?
+function hero_adjust(t,amt)
+ for obj in all(t) do
+  if obj.type=="hero" then
+   obj.y+=amt
+  end
+ end
+end
 
 --sort table list by k element of table
 function sort_by_y(t)
+ 
+ --awkward hack to force hero
+ --to draw over near objects
+ hero_adjust(t,0.2)
+ 
  for n=2,#t do
   local i=n
   while i>1 and
-   t[i].y<t[i-1].y
+   t[i].y < t[i-1].y
   do
    t[i],t[i-1]=t[i-1],t[i]
    i-=1
   end
  end
+ 
+ hero_adjust(t,-0.2)
+ 
 end
 
 
@@ -1520,6 +1537,7 @@ function draw_overworld()
       i.sprw,i.sprh)
       
   if i.type=="mine" then
+   --tokens: make {7,2} list and use has() (here and elsewhere)
    if i.subtype!=7
    and i.subtype!=2
 --   if i.subtype!="mercury"
