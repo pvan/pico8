@@ -19,7 +19,7 @@ __lua__
 --bug:
 --something with path after battle
 --(make obj not col might fix?)
---check speed of reachable creation when no fog
+--icon on hero self (need inspect function)
 
 --todo:
 --change obj.type to int instead of string index
@@ -203,8 +203,8 @@ function _init()
 --	spawn("gold",28,6)
 --	spawn("mine_ore",30,8)
 	
-	--above gold near gobs
-	spawn("mercury",3,6)
+	--in corner of castle
+	spawn("mercury",3,5)
 	
 	--above gold near gobs
 	spawn("gems",7,15)
@@ -480,11 +480,6 @@ function move_hero_tick()
 			limit_camera()
 			update_fog()
   end
-  
-  local mob=g(i2danger,p)
-  if mob then
-   start_battle(sel,mob)
-  end
  
   --special case for obj in p
   if obj!=nil then
@@ -506,9 +501,15 @@ function move_hero_tick()
    else
     --add other obj here
    end
-  sel.movep=nil
+   sel.movep=nil
    moving=false
    create_i2tile()
+  else
+   --(obj==nil)
+   local mob=g(i2danger,p)
+   if mob then
+    start_battle(sel,mob)
+   end
   end
  
  else
@@ -1192,8 +1193,7 @@ tilesh=32
 --reachable spots for pathfinding
 function floodfill2(res,p)
 
--- s(res,p,true)
- add(res,p)
+ s(res,p,true)
  
  --force any danger zone spot
  --to stop filling (lets us
@@ -1203,13 +1203,25 @@ function floodfill2(res,p)
  for d in all(cardinal) do
   local testp=ptadd(p,d)
   if tile_is_solid(testp) 
-  or has2(res,testp) --dont add duplicate pts
+  or g(res,testp) --dont add duplicate pts
   or g(cp.fog,testp) --dont walk through fog
 --  and not g(i2danger,testp)  --now dont treat this as reachable
   then
   else
    floodfill2(res,testp)
   end
+  
+  --add adjacent objects
+  local obj=g(mapobj,testp)
+	 if obj!=nil then
+	  if (obj_interactable(obj)
+	  		  and not g(i2danger,p)) --don't try to pick things up after walking through danger
+	  or obj.type=="mob"
+	  then
+	   s(res,testp,true)
+	  end
+	 end
+	 
  end
 end
 
@@ -1219,19 +1231,18 @@ end
 --maps tile xy to obj,col,hot,etc
 function create_i2tile()
 
- --todo: try i2* as lists
- --intead of maps?
- --slower access (has2() vs g())
- --but maybe less tokens
- --maybe mix? eg i2danger maps to mob?
-  
- mapobj={}
---	i2obj={}
+ --could try i2* as lists
+ --intead of maps,
+ --however if i2reachable is
+ --any indication, we need the
+ --faster access that maps have
+
+ --not i2col and i2danger
+ --now map to their obj
+ 
+ mapobj={}  --rename back to i2obj?
 	i2col={}    --all collisions
---	i2hot={}    --building activation points
 	i2danger={} --mob attack squares
-
-
 
  for it in all(things) do
 
@@ -1283,48 +1294,26 @@ function create_i2tile()
    s(maybemap,p,it)
   end
   
-  
  end
- 
- --8094 before it all
- 
  
  --create reachable zone
  --(for selected object)
+ 
+ --better to have i2reachable
+ --be i2* style (a table)
+ --or just list of coordinates?
+ --more tokens to do table
+ --(7977 vs 7991)
+ --but we need the faster runtime
+ --access with g() vs has()
  
  --valid for selected hero only
  --need check if sel nil here?
  i2reachable={}
  --fill empty space
- --(stops if spot adjacent to enemy)
+ --also grabs mobs adj to space
+ --stops on first danger square
  floodfill2(i2reachable,sel)
- 
- --todo: token:
- --better to have i2reachable
- --be i2* style (a table)
- --or just list of coordinates?
- --eg g(i2reach,p)
- --vs has2(i2reach,p)
- --and for p in all(reach)
- --vs  for p,v in all(reach)
- 
- orig_reach=copy(i2reachable)
- for p in all(orig_reach) do
-  --not diagonals bc pathing
-  --doesn't cut corners
-  for n in all(cardinal) do
-   local np=ptadd(p,n)
-   local obj=g(mapobj,np)
-		 if obj!=nil then
-		  if (obj_interactable(obj)
-    		  and not g(i2danger,p)) --don't try to pick things up after walking through danger
-		  or obj.type=="mob"
-    then
-     add(i2reachable,np)
-    end
-   end
-  end
- end
  
 end
 
@@ -1577,10 +1566,13 @@ end
 
 ---- some debug functions
 --function drawdebug_reach()
----- for i,v in pairs(i2reachable) do
--- for p in all(i2reachable) do
---  rectfill2(p.x*8+2,p.y*8+2,4,4,0)
---  rectfill2(p.x*8+3,p.y*8+3,2,2,11)
+-- for i,v in pairs(i2reachable) do
+---- for p in all(i2reachable) do
+--  if v then
+--   p=i2pt(i)
+--   rectfill2(p.x*8+2,p.y*8+2,4,4,0)
+--   rectfill2(p.x*8+3,p.y*8+3,2,2,11)
+--  end
 -- end
 --end
 --function drawdebug_zones()
@@ -1876,8 +1868,8 @@ function update_move_cursor()
  --later things are higher priority
  
  --first reject any out of zone
--- if not g(i2reachable,cur) then
- if not has2(i2reachable,cur) then
+ if not g(i2reachable,cur) then
+-- if not has2(i2reachable,cur) then
   style="arrow"
   
   --todo: consider i2reach
