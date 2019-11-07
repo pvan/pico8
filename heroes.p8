@@ -761,24 +761,17 @@ function update_map_cursor()
  
  limit_camera()
  
- if not g(cp.fog,cur) then
-	 if sel!=nil
-	 and sel.type=="hero" 
-	 then
-	  if btnp(❎)
-	  and path!=nil
-	  and ptequ(path[#path],cur)
-	  then
-	   move_hero()
-	  else
-	   update_move_cursor()
-	  end
-	 else
-	  update_sel_cursor()
-	 end
- else
-  cur_spr=cur_sprs["arrow"]
+ if sel!=nil
+ and sel.type=="hero" 
+ then
+  if btnp(❎)
+  and path!=nil
+  and ptequ(path[#path],cur)
+  then
+   move_hero()
+  end
  end
+ update_cursor_spr()
 
  --tokens here? this feels awkward
  if sel!=nil 
@@ -1328,10 +1321,15 @@ function create_i2tile()
  --valid for selected hero only
  --need check if sel nil here?
  i2reachable={}
+ 
  --fill empty space
  --also grabs mobs adj to space
  --stops on first danger square
- floodfill2(i2reachable,sel)
+ if sel.move then 
+  --note only create reachable
+  --area when sel hero
+  floodfill2(i2reachable,sel)
+ end
  
 end
 
@@ -1881,19 +1879,8 @@ end
 --cursor
 
 
---function pt_adjacent_reach(p)
--- for d in all(cardinal) do
---  if g(i2reachable,ptadd(p,d)) then
---   return true
---  end
--- end
--- return false
---end
-
-
-function update_move_cursor()
+function update_cursor_spr()
  local obj=g(mapobj,cur)
--- local selzones=objzones(sel)
  
  local obj_and_friend=
   obj and
@@ -1920,6 +1907,9 @@ function update_move_cursor()
   style="arrow"
   if obj_and_friend then
    style=obj.type
+		 if (btnp(❎)) then
+	 	 select(obj)
+		 end
   end
  elseif style=="hero" then
 		if obj_and_friend then
@@ -1969,50 +1959,6 @@ function update_move_cursor()
  
 end
 
-
-----inline this if we end up
-----combining sel + move cur 
---function set_obj_for_popup(obj)
--- --remember obj for hud description
--- --token: could just make obj global? (and rename it)
--- cur_obj=obj
--- --don't select area around mob
--- 
----- --8054
----- if obj!=nil 
----- and obj.type=="mob"
----- and not g(i2hot,cur)
----- then
-----  cur_obj=nil
----- end
--- 
---end
-
---todo: do we really need
---a separate update func 
---for sel and move cursor??
-
-
-function update_sel_cursor()
- local obj=g(mapobj,cur)
- 
- 
- cur_obj=obj
--- set_obj_for_popup(obj)
- 
- 
- if obj!=nil and obj.select then
-  style=obj.type
-	 if (btnp(❎)) then
-	  if obj_owner(obj)==cp then
- 	  sel=obj
- 	 end
-	 end
- else
-  style="arrow"
- end
- cur_spr=cur_sprs[style]
-end
 
 function move_cursor2(p,maxx)
  move_cursor(p,1,maxx,1,1)
@@ -3881,7 +3827,6 @@ function init_data()
 	archetypes={
 	 castle={
 	  type="castle",
-	  select=true,
 	  port=202,
 	  spr=137,
 	  sprx=-2*8,
@@ -3891,7 +3836,6 @@ function init_data()
 	 },
 	 hero={
 	  type="hero",
-	  select=true,
 	  id=1,
 	  sprx=-4,
 	  spry=-4,
