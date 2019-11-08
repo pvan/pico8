@@ -6,8 +6,7 @@ __lua__
 --player ai todos:
 ---improve fog-reveal ai:
 --  -maybe ai (harder difficulty?) can see whole map? 
---  -balance fog/objs
---  -balance multiple heroes
+--  -balance multiple heroes (partially done, any special handling needed?)
 --  -when revealing fog, only move as close as needed to reveal it
 ---only battle if ai thinks it can win
 ---evaluate when to pickup units and how to distribute them
@@ -81,7 +80,7 @@ function set_player(p)
  --consider making blackout
  --for all ai turns if two players
  vp=cp
--- if (cp.ai) vp=lp --comment out to watch ai turn
+ if (cp.ai) vp=lp --comment out to watch ai turn
  
  --reset for this turn
  for h in all(cp.heroes) do
@@ -564,10 +563,30 @@ function ai_tick()
  for h in all(cp.heroes) do
   if h.move>0 then
    
+   --first make list of
+   --fog frontier
+   
+   --do here so we don't have
+   --to re-create this every
+   --time we blacklist something
+   local fog_edge={}
+   do_grid(tilesw-1,function(p)
+    if not g(cp.fog,p) then
+     --only use spots adjacent to fog
+     for d in all(cardinal) do
+      if g(cp.fog,ptadd(p,d)) then
+       add(fog_edge,p)
+       break --only bother with first adjacent fog square
+      end
+     end
+    end
+   end)
+   
+   
    local blacklist={}
    ::search_for_obj::
    
-   --1. find closest object
+   --find closest object
 	  local min_dist=0x7fff --max signed int
 	  local target=nil
    for t in all(things) do
@@ -587,28 +606,12 @@ function ai_tick()
 	   end
    end
    
-   --if no obj, 
-   --target will be nil
-   --at this point
+   --(if no objects, 
+   -- target will be nil
+   -- at this point)
    
-   --2. build list of fog frontier
-   local fog_edge={}
-   do_grid(tilesw-1,function(p)
-    if not g(cp.fog,p) 
-    and not has2(blacklist,p)
-    then
-     --only use spots adjacent to fog
-     for d in all(cardinal) do
-      if g(cp.fog,ptadd(p,d)) then
-       add(fog_edge,p)
-       break --only bother with first adjacent fog square
-      end
-     end
-    end
-   end)
-   
-   --3. compare all fog spots
-   --to previously closest obj
+   --compare all fog spots
+   --to our closest obj (target)
    
    --note we inherit 
    --target / min_dist 
@@ -621,10 +624,7 @@ function ai_tick()
 --          *map_dist(piece,spot)
     end
     if dist<min_dist
-    --don't need blacklist check
-    --here because we check when 
-    --creating fog_edge list
---    and not has2(blacklist,spot) --could blacklist points too
+    and not has2(blacklist,spot) --could blacklist points too
     then
      min_dist=dist
      target=spot
@@ -904,7 +904,7 @@ function map_draw()
 	 --7861 (both ways)
 	 --tokens? change nx,dx to pts?
 	 if path!=nil and #path>0 
---	 and not cp.ai --turn off to see ai path
+	 and not cp.ai --turn off to see ai path
 	 then
 --	  lx,ly=sel.x,sel.y
 	  local l=copy(sel)
