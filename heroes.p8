@@ -451,7 +451,7 @@ end
 function pickup(obj)
  --should only get here 
  --with type==treasure
- sfx(57)
+ if (p_can_see(obj)) sfx(57)
  resstr=res_names[obj.subtype]
  if has(res_names,resstr) then
 -- if obj.subtype<=7
