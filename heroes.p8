@@ -6,6 +6,9 @@ __lua__
 --player ai todos:
 ---improve fog-reveal ai:
 --  -maybe ai (harder difficulty?) can see whole map? 
+--  -balance fog/objs
+--  -balance multiple heroes
+--  -when revealing fog, only move as close as needed to reveal it
 ---only battle if ai thinks it can win
 ---evaluate when to pickup units and how to distribute them
 
@@ -564,7 +567,7 @@ function ai_tick()
    local blacklist={}
    ::search_for_obj::
    
-   --find new target
+   --1. find closest object
 	  local min_dist=0x7fff --max signed int
 	  local target=nil
    for t in all(things) do
@@ -574,7 +577,7 @@ function ai_tick()
     and not g(cp.fog,t)
     and t!=ltarget
     then
-	    --todo: eval targets by value
+	    --todo: eval targets by value?
 	    --todo: euclidean dist?
 	    local dist=map_dist(h,t)
 	    if dist<min_dist then
@@ -584,97 +587,63 @@ function ai_tick()
 	   end
    end
    
---   --debug blacklist
---	  if target!=nil then
---	   rectfill2(18,8,16,16,6)
---	   print(target.x.." "..target.y,18,8,0)
---	  end
---	  y=0
---	  for pa in all(blacklist) do
---	   rectfill2(31,8+y,16,16,6)
---	   print(pa.x.." "..pa.y,32,8+y,0)
---	   y+=8
---	  end
-    
-    
-   --reveal fog if nothing else
-   if target==nil then
---    cls()
---    stop("nil target")
-    
---    local min_dist=0x7fff
-    visible={}
---    local chosen=nil
-    do_grid(tilesw-1,function(p)
-     if not g(cp.fog,p) 
-     and not has2(blacklist,p)
-     then
-      --only use spots adjacent to fog
-      --todo: if no fog, need new method
-      for d in all(cardinal) do
---       local point=ptadd(p,d)
---       local thisdist=map_dist(h,point)
---       if g(cp.fog,point) then
-       if g(cp.fog,ptadd(p,d)) then
---        if thisdist<min_dist then
---         min_dist=thisdist
---         chosen=p
-         add(visible,p)
-         break --only bother with first adjacent fog square
---        end
-       end
+   --if no obj, 
+   --target will be nil
+   --at this point
+   
+   --2. build list of fog frontier
+   local fog_edge={}
+   do_grid(tilesw-1,function(p)
+    if not g(cp.fog,p) 
+    and not has2(blacklist,p)
+    then
+     --only use spots adjacent to fog
+     for d in all(cardinal) do
+      if g(cp.fog,ptadd(p,d)) then
+       add(fog_edge,p)
+       break --only bother with first adjacent fog square
       end
      end
-    end)
-    
-    local min_dist=0x7fff
-    for vis in all(visible) do
---     local dist=map_dist(h,vis)
-     local dist=0
-     for piece in all(cp.castles) do
-      dist+=map_dist(piece,vis)
-     end
-     if dist<min_dist
-     and not has(blacklist,vis) --could blacklist points too
-     then
-      min_dist=dist
-      target=vis
-     end
     end
-    
---    --debug view frontier
---    cam=sel
---    cls()
---    vp=cp
---    map_draw()
--- 	  camera(cam.x*8-64,cam.y*8-64)
---    for vis in all(visible) do
---     spr(205,vis.x*8,vis.y*8)
---    end
---    spr(233,target.x*8,target.y*8)
---    camera()
---    print(pathcount,32,0)
---    stop()
-    
---    stop("here",0,64)
---    target=chosen
---    target=visible[
---     rnd_bw(1,#visible)]
-   end
+   end)
    
+   --3. compare all fog spots
+   --to previously closest obj
+   
+   --note we inherit 
+   --target / min_dist 
+   --from above
+   --(their value here is important)
+   for spot in all(fog_edge) do
+    local dist=0
+    for piece in all(cp.castles) do
+     dist+=map_dist(piece,spot)
+--          *map_dist(piece,spot)
+    end
+    if dist<min_dist
+    --don't need blacklist check
+    --here because we check when 
+    --creating fog_edge list
+--    and not has2(blacklist,spot) --could blacklist points too
+    then
+     min_dist=dist
+     target=spot
+    end
+   end
+
    --in case no fog to reveal
    --and no objs to go to
    if target==nil then
---    cls()
---    stop("castle target")
+    cls(7)
+    stop("castle target")
     
     --todo:pick better default?
     target=cp.castles[1]
    end
    
    if target==ltarget then
---    cls()
---    stop("same target?")
+    cls(7)
+    stop("same target?")
     
     --if same target,
     --at this point,
@@ -707,10 +676,6 @@ function ai_tick()
     --if can't path to obj,
     --blacklist it and search again
     add(blacklist,target)
-    --debug blacklist count
---    rectfill2(22,0,8,8,6)
---    print(#blacklist,22,0,1)
---    flip()
     goto search_for_obj
    end
     
@@ -990,7 +955,7 @@ function map_draw()
     
    rectfill2(58,90,11,9,1)
    rectfill2(59,91,9,9,6)
-   spr(248+flash(6,5),60,92)
+   spr(247+flash(8,4),60,92)
 	  
 	  return
 	 end
@@ -1893,7 +1858,10 @@ function pathfind(start,goal,
  found_goal = false
  
  while #frontier>0 do
-  if (#frontier>100) stop("a* frontier explosion")
+  if #frontier>1000 then
+   cls()
+   stop("a* frontier explosion")
+  end
 
   --[1] drops the priority
   local c=pop(frontier)[1]
@@ -4170,13 +4138,13 @@ __gfx__
 0000000000000000449944911999994100000000000000000000001111dd11100000000016666611000000000000000000000000000000000000000000000000
 00000000000000001499999111444411000000000000000000000111111111000000000011616110000000000000000000000000000000000000000000000000
 00000000000000001111111101111110000000000000000000000000000000000000000001111100000000000000000000000000000000000000000000000000
-00000000000000000000000000010000000000000000000000000000000000000000000011111110111111101111111011111110111111101111111000000000
-0000000000000000000111000017100000000000000000000000000000000000000000001fffff101ffdff101fdddf101ddddd101ddddd101ddddd1000000000
-00000000000000000111a1100017e100000000000000000000000000000000000000000011fff11011fff11011fff11011fff11011ddd11011ddd11000000000
-000000000000000001a19a111017e1100000000000000000000000000000000000000000011d1100011f1100011f1100011f1100011f1100011d110000000000
-0000000000000000117979a1111ee1e1000000000000000000000000000000000000000011ddd11011dfd11011dfd11011dfd11011fff11011fff11000000000
-000000000000000019aa979117e117e100000000000000000000000000000000000000001ddddd101ddddd101ddfdd101dfffd101fffff101fffff1000000000
-0000000000000000119aa11111ee1711000000000000000000000000000000000000000011111110111111101111111011111110111111101111111000000000
+00000000000000000000000000010000000000000000000000000000000000001111111011111110111111101111111011111110111111101111111011111110
+00000000000000000001110000171000000000000000000000000000000000001fffff101ffdff101fdddf101ddddd101ddddd101ddddd101ddddd101ddddd10
+00000000000000000111a1100017e1000000000000000000000000000000000011fff11011fff11011fff11011fff11011fff11011fdf11011ddd11011ddd110
+000000000000000001a19a111017e11000000000000000000000000000000000011d1100011f1100011f1100011f1100011f1100011f1100011f1100011d1100
+0000000000000000117979a1111ee1e10000000000000000000000000000000011ddd11011ddd11011dfd11011dfd11011dfd11011fff11011fff11011fff110
+000000000000000019aa979117e117e1000000000000000000000000000000001ddddd101ddddd101ddddd101ddfdd101dfffd101dfffd101fffff101fffff10
+0000000000000000119aa11111ee1711000000000000000000000000000000001111111011111110111111101111111011111110111111101111111011111110
 00000000000000000111110001111110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __gff__
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001010000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
