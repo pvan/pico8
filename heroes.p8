@@ -4,10 +4,8 @@ __lua__
 
 
 --player ai todos:
----improv fog-reveal ai:
---  -(partially done but needs more)
+---improve fog-reveal ai:
 --  -maybe ai (harder difficulty?) can see whole map? 
---  -maybe ai eval fog near castle as higher priority?
 ---only battle if ai thinks it can win
 ---evaluate when to pickup units and how to distribute them
 
@@ -80,7 +78,7 @@ function set_player(p)
  --consider making blackout
  --for all ai turns if two players
  vp=cp
- if (cp.ai) vp=lp --comment out to watch ai turn
+-- if (cp.ai) vp=lp --comment out to watch ai turn
  
  --reset for this turn
  for h in all(cp.heroes) do
@@ -176,6 +174,8 @@ function _init()
  green_plr.castles[1]=tc
  green_plr.heroes[1]=
  	spawn("hero",tc.x,tc.y+1)
+ green_plr.heroes[2]=
+ 	spawn("hero",tc.x-5,tc.y+2)
  	
  --test castle attack/walk-in
 -- tc2=spawn("castle",3+6,5+2)
@@ -232,7 +232,7 @@ function _init()
  --over anything else
  create_i2tile()
  
- do_grid(tilesw,function(p)
+ do_grid(tilesw-1,function(p)
 	 if not tile_is_solid(p) 
 --	 and not g(i2hot,p)
 	 then
@@ -270,8 +270,9 @@ function create_player(c)
  res.ai=false
  
  res.fog={}
- do_grid(tilesw+30,function(p)
-  ptinc(p,pt(-15,-15))
+-- do_grid(tilesw+30,function(p)
+--  ptinc(p,pt(-15,-15))
+ do_grid(tilesw-1,function(p)
   s(res.fog,p,true)
 --  s(res.fog,p,false)
  end)
@@ -559,7 +560,7 @@ function ai_tick()
  ltarget=nil
  for h in all(cp.heroes) do
   if h.move>0 then
-  
+   
    local blacklist={}
    ::search_for_obj::
    
@@ -604,7 +605,7 @@ function ai_tick()
 --    local min_dist=0x7fff
     visible={}
 --    local chosen=nil
-    do_grid(tilesw,function(p)
+    do_grid(tilesw-1,function(p)
      if not g(cp.fog,p) 
      and not has2(blacklist,p)
      then
@@ -628,8 +629,12 @@ function ai_tick()
     
     local min_dist=0x7fff
     for vis in all(visible) do
-     local dist=map_dist(h,vis)
-     if dist<min_dist 
+--     local dist=map_dist(h,vis)
+     local dist=0
+     for piece in all(cp.castles) do
+      dist+=map_dist(piece,vis)
+     end
+     if dist<min_dist
      and not has(blacklist,vis) --could blacklist points too
      then
       min_dist=dist
@@ -934,7 +939,7 @@ function map_draw()
 	 --7861 (both ways)
 	 --tokens? change nx,dx to pts?
 	 if path!=nil and #path>0 
-	 and not cp.ai --turn off to see ai path
+--	 and not cp.ai --turn off to see ai path
 	 then
 --	  lx,ly=sel.x,sel.y
 	  local l=copy(sel)
