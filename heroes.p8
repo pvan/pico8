@@ -4,8 +4,10 @@ __lua__
 
 
 --player ai todos:
----when nothing to pickup and no fog, figure out a new target
----(move to spot that reveals the most fog? towards enemies?)
+---improv fog-reveal ai:
+--  -(partially done but needs more)
+--  -maybe ai (harder difficulty?) can see whole map? 
+--  -maybe ai eval fog near castle as higher priority?
 ---only battle if ai thinks it can win
 ---evaluate when to pickup units and how to distribute them
 
@@ -78,7 +80,7 @@ function set_player(p)
  --consider making blackout
  --for all ai turns if two players
  vp=cp
- if (cp.ai) vp=lp
+ if (cp.ai) vp=lp --comment out to watch ai turn
  
  --reset for this turn
  for h in all(cp.heroes) do
@@ -581,25 +583,32 @@ function ai_tick()
 	   end
    end
    
-   --random if nothing to grab
+   --reveal fog if nothing else
    if target==nil then
---	    cls()
---	    stop("no target?")
-    visible={}
+    local min_dist=0x7fff
+--    visible={}
+    winner=nil
     do_grid(tilesw,function(p)
      if not g(cp.fog,p) then
       --only use spots adjacent to fog
       --todo: if no fog, need new method
       for d in all(cardinal) do
-       if g(cp.fog,ptadd(p,d)) then
-        add(visible,p)
-        break
+       local point=ptadd(p,d)
+       local thisdist=map_dist(h,point)
+       if g(cp.fog,point) then
+        if thisdist<min_dist then
+         min_dist=thisdist
+         winner=p
+--         add(visible,p)
+         break --only bother with first adjacent fog square
+        end
        end
       end
      end
     end)
-    target=visible[
-     rnd_bw(1,#visible)]
+    target=winner
+--    target=visible[
+--     rnd_bw(1,#visible)]
    end
    
    --in case no fog to reveal
