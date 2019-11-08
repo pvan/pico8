@@ -602,22 +602,31 @@ function ai_tick()
      rnd_bw(1,#visible)]
    end
    
+   --in case no fog to reveal
+   --and no objs to go to
+   if target==nil then
+    --todo:pick better default?
+    target=cp.castles[1]
+   end
+   
    if target==ltarget then
-    cls()
-    stop("same target?")
+    --if same target,
+    --at this point,
+    --is only possible
+    --if fallback to castle
+    --and already in castle
+    --(i think)
+    --so just don't move
+    goto skip_hero
+    
+--    cls()
+--    stop("same target?")
    end
    ltarget=target
    
-   --go to hot spot if exists
-   destpos=copy(target)
-   if destpos.hot!=nil then
-    destpos.x+=destpos.hot[1]
-    destpos.y+=destpos.hot[2]
-   end
-   
    --move to new target
    sel=h
-   create_path(destpos)
+   create_path(target)
    if #path<1 then
     --seems to occur when no
     --path can be found
@@ -638,6 +647,7 @@ function ai_tick()
    end
    
    move_hero()
+   ::skip_hero::
    
   end
  end
