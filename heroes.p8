@@ -137,6 +137,7 @@ end
 
 function _init()
 -- music(0)
+ srand(2)
 	
 	cam=pt(0,0)
 
@@ -585,28 +586,57 @@ function ai_tick()
    
    --reveal fog if nothing else
    if target==nil then
-    local min_dist=0x7fff
---    visible={}
-    local chosen=nil
+--    cls()
+--    stop("nil target")
+    
+--    local min_dist=0x7fff
+    visible={}
+--    local chosen=nil
     do_grid(tilesw,function(p)
      if not g(cp.fog,p) then
       --only use spots adjacent to fog
       --todo: if no fog, need new method
       for d in all(cardinal) do
-       local point=ptadd(p,d)
-       local thisdist=map_dist(h,point)
-       if g(cp.fog,point) then
-        if thisdist<min_dist then
-         min_dist=thisdist
-         chosen=p
---         add(visible,p)
+--       local point=ptadd(p,d)
+--       local thisdist=map_dist(h,point)
+--       if g(cp.fog,point) then
+       if g(cp.fog,ptadd(p,d)) then
+--        if thisdist<min_dist then
+--         min_dist=thisdist
+--         chosen=p
+         add(visible,p)
          break --only bother with first adjacent fog square
-        end
+--        end
        end
       end
      end
     end)
-    target=chosen
+    
+    local min_dist=0x7fff
+    for vis in all(visible) do
+     local dist=map_dist(h,vis)
+     if dist<min_dist 
+     and not has(blacklist,vis) --could blacklist points too
+     then
+      min_dist=dist
+      target=vis
+     end
+    end
+    
+    --debug view frontier
+    cam=sel
+    cls()
+    vp=cp
+    map_draw()
+ 	  camera(cam.x*8-64,cam.y*8-64)
+    for vis in all(visible) do
+     spr(205,vis.x*8,vis.y*8)
+    end
+    spr(233,target.x*8,target.y*8)
+    stop()
+    
+--    stop("here",0,64)
+--    target=chosen
 --    target=visible[
 --     rnd_bw(1,#visible)]
    end
@@ -614,11 +644,17 @@ function ai_tick()
    --in case no fog to reveal
    --and no objs to go to
    if target==nil then
+    cls()
+    stop("castle target")
+    
     --todo:pick better default?
     target=cp.castles[1]
    end
    
    if target==ltarget then
+    cls()
+    stop("same target?")
+    
     --if same target,
     --at this point,
     --is only possible
@@ -628,8 +664,6 @@ function ai_tick()
     --so just don't move
     goto skip_hero
     
---    cls()
---    stop("same target?")
    end
    ltarget=target
    
@@ -876,7 +910,7 @@ function map_draw()
 	 --7861 (both ways)
 	 --tokens? change nx,dx to pts?
 	 if path!=nil and #path>0 
-	 and not cp.ai --turn off to see ai path
+--	 and not cp.ai --turn off to see ai path
 	 then
 --	  lx,ly=sel.x,sel.y
 	  local l=copy(sel)
