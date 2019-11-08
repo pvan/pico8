@@ -567,24 +567,35 @@ function ai_tick()
 	  local min_dist=0x7fff --max signed int
 	  local target=nil
    for t in all(things) do
-    if not has(blacklist,t) 
+    if not has2(blacklist,t)
     and obj_owner(t)!=cp
+    and not ptequ(h,t)
+    and not g(cp.fog,t)
+    and t!=ltarget
     then
-	    if not ptequ(h,t)
-	    and not g(cp.fog,t)
-	    and t!=ltarget
-	    then
-		    --todo: eval targets by value
-		    --todo: euclidean dist?
-		    local dist=map_dist(h,t)
-		    if dist<min_dist then
-		     min_dist=dist
-		     target=t
-		    end
-		   end
+	    --todo: eval targets by value
+	    --todo: euclidean dist?
+	    local dist=map_dist(h,t)
+	    if dist<min_dist then
+	     min_dist=dist
+	     target=t
+	    end
 	   end
    end
    
+--   --debug blacklist
+--	  if target!=nil then
+--	   rectfill2(18,8,16,16,6)
+--	   print(target.x.." "..target.y,18,8,0)
+--	  end
+--	  y=0
+--	  for pa in all(blacklist) do
+--	   rectfill2(31,8+y,16,16,6)
+--	   print(pa.x.." "..pa.y,32,8+y,0)
+--	   y+=8
+--	  end
+    
+    
    --reveal fog if nothing else
    if target==nil then
 --    cls()
@@ -594,7 +605,9 @@ function ai_tick()
     visible={}
 --    local chosen=nil
     do_grid(tilesw,function(p)
-     if not g(cp.fog,p) then
+     if not g(cp.fog,p) 
+     and not has2(blacklist,p)
+     then
       --only use spots adjacent to fog
       --todo: if no fog, need new method
       for d in all(cardinal) do
@@ -689,6 +702,10 @@ function ai_tick()
     --if can't path to obj,
     --blacklist it and search again
     add(blacklist,target)
+    --debug blacklist count
+--    rectfill2(22,0,8,8,6)
+--    print(#blacklist,22,0,1)
+--    flip()
     goto search_for_obj
    end
     
