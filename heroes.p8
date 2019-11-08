@@ -489,8 +489,8 @@ function move_hero_tick()
 				sfx(58,-1,1,1)
 				cam=copy(sel)
 				limit_camera()
-				update_fog()
 			end
+			update_fog()--make sure to do even for ai
   end
  
   --special case for obj in p
@@ -534,7 +534,8 @@ end
 
 function limit_camera()
  
--- if (cp.ai) cur=copy(sel)
+ --make sure cam follows enemy hero
+ if (cp.ai) cur=copy(sel)
  
  --tokens: common limit func?
  cam.x=mid(cam.x,
@@ -623,17 +624,19 @@ function ai_tick()
      end
     end
     
-    --debug view frontier
-    cam=sel
-    cls()
-    vp=cp
-    map_draw()
- 	  camera(cam.x*8-64,cam.y*8-64)
-    for vis in all(visible) do
-     spr(205,vis.x*8,vis.y*8)
-    end
-    spr(233,target.x*8,target.y*8)
-    stop()
+--    --debug view frontier
+--    cam=sel
+--    cls()
+--    vp=cp
+--    map_draw()
+-- 	  camera(cam.x*8-64,cam.y*8-64)
+--    for vis in all(visible) do
+--     spr(205,vis.x*8,vis.y*8)
+--    end
+--    spr(233,target.x*8,target.y*8)
+--    camera()
+--    print(pathcount,32,0)
+--    stop()
     
 --    stop("here",0,64)
 --    target=chosen
@@ -644,16 +647,16 @@ function ai_tick()
    --in case no fog to reveal
    --and no objs to go to
    if target==nil then
-    cls()
-    stop("castle target")
+--    cls()
+--    stop("castle target")
     
     --todo:pick better default?
     target=cp.castles[1]
    end
    
    if target==ltarget then
-    cls()
-    stop("same target?")
+--    cls()
+--    stop("same target?")
     
     --if same target,
     --at this point,
@@ -671,13 +674,13 @@ function ai_tick()
    sel=h
    create_path(target)
    if #path<1 then
-    --seems to occur when no
-    --path can be found
+    --seems to occur when
+    --no path can be found
     --eg mine is visible,
     --but front is covered in fog
     --sometimes [nil] ???
 --    cls()
---    stop("unable to path to "..destpos.type)
+--    stop("unable to path to "..target.type)
     
     --todo: should still move
     --towards obj if in fog?
@@ -688,7 +691,7 @@ function ai_tick()
     add(blacklist,target)
     goto search_for_obj
    end
-   
+    
    move_hero()
    ::skip_hero::
    
@@ -738,18 +741,22 @@ function update_map()
 	 
  end
  
- --feels like there should be
- --a better way to do this
- if cp.ai then
-  return
- end
  
  --now using ports for fog too
+ --(ai doesn't need this except
+ -- for updating fog)
  update_static_hud()
  
  --note relies on ports
  --from update_static_hud()
  update_fog()
+ 
+ 
+ --feels like there should be
+ --a better way to do this
+ if cp.ai then
+  return
+ end
  
  
  --open/close menu
@@ -910,7 +917,7 @@ function map_draw()
 	 --7861 (both ways)
 	 --tokens? change nx,dx to pts?
 	 if path!=nil and #path>0 
---	 and not cp.ai --turn off to see ai path
+	 and not cp.ai --turn off to see ai path
 	 then
 --	  lx,ly=sel.x,sel.y
 	  local l=copy(sel)
