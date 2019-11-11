@@ -2343,23 +2343,23 @@ function grid_dist(c,t)
  local tx,ty=t.x,t.y
  
  count=0
- while cx!=tx do
+ while cy!=ty do
   count+=1
-  if cx<tx then
-   cx+=1
-  else
-   cx-=1
-  end
-  --moving down
-  if cy<ty and not evencol(cx) then
+  if cy<ty then
    cy+=1
-  end
-  --moving up
-  if cy>ty and evencol(cx) then
+  else
    cy-=1
   end
+  --moving right
+  if cx<tx and not evenrow(cy) then
+   cx+=1
+  end
+  --moving left
+  if cx>tx and evenrow(cy) then
+   cx-=1
+  end
  end
- return count+abs(ty-cy)
+ return count+abs(tx-cx)
 end
 
 
@@ -2605,7 +2605,7 @@ end
  
 function get_neighbors(p)
  local neighbors=grid_neighbors_o
- if evencol(p.x) then
+ if evenrow(p.y) then
   neighbors=grid_neighbors_e
  end
  local res=copy(neighbors)
@@ -2652,8 +2652,8 @@ function open_neighbors(p)
  return res
 end
 
-function evencol(x)
- return x%2==0
+function evenrow(y)
+ return y%2==0
 end
 --doesn't save until we use
 --"not evencol(x)" like 9 times?
@@ -2967,12 +2967,12 @@ function battle_update()
  
  
  
- move_cursor(bcur, 0,8, 0,9)
- if evencol(bcur.x) 
+ move_cursor(bcur, 0,8, 0,8)
+ if evenrow(bcur.y) 
  --token: clampx/y functions?
- and bcur.y>8
+ and bcur.x>8
  then
-  bcur.y=8
+  bcur.x=8
  end
 
 end
@@ -3116,7 +3116,7 @@ function battle_draw(hidecursor)
 --  val=grid_dist(activemob,bcur)
 --  cursor()
 --  color()
---  print(bcurx..","..bcury)
+--  print(bcur.x..","..bcur.y)
 --  print(val)
 -- end
  
@@ -3137,8 +3137,8 @@ function bgrid2screen(p)
 -- local res=pt(p.x*gw,p.y*gh)
  local res=pt(p.x*10,p.y*10)
  ptinc(res,gstart)
- if not evencol(p.x) then
-  res.y-=5 --gh/2
+ if not evenrow(p.y) then
+  res.x-=5 --gh/2
  end
  return res.x,res.y
 end
@@ -3723,7 +3723,7 @@ function init_data()
 	grid={}
  do_grid(8,function(p)
   add(grid,p)
-  if not evencol(p.x) then
+  if not evenrow(p.y) then
    add(grid,ptadd(p,pt(0,1)))
   end
 	end)
@@ -3847,20 +3847,26 @@ function init_data()
 	--token: probably a better way
 	-- to generate these
 	grid_neighbors_e={
+--	 pt(-1,-1),
 	 pt(-1,0),
-	 pt(-1,1),
+--	 pt(-1,1),
 	 pt(0,-1),
+--	 pt(0,0),
 	 pt(0,1),
+	 pt(1,-1),
 	 pt(1,0),
 	 pt(1,1),
 	}
 	grid_neighbors_o={
 	 pt(-1,-1),
 	 pt(-1,0),
+	 pt(-1,1),
 	 pt(0,-1),
+--	 pt(0,0),
 	 pt(0,1),
-	 pt(1,-1),
+--	 pt(1,-1),
 	 pt(1,0),
+--	 pt(1,1),
 	}
 
 
