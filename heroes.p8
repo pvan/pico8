@@ -370,62 +370,62 @@ function trade_update()
  
  move_cursor(tcur, 1,5, 1,3)
  
- tcur.x=ceil(tcur.x)
- tcur.y=ceil(tcur.y)
- if tcur.y==3 then
-  tcur.y=2.4
-  tcur.x=2.65
- end
- 
- if movingmob!=nil then
-  if btnp(❎) then
-   --place
-	  bar=bars[tcur.y]
-   mob=bar.army[tcur.x]
-   if mob==nil then
-		  bar.army[tcur.x]=movingmob
-		  movingmob=nil
-   elseif mob.id==movingmob.id then
-    bar.army[tcur.x].count+=movingmob.count
-    movingmob=nil
-   else
-    local temp=movingmob
-    movingmob=mob
-    bar.army[tcur.x]=temp
-	  end
-  end
- else
-	 if tcur.y==2.4 then
-	  if btnp(❎) then
-			 main_update=nil
-			 main_draw=nil
-	  end
-	 else
-		 if btnp(❎) then
-	   bar=bars[tcur.y]
-	   mob=bar.army[tcur.x]
-	   if mob!=nil then
-		   movingmob=mob
-		   bar.army[tcur.x]=nil
-		  end
-		 end
-		 if btn(🅾️) then
-	   bar=bars[tcur.y]
-			 splitmob=bar.army[tcur.x]
-	   if splitmob!=nil 
-	   and splitmob.count>1 then
-			  splitval=1
-			  splitmob.count-=splitval
-			  movingmob=copy(splitmob)
-			  movingmob.count=splitval
-			  
-			  main_update=split_update
-			  main_draw=split_draw
-			  
-			 end
-		 end
-  end
- end
+-- tcur.x=ceil(tcur.x)
+-- tcur.y=ceil(tcur.y)
+-- if tcur.y==3 then
+--  tcur.y=2.4
+--  tcur.x=2.65
+-- end
+-- 
+-- if movingmob!=nil then
+--  if btnp(❎) then
+--   --place
+--	  bar=bars[tcur.y]
+--   mob=bar.army[tcur.x]
+--   if mob==nil then
+--		  bar.army[tcur.x]=movingmob
+--		  movingmob=nil
+--   elseif mob.id==movingmob.id then
+--    bar.army[tcur.x].count+=movingmob.count
+--    movingmob=nil
+--   else
+--    local temp=movingmob
+--    movingmob=mob
+--    bar.army[tcur.x]=temp
+--	  end
+--  end
+-- else
+--	 if tcur.y==2.4 then
+--	  if btnp(❎) then
+--			 main_update=nil
+--			 main_draw=nil
+--	  end
+--	 else
+--		 if btnp(❎) then
+--	   bar=bars[tcur.y]
+--	   mob=bar.army[tcur.x]
+--	   if mob!=nil then
+--		   movingmob=mob
+--		   bar.army[tcur.x]=nil
+--		  end
+--		 end
+--		 if btn(🅾️) then
+--	   bar=bars[tcur.y]
+--			 splitmob=bar.army[tcur.x]
+--	   if splitmob!=nil 
+--	   and splitmob.count>1 then
+--			  splitval=1
+--			  splitmob.count-=splitval
+--			  movingmob=copy(splitmob)
+--			  movingmob.count=splitval
+--			  
+--			  main_update=split_update
+--			  main_draw=split_draw
+--			  
+--			 end
+--		 end
+--  end
+-- end
  
 end
 
@@ -1107,12 +1107,12 @@ end
 function pt2i(p)
  return bor(p.x,lshr(p.y,16))
 end
---function i2pt(i)
--- local x=band(i,0b1111111111111111)
--- local y=band(i,0b0000000000000000.1111111111111111)
--- y=shl(y,16)
--- return pt(x,y)
---end
+function i2pt(i)
+ local x=band(i,0b1111111111111111)
+ local y=band(i,0b0000000000000000.1111111111111111)
+ y=shl(y,16)
+ return pt(x,y)
+end
 
 
 
@@ -1256,6 +1256,18 @@ function drw_bspr(id,p)
  spr(id,p.x*8,p.y*8)
  palt(0,true)
 end
+
+
+
+--concatenate lists
+function concat(a,b)
+ for p in all(b) do
+  add(a,p)
+ end
+end
+
+
+
 
 
 -->8
@@ -2599,7 +2611,7 @@ function get_enemies(mob)
  return mob_team[mob].enemy.mobs
 end
 
- 
+
 function get_neighbors(p)
  local neighbors=grid_neighbors_o
  if evenrow(p.y) then
@@ -2612,20 +2624,53 @@ function get_neighbors(p)
  return res
 end
 
+function create_mob_map()
+ mob_map={}
+ for m in all(moblist) do
+  s(mob_map,m,m)
+  if mob_ws[m.id]==2 then
+   s(mob_map,ptadd(m,pt(1,0)),m)
+  end
+ end
+end
+
+--function mobs_adjacent(a,b)
+-- neighbors=get_neighbors(a)
+-- if mob_ws[a.id]==2 then
+--  concat(neighbors,
+--   ptadd(a,pt(1,0)))
+-- end
+-- for n in all(neighbors) do
+--  
+-- end
+--end
+
 function adjacent_enemies(mob)
  local res={}
+ 
+ create_mob_map()
  
  enemy_list=get_enemies(mob)
  
  neighbors=get_neighbors(mob)
+ if mob_ws[mob.id]==2 then
+  concat(
+   neighbors,
+   get_neighbors(
+    ptadd(mob,pt(1,0))
+   )
+  )
+ end
+ 
  for n in all(neighbors) do
-  for m in all(enemy_list) do
-   if ptequ(m,n) then
-    add(res,m)
-    break
-   end    
+  pot_en=g(mob_map,n)
+  if pot_en
+  and has(enemy_list,pot_en)
+  then
+   add(res,pot_en)
   end
  end
+ 
  return res
 end
 
@@ -3117,15 +3162,46 @@ function battle_draw(hidecursor)
 --  print(val)
 -- end
  
--- --debug display mob + turn
--- i=0
--- for m in all(moblist) do
---  print(mob_names[m.id],4,60+i*8,1)
---  if m==activemob then
---   print("-",0,60+i*8,10)
---  end
---  i+=1
--- end
+ --debug display mob + turn
+ --asdf
+ 
+ gne=get_neighbors(bcur)
+ create_mob_map()
+ local mmm=g(mob_map,bcur)
+ if mmm!=nil then
+  
+ 	sx,sy=bgrid2screen(mmm)
+  circfill(sx+4,sy+4,1,0)
+  
+  gne=get_neighbors(mmm)
+	 if mob_ws[mmm.id]==2 then
+	  concat(
+	   gne,
+	   get_neighbors(
+	    ptadd(mmm,pt(1,0))
+	   )
+	  )
+	 end
+	 asd=adjacent_enemies(mmm)
+	 print("yes",0,0)
+ end
+ 
+ for i,m in pairs(mob_map) do
+  p=i2pt(i)
+ 	sx,sy=bgrid2screen(p)
+  circfill(sx+6,sy+6,1,8)
+ end
+ 
+ for m in all(gne) do
+ 	sx,sy=bgrid2screen(m)
+  circfill(sx+4,sy+6,1,12)
+ end
+ 
+ for m in all(asd) do
+ 	sx,sy=bgrid2screen(m)
+  circfill(sx+5,sy+5,1,9)
+ end
+ 
  	
 end
 
