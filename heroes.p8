@@ -11,6 +11,9 @@ __lua__
 ---only battle if ai thinks it can win
 ---evaluate when to pickup units and how to distribute them
 
+--todo:
+--slow ai move when barely in fog?
+--don't block your own moves (for wide mobs)
 
 --big todos:
 --player select/multiplayer support
@@ -2379,7 +2382,11 @@ function valid_moves(mob)
  for spot in all(grid) do
   if grid_dist(spot,mob)<speed then
    if is_empty(spot) then   
-    add(result,spot)
+    if mob_ws[mob.id]!=2
+    or is_empty(ptadd(spot,pt(1,0)))
+    then
+     add(result,spot)
+    end
    end
   end
  end
@@ -2611,8 +2618,7 @@ function get_enemies(mob)
  return mob_team[mob].enemy.mobs
 end
 
-
-function get_neighbors(p)
+function point_neighbors(p)
  local neighbors=grid_neighbors_o
  if evenrow(p.y) then
   neighbors=grid_neighbors_e
@@ -2621,6 +2627,33 @@ function get_neighbors(p)
  for n in all(res) do
   ptinc(n,p)
  end
+ return res
+end
+function get_neighbors(p)
+
+ create_mob_map()
+
+ --start at base mob pos
+ --of mob at location
+ --(for r side of 2-wide mobs)
+ local pot_mob=g(mob_map,p)
+ if (pot_mob) p=pot_mob
+ 
+ res=point_neighbors(p)
+ 
+ --todo: is it a problem 
+ --that we dup pts here?
+ if pot_mob
+ and mob_ws[pot_mob.id]==2 
+ then
+  concat(
+   res,
+   point_neighbors(
+    ptadd(p,pt(1,0))
+   )
+  )
+ end
+	 
  return res
 end
 
@@ -2653,14 +2686,6 @@ function adjacent_enemies(mob)
  enemy_list=get_enemies(mob)
  
  neighbors=get_neighbors(mob)
- if mob_ws[mob.id]==2 then
-  concat(
-   neighbors,
-   get_neighbors(
-    ptadd(mob,pt(1,0))
-   )
-  )
- end
  
  for n in all(neighbors) do
   pot_en=g(mob_map,n)
@@ -2685,8 +2710,13 @@ function open_neighbors(p)
   --check point is on grid
   if has2(grid,n) then
    --check for obj in spot
-   if not has2(moblist,n) then
- 	  add(res,n)
+--   if not has2(moblist,n) then
+   if not g(mob_map,n) then
+    if not mob_ws[activemob.id]!=2
+    or is_empty(ptadd(n,pt(1,0)))
+    then
+  	  add(res,n)
+  	 end
    end
   end
   
@@ -2707,6 +2737,16 @@ end
 function mob_move(p)
 
  local m=activemob
+
+-- --todo: bug here
+-- --asdf:
+-- --the -1 is always added? 
+--	if mob_ws[m.id]==2
+--	and g(mob_map,ptadd(m,pt(1,0)))
+--	then
+--	 ptinc(p,pt(-1,0))
+--	end
+     
  dist=grid_dist(m,p)
  
  while dist>0 do
@@ -2860,11 +2900,12 @@ function is_player_turn()
 end
 
 function mob_at_pos(pos)
- for m in all(moblist) do
-  if ptequ(m,pos) then
-   return m
-  end
- end
+ return g(mob_map,pos)
+-- for m in all(moblist) do
+--  if ptequ(m,pos) then
+--   return m
+--  end
+-- end
 end
 
 
@@ -2875,7 +2916,10 @@ end
 -- and change func to that
 function is_empty(p)
  --token: inline this
- return not has2(moblist,p)
+-- return not has2(moblist,p)
+ return not g(mob_map,p)
+-- return not has(moblist,g(mob_map,p))
+--        and has2(grid,p)
 end
 
 
@@ -2908,7 +2952,7 @@ end
 
 
 function battle_update()
-    
+ 
  --better place for this?
  cur_obj=nil
  
@@ -2936,6 +2980,7 @@ function battle_update()
   return
  end
  
+ create_mob_map()
  
  attacks=adjacent_enemies(activemob)
  moves=valid_moves(activemob) 
@@ -3161,6 +3206,13 @@ function battle_draw(hidecursor)
 --  print(bcur.x..","..bcur.y)
 --  print(val)
 -- end
+
+ --debug disp open neighbors
+ local nn=open_neighbors(bcur)
+ for n in all(nn) do
+ 	sx,sy=bgrid2screen(n)
+  circfill(sx+4,sy+3,1,15)
+ end
  
  --debug display mob + turn
  --asdf
@@ -3174,33 +3226,25 @@ function battle_draw(hidecursor)
   circfill(sx+4,sy+4,1,0)
   
   gne=get_neighbors(mmm)
-	 if mob_ws[mmm.id]==2 then
-	  concat(
-	   gne,
-	   get_neighbors(
-	    ptadd(mmm,pt(1,0))
-	   )
-	  )
-	 end
 	 asd=adjacent_enemies(mmm)
 	 print("yes",0,0)
  end
  
- for i,m in pairs(mob_map) do
-  p=i2pt(i)
- 	sx,sy=bgrid2screen(p)
-  circfill(sx+6,sy+6,1,8)
- end
- 
- for m in all(gne) do
- 	sx,sy=bgrid2screen(m)
-  circfill(sx+4,sy+6,1,12)
- end
- 
- for m in all(asd) do
- 	sx,sy=bgrid2screen(m)
-  circfill(sx+5,sy+5,1,9)
- end
+-- for i,m in pairs(mob_map) do
+--  p=i2pt(i)
+-- 	sx,sy=bgrid2screen(p)
+--  circfill(sx+6,sy+6,1,8)
+-- end
+-- 
+-- for m in all(gne) do
+-- 	sx,sy=bgrid2screen(m)
+--  circfill(sx+4,sy+6,1,12)
+-- end
+-- 
+-- for m in all(asd) do
+-- 	sx,sy=bgrid2screen(m)
+--  circfill(sx+5,sy+5,1,9)
+-- end
  
  	
 end
