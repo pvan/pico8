@@ -1168,35 +1168,6 @@ end
 
 
 
-----drop shadow print
---function print2(str,col)
--- local cursor_x=peek(0x5f26)
--- local cursor_y=peek(0x5f27)
----- if (col==nil) col=7
--- col=col or 7 --default val
--- print(str,cursor_x+1,cursor_y+1,0)
--- print(str,cursor_x,cursor_y+1,0)
--- print(str,cursor_x,cursor_y,col)
--- poke(0x5f27,cursor_y+6)
---end
-
-
-----print and bounce any ❎, etc
-----center on screen
---function print_bounce(str,y)
--- local w=#str*4
--- local sx=63-w/2
--- for i=1,#str do
---  local bounce=0
---  if str[i]>z then
---   bounce=flashamt()
---  end
---  print(str[i],sx,y+bounce)
--- end
---end
-
-
-
 --check if array contains
 function has(array, value)
  if type(array)=='table' then
@@ -1852,12 +1823,18 @@ function pathfind(start,goal,
  
  
  --reset these
---	global_goal=pt(-100,-100)
  local targ=g(mapobj,goal)
 	attacking_mob=
 	 targ!=nil and
 	 targ.type=="mob"
  global_goal=goal
+ 
+-- local btarg=g(mob_map,goal)
+-- if btarg!=nil 
+-- and mob_ws[btarg.id]
+-- then
+--  
+-- end
 	 
 	 
  if (ptequ(start,goal)) return {}
@@ -2381,12 +2358,19 @@ function valid_moves(mob)
  speed=mob_speeds[mob.id]
  for spot in all(grid) do
   if grid_dist(spot,mob)<speed then
-   if is_empty(spot) then   
-    if mob_ws[mob.id]!=2
-    or is_empty(ptadd(spot,pt(1,0)))
-    then
-     add(result,spot)
-    end
+   local rone=ptadd(spot,pt(1,0))
+   if 
+    (
+     is_empty(spot)
+     and
+     mob_ws[mob.id]!=2
+    ) or (
+     ptequ(rone,spot)
+     or
+     is_empty(rone)
+    )
+   then
+    add(result,spot)
    end
   end
  end
@@ -2715,6 +2699,11 @@ function open_neighbors(p)
     if not mob_ws[activemob.id]!=2
     or is_empty(ptadd(n,pt(1,0)))
     then
+  	  add(res,n)
+  	 end
+  	else
+  	 if g(mob_map,n)==activemob
+  	 then
   	  add(res,n)
   	 end
    end
