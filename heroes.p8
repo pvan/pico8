@@ -15,6 +15,7 @@ __lua__
 --slow ai move when barely in fog?
 --mob should turn to face way they walk in battle
 --mob move dist not matching speed when obstacles
+--place enemy wide mobs correcly
 
 --big todos:
 --ranged mobs
@@ -281,8 +282,6 @@ function create_player(c)
  res.ai=false
  
  res.fog={}
--- do_grid(tilesw+30,function(p)
---  ptinc(p,pt(-15,-15))
  do_grid(tilesw-1,function(p)
   s(res.fog,p,true)
 --  s(res.fog,p,false)
@@ -2905,8 +2904,8 @@ function battle_update()
  attacks=adjacent_enemies(activemob)
 
  --valid_moves
- moves={} --valid_moves(activemob) 
- for spot in all(grid) do
+ moves={}
+ do_grid(8,function(spot)
   if grid_dist(spot,activemob)
      < mob_speeds[activemob.id]
   and can_stand(spot) 
@@ -2921,19 +2920,17 @@ function battle_update()
   then
    add(moves,spot)
   end
- end
+ end)
  
 
  options=copy(moves)
  --if move mode, still allow 
  --attacks if there are any
- --todo:token:concat lists function
- for a in all(attacks) do
-  add(options,a)
- end
+ concat(options,attacks)
  
- --todo: might not need this
- --since we concat attack anyway
+ --note: need this even tho we
+ --concat above, since moves 
+ --is made even if attack_portion
  if (attack_portion) options=attacks
 
  if is_player_turn() then
@@ -3011,10 +3008,10 @@ function battle_draw(hidecursor)
 
  --draw grid
  
- for spot in all(grid) do
-  x,y=bgrid2screen(spot)
+ do_grid(8,function(p)
+  x,y=bgrid2screen(p)
   rect2(x,y,11,11,11)
- end
+ end)
  
  
  --heros
@@ -3766,26 +3763,6 @@ end
 function init_data()
 
 
--- --for cursor icon
--- cursor_type={
---  castle="castle",
---  hero="trade
--- }
-
-
- --pretty much just for
- --checking if p is on grid?
- --(also for drawing it)
- --todo: combine with in_grid
-	grid={}
- do_grid(8,function(p)
-  add(grid,p)
---  if not evenrow(p.y) then
---   add(grid,ptadd(p,pt(1,0)))
---  end
-	end)
-
-
  --default to "end turn" option
  botc=pt(4,1)
  
@@ -3860,13 +3837,6 @@ function init_data()
 	 "spell",
 	 "end turn",
 	}
---	buttons={
---	 "map",
---	 "dig",
---	 "spell",
---	 "end turn",
---	}
---	menusel=4
 	
 	
 	res_names={
