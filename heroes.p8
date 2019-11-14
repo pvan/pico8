@@ -1868,14 +1868,14 @@ function pathfind(start,goal,
   --[1] drops the priority
   local c=pop(frontier)[1]
 
-----visualize search
---if in_battle then
--- x,y=bgrid2screen(c)
--- circfill(x+5,y+5,1,12)
--- x,y=bgrid2screen(goal)
--- circfill(x+5,y+5,1,8)
--- flip()
---end
+--visualize search
+if in_battle then
+ circfill(bsx(c)+5,
+          bsy(c)+5,1,12)
+ circfill(bsx(goal)+5,
+          bsy(goal)+5,1,8)
+ flip()
+end
 
   if ptequ(c,goal) then
    found_goal=true
@@ -2309,20 +2309,6 @@ end
 
 
 
-----token: combine with other sorts?
---function sort_by_speed(t)
--- for n=2,#t do
---  local i=n
---  while i>1 and
---   mob_speeds[t[i].id]>
---   mob_speeds[t[i-1].id]
---  do
---   t[i],t[i-1]=t[i-1],t[i]
---   i-=1
---  end
--- end
---end
-
 function grid_dist(c,t)
 
  --saves tokens
@@ -2434,7 +2420,7 @@ function start_battle(l,r)
  
  
  --grid start x/y (margins)
- gstart=pt(19,19)
+-- gstart=pt(19,19)
  
  
  
@@ -2491,11 +2477,6 @@ function start_battle(l,r)
  --bcur=copy(activemob)
  --current_team=mob_team[activemob] 
  inc_mob_turn(0)
-
--- --only need this if we need
--- --mob_map in very first draw call
--- --todo:comment out when done debug
--- create_mob_map()
 
 end
 
@@ -2666,17 +2647,15 @@ function can_stand(pos)
   )
 end
 
---token: inline (only called once?)
---for pathfinding, find valid moves
---previously called open_neighbors
-function valid_steps(p)
- local res={}
- neighbors=get_neighbors(p) 
- for n in all(neighbors) do
-  if (can_stand(n)) add(res,n)
- end
- return res
-end
+----inlined this for tokens
+--function valid_steps(p)
+-- local res={}
+-- neighbors=get_neighbors(p) 
+-- for n in all(neighbors) do
+--  if (can_stand(n)) add(res,n)
+-- end
+-- return res
+--end
 
 function evenrow(y)
  return y%2==0
@@ -2722,10 +2701,10 @@ function mob_die(mob)
  --death animation
  if player_battle then
 	 for i=1,20 do
-	  local m=mob
-	  local sx,sy=bgrid2screen(m)
+--	  local m=mob
+--	  local sx,sy=bgrid2screen(m)
 	  pal(8,0)
-	  spr(60,sx,sy)
+	  spr(60,bsx(mob),bsy(mob))
 	  pal()
 	  flip()
 	 end
@@ -2768,13 +2747,8 @@ function mob_attack(pos)
  if player_battle then
 	 battle_draw(true)
 	 for i=1,20 do
-	  local a=mob
-	  local sx,sy=bgrid2screen(a)
-	  spr(59,sx,sy)
-	  
-	  local d=enemy
-	  local sx,sy=bgrid2screen(d)
-	  spr(60,sx,sy)
+	  spr(59,bsx(mob),bsy(mob))
+	  spr(60,bsx(enemy),bsy(enemy))
 	  flip()
 	 end
  end
@@ -3009,8 +2983,7 @@ function battle_draw(hidecursor)
  --draw grid
  
  do_grid(8,function(p)
-  x,y=bgrid2screen(p)
-  rect2(x,y,11,11,11)
+  rect2(bsx(p),bsy(p),11,11,11)
  end)
  
  
@@ -3030,8 +3003,8 @@ function battle_draw(hidecursor)
  if is_player_turn() then
 	 if activemob!=nil then
 		 for spot in all(options) do
-		  x,y=bgrid2screen(spot)
-		  circfill(x+5,y+5,1,6)
+		  circfill(bsx(spot)+5,
+		           bsy(spot)+5,1,6)
 		 end
 	 end
  end
@@ -3039,9 +3012,8 @@ function battle_draw(hidecursor)
  
  --draw corpses
  for c in all(corpses) do
-  local sx,sy=bgrid2screen(c)
   pal(8,0)
-  spr(11,sx+1,sy+1)
+  spr(11,bsx(c)+1,bsy(c)+1)
   pal(8,8)
  end
  
@@ -3056,18 +3028,19 @@ function battle_draw(hidecursor)
     flash(#flashcols,3)])
   end
   --draw mob
-  sx,sy=bgrid2screen(m)
-  sx-=2
-  sy-=10
-  draw_big_mob(m,sx,sy,m.flipx,true)
+--  sx,sy=bgrid2screen(m)
+--  sx-=2
+--  sy-=10
+  draw_big_mob(m,bsx(m)-2,
+                 bsy(m)-10,
+                 m.flipx,true)
  end
  
  
  
  --cursor
  if not hidecursor then
- 	sx,sy=bgrid2screen(bcur)
-	 rect2(sx,sy,11,11,15)
+	 rect2(bsx(bcur),bsy(bcur),11,11,15)
 	 
 	 --draw cursor symbol
 	 if has2(options,bcur) then
@@ -3075,7 +3048,9 @@ function battle_draw(hidecursor)
 	  if has2(attacks,bcur) then
 	   tspr=59
 	  end
-   spr(tspr,sx+2,sy+1+flashamt())
+   spr(tspr,
+       bsx(bcur)+2,
+       bsy(bcur)+1+flashamt())
 	 end
 	end
  
@@ -3108,16 +3083,6 @@ function battle_draw(hidecursor)
 -- end
 -- print(dist,64,64,0)
  
--- if activemob!=nil then
---  eny=adjacent_enemies(activemob)
---  print(#eny,64,64)
---  i=0
---  for en in all(eny) do
---   i+=1
---   print(en[1],64,64+8*i)
---  end
--- end
- 
 -- --debug draw cursor coords
 -- if activemob!=nil then
 --  val=grid_dist(activemob,bcur)
@@ -3127,63 +3092,17 @@ function battle_draw(hidecursor)
 --  print(val)
 -- end
 
--- --debug disp open neighbors
--- local nn=valid_steps(bcur)
--- for n in all(nn) do
--- 	sx,sy=bgrid2screen(n)
---  circfill(sx+4,sy+3,1,15)
--- end
-
--- print(is_empty(bcur),30,0,0)
- 
- --debug display mob + turn
--- gne=get_neighbors(bcur)
--- create_mob_map()
--- local mmm=g(mob_map,bcur)
--- if mmm!=nil then
---  
--- 	sx,sy=bgrid2screen(mmm)
---  circfill(sx+4,sy+4,1,0)
---  
---  gne=get_neighbors(mmm)
---	 asd=adjacent_enemies(mmm)
---	 print("yes",0,0)
--- end
-
--- for i,m in pairs(mob_map) do
---  p=i2pt(i)
--- 	sx,sy=bgrid2screen(p)
---  circfill(sx+6,sy+6,1,8)
--- end
--- 
--- for m in all(gne) do
--- 	sx,sy=bgrid2screen(m)
---  circfill(sx+4,sy+6,1,12)
--- end
--- 
--- for m in all(asd) do
--- 	sx,sy=bgrid2screen(m)
---  circfill(sx+5,sy+5,1,9)
--- end
-
--- --debug valid moves
--- for m in all(moves) do
--- 	sx,sy=bgrid2screen(m)
---  circfill(sx+5,sy+5,1,9)
--- end
- 
--- sx,sy=bgrid2screen(activemob)
--- circfill(sx+5,sy+5,3,14)
 
 end
 
-function bgrid2screen(p)
- --ptmul or ptscale ?
--- local res=pt(p.x*gw,p.y*gh)
- local res=pt(p.x*10,p.y*10)
- ptinc(res,gstart)
- if (not evenrow(p.y)) res.x-=5 --gh/2
- return res.x,res.y
+
+function bsx(p)
+ local x=p.x*10+19 //+gstart.x
+ if (not evenrow(p.y)) x-=5
+ return x
+end
+function bsy(p)
+ return p.y*10+19 //+gstart.y
 end
 
 
@@ -3192,10 +3111,9 @@ end
 --now returning table with 
 --cost included {p,cost}
 function b_neighbors(p)
- local ns=valid_steps(p)
  local res={}
- for n in all(ns) do
-  add(res,{n,1})
+ for n in all(get_neighbors(p)) do
+  if (can_stand(n)) add(res,{n,1})
  end
  return res
 end
