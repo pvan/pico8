@@ -1868,14 +1868,14 @@ function pathfind(start,goal,
   --[1] drops the priority
   local c=pop(frontier)[1]
 
---visualize search
-if in_battle then
- circfill(bsx(c)+5,
-          bsy(c)+5,1,12)
- circfill(bsx(goal)+5,
-          bsy(goal)+5,1,8)
- flip()
-end
+----visualize search
+--if in_battle then
+-- circfill(bsx(c)+5,
+--          bsy(c)+5,1,12)
+-- circfill(bsx(goal)+5,
+--          bsy(goal)+5,1,8)
+-- flip()
+--end
 
   if ptequ(c,goal) then
    found_goal=true
@@ -3019,7 +3019,7 @@ function battle_draw(hidecursor)
  --draw corpses
  for c in all(corpses) do
   pal(8,0)
-  bspr(11,c)
+  bspr(60,c)
 --  spr(11,bsx(c)+1,bsy(c)+1)
   pal(8,8)
  end
