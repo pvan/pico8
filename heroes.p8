@@ -15,6 +15,7 @@ __lua__
 --slow ai move when barely in fog?
 --mob should turn to face way they walk in battle
 --mob move dist not matching speed when obstacles
+--(related: wide mob that's surrounded but has 1 space open, freeze on move)
 --place enemy wide mobs correcly
 
 --big todos:
@@ -374,62 +375,62 @@ function trade_update()
  
  move_cursor(tcur, 1,5, 1,3)
  
--- tcur.x=ceil(tcur.x)
--- tcur.y=ceil(tcur.y)
--- if tcur.y==3 then
---  tcur.y=2.4
---  tcur.x=2.65
--- end
--- 
--- if movingmob!=nil then
---  if btnp(❎) then
---   --place
---	  bar=bars[tcur.y]
---   mob=bar.army[tcur.x]
---   if mob==nil then
---		  bar.army[tcur.x]=movingmob
---		  movingmob=nil
---   elseif mob.id==movingmob.id then
---    bar.army[tcur.x].count+=movingmob.count
---    movingmob=nil
---   else
---    local temp=movingmob
---    movingmob=mob
---    bar.army[tcur.x]=temp
---	  end
---  end
--- else
---	 if tcur.y==2.4 then
---	  if btnp(❎) then
---			 main_update=nil
---			 main_draw=nil
---	  end
---	 else
---		 if btnp(❎) then
---	   bar=bars[tcur.y]
---	   mob=bar.army[tcur.x]
---	   if mob!=nil then
---		   movingmob=mob
---		   bar.army[tcur.x]=nil
---		  end
---		 end
---		 if btn(🅾️) then
---	   bar=bars[tcur.y]
---			 splitmob=bar.army[tcur.x]
---	   if splitmob!=nil 
---	   and splitmob.count>1 then
---			  splitval=1
---			  splitmob.count-=splitval
---			  movingmob=copy(splitmob)
---			  movingmob.count=splitval
---			  
---			  main_update=split_update
---			  main_draw=split_draw
---			  
---			 end
---		 end
---  end
--- end
+ tcur.x=ceil(tcur.x)
+ tcur.y=ceil(tcur.y)
+ if tcur.y==3 then
+  tcur.y=2.4
+  tcur.x=2.65
+ end
+ 
+ if movingmob!=nil then
+  if btnp(❎) then
+   --place
+	  bar=bars[tcur.y]
+   mob=bar.army[tcur.x]
+   if mob==nil then
+		  bar.army[tcur.x]=movingmob
+		  movingmob=nil
+   elseif mob.id==movingmob.id then
+    bar.army[tcur.x].count+=movingmob.count
+    movingmob=nil
+   else
+    local temp=movingmob
+    movingmob=mob
+    bar.army[tcur.x]=temp
+	  end
+  end
+ else
+	 if tcur.y==2.4 then
+	  if btnp(❎) then
+			 main_update=nil
+			 main_draw=nil
+	  end
+	 else
+		 if btnp(❎) then
+	   bar=bars[tcur.y]
+	   mob=bar.army[tcur.x]
+	   if mob!=nil then
+		   movingmob=mob
+		   bar.army[tcur.x]=nil
+		  end
+		 end
+		 if btn(🅾️) then
+	   bar=bars[tcur.y]
+			 splitmob=bar.army[tcur.x]
+	   if splitmob!=nil 
+	   and splitmob.count>1 then
+			  splitval=1
+			  splitmob.count-=splitval
+			  movingmob=copy(splitmob)
+			  movingmob.count=splitval
+			  
+			  main_update=split_update
+			  main_draw=split_draw
+			  
+			 end
+		 end
+  end
+ end
  
 end
 
