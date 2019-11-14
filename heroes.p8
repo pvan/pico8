@@ -2929,7 +2929,6 @@ function battle_update()
    sfx(64)
    open_battle_menu()
 --   return --needed?
-      
 	 end
   
  else
@@ -2982,10 +2981,6 @@ function battle_draw(hidecursor)
 	camera()
 	cls(3)
 	
-	--todo: token:
-	--consider a spr2() that takes
-	--a pt instead of x,y?
-
 
  --draw grid
  
@@ -3021,7 +3016,6 @@ function battle_draw(hidecursor)
  for c in all(corpses) do
   pal(8,0)
   bspr(60,c)
---  spr(11,bsx(c)+1,bsy(c)+1)
   pal(8,8)
  end
  
@@ -3036,9 +3030,6 @@ function battle_draw(hidecursor)
     flash(#flashcols,3)])
   end
   --draw mob
---  sx,sy=bgrid2screen(m)
---  sx-=2
---  sy-=10
   draw_big_mob(m,bsx(m)-2,
                  bsy(m)-10,
                  m.flipx,true)
@@ -3056,10 +3047,6 @@ function battle_draw(hidecursor)
 	  if has2(attacks,bcur) then
 	   tspr=59
 	  end
-	  --8012
---	  local dcur=ptadd(bcur,pt(2,flash(2))
---	  bspr(tspr,dcur)
-	  --8012
    spr(tspr,
        bsx(bcur)+2,
        bsy(bcur)+flash(2))
@@ -3316,17 +3303,12 @@ function update_static_hud()
 
  --todo: proper home for this?
  --need to call in init as well as update
+ 
  ports={}
- i=1
- for c in all(cp.castles) do
-  add(ports,c)
-  if (sel==c) selport=i
-  i+=1
- end
- for h in all(cp.heroes) do
-  add(ports,h)
-  if (sel==h) selport=i
-  i+=1
+ concat(ports,cp.castles)
+ concat(ports,cp.heroes)
+ for i=1,#ports do
+  if (sel==ports[i]) selport=i
  end
 
 end
@@ -3977,8 +3959,6 @@ function init_data()
 	}
 	
 	--dup some similar archetypes
-	--8187
---	for r in all(resources) do
 	for i=1,7 do
 	 r=res_names[i]
 	 if i!=1 then --gold
