@@ -946,7 +946,7 @@ function map_draw()
 	 --fog only inside borders
   do_grid(tilesw-1,function(p)
    if g(vp.fog,p) then
-	   drw_bspr(162,p)
+	   drw_blk_spr(162,p)
    end
 	 end)
 	 
@@ -998,7 +998,7 @@ function map_draw()
 	 --(so no hidden info revealed)
 	 if blackout then
 	  do_grid(16,function(p)
-	   drw_bspr(162,p)
+	   drw_blk_spr(162,p)
 		 end)
 		end
 	 
@@ -1225,7 +1225,7 @@ end
 
 --draw sprite id at tile pos p
 --with black color visible
-function drw_bspr(id,p)
+function drw_blk_spr(id,p)
 -- palt(0,not binvis)
  palt(0,false)
  spr(id,p.x*8,p.y*8)
@@ -2696,15 +2696,19 @@ function mob_move(p)
  
 end
 
+--7990
+function bspr(id,p)
+ spr(id,bsx(p),bsy(p))
+end
+
 function mob_die(mob)
 
  --death animation
  if player_battle then
 	 for i=1,20 do
---	  local m=mob
---	  local sx,sy=bgrid2screen(m)
 	  pal(8,0)
-	  spr(60,bsx(mob),bsy(mob))
+	  bspr(60,mob)
+--	  spr(60,bsx(mob),bsy(mob))
 	  pal()
 	  flip()
 	 end
@@ -2747,8 +2751,10 @@ function mob_attack(pos)
  if player_battle then
 	 battle_draw(true)
 	 for i=1,20 do
-	  spr(59,bsx(mob),bsy(mob))
-	  spr(60,bsx(enemy),bsy(enemy))
+	  bspr(59,mob)
+	  bspr(60,enemy)
+--	  spr(59,bsx(mob),bsy(mob))
+--	  spr(60,bsx(enemy),bsy(enemy))
 	  flip()
 	 end
  end
@@ -3013,7 +3019,8 @@ function battle_draw(hidecursor)
  --draw corpses
  for c in all(corpses) do
   pal(8,0)
-  spr(11,bsx(c)+1,bsy(c)+1)
+  bspr(11,c)
+--  spr(11,bsx(c)+1,bsy(c)+1)
   pal(8,8)
  end
  
@@ -3048,9 +3055,13 @@ function battle_draw(hidecursor)
 	  if has2(attacks,bcur) then
 	   tspr=59
 	  end
+	  --8012
+--	  local dcur=ptadd(bcur,pt(2,flash(2))
+--	  bspr(tspr,dcur)
+	  --8012
    spr(tspr,
        bsx(bcur)+2,
-       bsy(bcur)+1+flashamt())
+       bsy(bcur)+flash(2))
 	 end
 	end
  
