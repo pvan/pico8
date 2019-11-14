@@ -2353,30 +2353,6 @@ end
 
 
 
-function valid_moves(mob)
- result={}
- speed=mob_speeds[mob.id]
- for spot in all(grid) do
-  if grid_dist(spot,mob)<speed then
-   local rone=ptadd(spot,pt(1,0))
-   if 
-    (
-     is_empty(spot)
-     and
-     mob_ws[mob.id]!=2
-    ) or (
-     ptequ(rone,spot)
-     or
-     is_empty(rone)
-    )
-   then
-    add(result,spot)
-   end
-  end
- end
- return result
-end
-
 function from_unit(x,unit)
  local mobs={}
  
@@ -2388,11 +2364,6 @@ function from_unit(x,unit)
 	   m.x=x
 	   m.y=i*2-2
 	   add(mobs,m)
---	   cls()
---	   for k,v in pairs(m) do
---	    print(k.." "..v)
---	   end
---	   stop()
 	  end
 	 end
 	 
@@ -2471,9 +2442,6 @@ function start_battle(l,r)
  --master list of all units
  --on battlefield
  --used to track turn order
- --(usually sorted by speed)
- --but also used to sort by y
- --when drawing battlefield units
  moblist={}
  
  --used to draw mobs
@@ -2523,6 +2491,10 @@ function start_battle(l,r)
  --current_team=mob_team[activemob] 
  inc_mob_turn(0)
 
+ --only need this if we need
+ --mob_map in very first draw call
+ --todo:comment out when done debug
+ create_mob_map()
 
 end
 
@@ -2620,7 +2592,7 @@ function get_neighbors(p)
  --start at base mob pos
  --of mob at location
  --(for r side of 2-wide mobs)
- local pot_mob=g(mob_map,p)
+ local pot_mob=mob_at_pos(p) --g(mob_map,p)
  if (pot_mob) p=pot_mob
  
  res=point_neighbors(p)
@@ -2628,7 +2600,7 @@ function get_neighbors(p)
  --todo: is it a problem 
  --that we dup pts here?
  if pot_mob
- and mob_ws[pot_mob.id]==2 
+ and is_wide(pot_mob)
  then
   concat(
    res,
@@ -2641,26 +2613,23 @@ function get_neighbors(p)
  return res
 end
 
+--appears to save 1 token, when
+--currently calling 4 times
+--todo: check if we use more/less
+function is_wide(m)
+ return mob_ws[m.id]==2
+end
+
 function create_mob_map()
  mob_map={}
  for m in all(moblist) do
   s(mob_map,m,m)
-  if mob_ws[m.id]==2 then
+  if is_wide(m) then
    s(mob_map,ptadd(m,pt(1,0)),m)
   end
  end
 end
 
---function mobs_adjacent(a,b)
--- neighbors=get_neighbors(a)
--- if mob_ws[a.id]==2 then
---  concat(neighbors,
---   ptadd(a,pt(1,0)))
--- end
--- for n in all(neighbors) do
---  
--- end
---end
 
 function adjacent_enemies(mob)
  local res={}
@@ -2672,7 +2641,7 @@ function adjacent_enemies(mob)
  neighbors=get_neighbors(mob)
  
  for n in all(neighbors) do
-  pot_en=g(mob_map,n)
+  pot_en=mob_at_pos(n)--g(mob_map,n)
   if pot_en
   and has(enemy_list,pot_en)
   then
@@ -2684,31 +2653,27 @@ function adjacent_enemies(mob)
 end
 
 
+function ptr1(p)
+ return ptadd(p,pt(1,0))
+end
+
+function can_stand(pos)
+ return 
+  is_empty(pos)
+  and (
+   is_empty(ptr1(pos))
+   or not is_wide(activemob)
+  )
+end
+
 --token: inline (only called once?)
-function open_neighbors(p)
+--for pathfinding, find valid moves
+--previously called open_neighbors
+function valid_steps(p)
  local res={}
- 
  neighbors=get_neighbors(p) 
  for n in all(neighbors) do
- 
-  --check point is on grid
-  if has2(grid,n) then
-   --check for obj in spot
---   if not has2(moblist,n) then
-   if not g(mob_map,n) then
-    if not mob_ws[activemob.id]!=2
-    or is_empty(ptadd(n,pt(1,0)))
-    then
-  	  add(res,n)
-  	 end
-  	else
-  	 if g(mob_map,n)==activemob
-  	 then
-  	  add(res,n)
-  	 end
-   end
-  end
-  
+  if (can_stand(n)) add(res,n)
  end
  return res
 end
@@ -2716,26 +2681,11 @@ end
 function evenrow(y)
  return y%2==0
 end
---doesn't save until we use
---"not evencol(x)" like 9 times?
---function oddcol(x)
--- return not evencol(x)
---end
 
 
 function mob_move(p)
 
  local m=activemob
-
--- --todo: bug here
--- --asdf:
--- --the -1 is always added? 
---	if mob_ws[m.id]==2
---	and g(mob_map,ptadd(m,pt(1,0)))
---	then
---	 ptinc(p,pt(-1,0))
---	end
-     
  dist=grid_dist(m,p)
  
  while dist>0 do
@@ -2826,7 +2776,7 @@ function mob_attack(pos)
  local mob=activemob
  local enemy=mob_at_pos(pos)
  
- mob.flipx=enemy.x<mob.x
+ mob.flipx=enemy.x<mob.x --todo: use sx?
  
  --attack/hurt animation
  if player_battle then
@@ -2865,10 +2815,6 @@ function mob_attack(pos)
 end
 
 
---function get_mob_team()
---
---end
-
 function is_plr_ai(p)
  return p==nil or p.ai
 end
@@ -2877,26 +2823,21 @@ function is_team_player(team)
  return not is_plr_ai(team.plr)
 end
 
---right now l_mobs is assumed player
---hotseat battle support tbd
 function is_player_turn()
  return is_team_player(current_team)
---todo: something that works
---if player is plr (with .ai or some other way)
---or if player is nil (mob controlled)
--- return not mob_team[activemob].plr.ai
--- return has(aaa.mobs,activemob)
 end
+
 
 function mob_at_pos(pos)
  return g(mob_map,pos)
--- for m in all(moblist) do
---  if ptequ(m,pos) then
---   return m
---  end
--- end
 end
 
+
+--todo: inline?
+function in_grid(p)
+ return p.x>=0 and p.y>=0
+    and p.x<9 and p.y<9
+end
 
 --token: 
 -- for all these funcs that take
@@ -2904,11 +2845,10 @@ end
 -- as x,y or as pt.. 
 -- and change func to that
 function is_empty(p)
- --token: inline this
--- return not has2(moblist,p)
- return not g(mob_map,p)
--- return not has(moblist,g(mob_map,p))
---        and has2(grid,p)
+ local pot_mob=mob_at_pos(p)
+ return (pot_mob==nil or 
+         pot_mob==activemob)
+        and in_grid(p)
 end
 
 
@@ -2971,8 +2911,20 @@ function battle_update()
  
  create_mob_map()
  
+ 
  attacks=adjacent_enemies(activemob)
- moves=valid_moves(activemob) 
+
+ --valid_moves
+ moves={} --valid_moves(activemob) 
+ for spot in all(grid) do
+  if grid_dist(spot,activemob)
+     < mob_speeds[activemob.id]
+  and can_stand(spot)
+  then
+   add(moves,spot)
+  end
+ end
+ 
 
  options=copy(moves)
  --if move mode, still allow 
@@ -3022,13 +2974,6 @@ function battle_update()
 	  enemies=get_enemies(activemob)
 	  for p in all(options) do
 	   for en in all(enemies) do
-	   
---			  x,y=gxy2sxy(p.x,p.y)
---			  circfill(x+5,y+5,1,11)
---			  x,y=gxy2sxy(en.x,en.y)
---			  circfill(x+5,y+5,1,14)
---	    flip()
-	    
 	    dist=grid_dist(p,en)
 	    if dist<closest_dist then
 	     closest_dist=dist
@@ -3041,15 +2986,7 @@ function battle_update()
   
  end
  
- 
- 
  move_cursor(bcur, 0,8, 0,8)
- if evenrow(bcur.y) 
- --token: clampx/y functions?
- and bcur.x>8
- then
-  bcur.x=8
- end
 
 end
 
@@ -3069,7 +3006,6 @@ function battle_draw(hidecursor)
  
  for spot in all(grid) do
   x,y=bgrid2screen(spot)
---  rect2(x,y,gw+1,gh+1,11)
   rect2(x,y,11,11,11)
  end
  
@@ -3107,7 +3043,6 @@ function battle_draw(hidecursor)
  
  
  --draw armies
- 
  sort_by_y(mobdrawlist)
  for m in all(mobdrawlist) do
   --highlight active mob
@@ -3128,13 +3063,7 @@ function battle_draw(hidecursor)
  --cursor
  if not hidecursor then
  	sx,sy=bgrid2screen(bcur)
---	 rect2(sx,sy,gw+1,gh+1,15)
 	 rect2(sx,sy,11,11,15)
-	 --bounce?
-	-- cw,ch=gw+1,gh+1
-	-- ex=0
-	-- if (frame%10<5) c=10 ex=1 cw+=2 ch+=2
-	-- rect2(sx-ex,sy-ex,cw,ch,10)
 	 
 	 --draw cursor symbol
 	 if has2(options,bcur) then
@@ -3147,9 +3076,7 @@ function battle_draw(hidecursor)
 	end
  
  
-
--- if binstructions then
--- if not hidecursor then
+ 
  if is_player_turn() 
  and not hidecursor
  then
@@ -3196,29 +3123,29 @@ function battle_draw(hidecursor)
 --  print(val)
 -- end
 
- --debug disp open neighbors
- local nn=open_neighbors(bcur)
- for n in all(nn) do
- 	sx,sy=bgrid2screen(n)
-  circfill(sx+4,sy+3,1,15)
- end
+-- --debug disp open neighbors
+-- local nn=valid_steps(bcur)
+-- for n in all(nn) do
+-- 	sx,sy=bgrid2screen(n)
+--  circfill(sx+4,sy+3,1,15)
+-- end
+
+-- print(is_empty(bcur),30,0,0)
  
  --debug display mob + turn
- --asdf
- 
- gne=get_neighbors(bcur)
- create_mob_map()
- local mmm=g(mob_map,bcur)
- if mmm!=nil then
-  
- 	sx,sy=bgrid2screen(mmm)
-  circfill(sx+4,sy+4,1,0)
-  
-  gne=get_neighbors(mmm)
-	 asd=adjacent_enemies(mmm)
-	 print("yes",0,0)
- end
- 
+-- gne=get_neighbors(bcur)
+-- create_mob_map()
+-- local mmm=g(mob_map,bcur)
+-- if mmm!=nil then
+--  
+-- 	sx,sy=bgrid2screen(mmm)
+--  circfill(sx+4,sy+4,1,0)
+--  
+--  gne=get_neighbors(mmm)
+--	 asd=adjacent_enemies(mmm)
+--	 print("yes",0,0)
+-- end
+
 -- for i,m in pairs(mob_map) do
 --  p=i2pt(i)
 -- 	sx,sy=bgrid2screen(p)
@@ -3243,9 +3170,7 @@ function bgrid2screen(p)
 -- local res=pt(p.x*gw,p.y*gh)
  local res=pt(p.x*10,p.y*10)
  ptinc(res,gstart)
- if not evenrow(p.y) then
-  res.x-=5 --gh/2
- end
+ if (not evenrow(p.y)) res.x-=5 --gh/2
  return res.x,res.y
 end
 
@@ -3255,7 +3180,7 @@ end
 --now returning table with 
 --cost included {p,cost}
 function b_neighbors(p)
- local ns=open_neighbors(p)
+ local ns=valid_steps(p)
  local res={}
  for n in all(ns) do
   add(res,{n,1})
