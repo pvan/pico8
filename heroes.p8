@@ -14,7 +14,7 @@ __lua__
 --todo:
 --slow ai move when barely in fog?
 --mob should turn to face way they walk in battle
---ai mob turns are messed up, remote combat, etc
+--mob move dist not matching speed when obstacles
 
 --big todos:
 --ranged mobs
@@ -1871,9 +1871,9 @@ function pathfind(start,goal,
 
 ----visualize search
 --if in_battle then
--- x,y=gxy2sxy(c.x,c.y)
+-- x,y=bgrid2screen(c)
 -- circfill(x+5,y+5,1,12)
--- x,y=gxy2sxy(goal.x,goal.y)
+-- x,y=bgrid2screen(goal)
 -- circfill(x+5,y+5,1,8)
 -- flip()
 --end
@@ -2860,7 +2860,7 @@ function inc_mob_turn(amt)
  --5 tokens here saves us
  --2 per use
  --(1 token vs 3)
- current_team=mob_team[activemob] 
+ current_team=mob_team[activemob]
  
 end
 
@@ -2962,6 +2962,7 @@ function battle_update()
   or #attacks>0 then
    for p in all(attacks) do
     mob_attack(p)
+    break
    end
   else
 	  --replace with general 
@@ -2972,6 +2973,14 @@ function battle_update()
 	  enemies=get_enemies(activemob)
 	  for p in all(options) do
 	   for en in all(enemies) do
+	   
+--	    --visualize search
+--					x,y=bgrid2screen(p)
+--					circfill(x+5,y+5,1,11)
+--					x,y=bgrid2screen(en)
+--					circfill(x+5,y+5,1,14)
+--					flip()
+
 	    dist=grid_dist(p,en)
 	    if dist<closest_dist then
 	     closest_dist=dist
@@ -3159,8 +3168,16 @@ function battle_draw(hidecursor)
 -- 	sx,sy=bgrid2screen(m)
 --  circfill(sx+5,sy+5,1,9)
 -- end
+
+-- --debug valid moves
+-- for m in all(moves) do
+-- 	sx,sy=bgrid2screen(m)
+--  circfill(sx+5,sy+5,1,9)
+-- end
  
- 	
+-- sx,sy=bgrid2screen(activemob)
+-- circfill(sx+5,sy+5,3,14)
+
 end
 
 function bgrid2screen(p)
