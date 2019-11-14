@@ -1501,24 +1501,17 @@ function del_obj(obj)
 end
 
 function obj_owner(obj)
- --tokens: just check both always
- --check ports somehow instead?
+ --tokens: check ports somehow instead?
+ --(probably not that much savings)
  if obj.type=="mine" then
   return obj.owner
  end
- if obj.type=="hero" then
-	 for plr in all(plrs) do
-	  if has(plr.heroes,obj) then
-	   return plr
-	  end
-	 end
- end
- if obj.type=="castle" then
-	 for plr in all(plrs) do
-	  if has(plr.castles,obj) then
-	   return plr
-	  end
-	 end
+ for plr in all(plrs) do
+  if has(plr.heroes,obj) 
+  or has(plr.castles,obj) 
+  then
+   return plr
+  end
  end
  return nil
 end
