@@ -17,6 +17,7 @@ __lua__
 --mob move dist not matching speed when obstacles
 --(related: wide mob that's surrounded but has 1 space open, freeze on move)
 --place enemy wide mobs correcly
+--sort hero sprites in battle along with mobs?
 
 --big todos:
 --ranged mobs
@@ -147,28 +148,6 @@ function _init()
 -- music(0)
  srand(2)
  
--- --to compress pt lists...
--- cls()
---	eg={
---	 pt(-1,-1),
---	 pt(-1,0),
---	 pt(-1,1),
---	 pt(0,-1),
---	 pt(0,1),
---	 pt(1,0),
---	}
--- res=compress_pts(eg)
--- print(res)
--- stop()
- 
--- --test pt_list decompress...
--- cls()
--- test=pt_list("353475744565445464435363")
--- for v in all(test) do
---  print(v.x.." "..v.y)
--- end
--- stop()
-	
 	cam=pt(0,0)
 
  init_data()
@@ -1297,6 +1276,25 @@ function pt_list(str)
  return res
 end
 
+function num_list(str,off)
+ return hex2num(str,1,off)
+end
+
+
+-- --to compress pt lists...
+-- cls()
+--	eg={
+--	 pt(-1,-1),
+--	 pt(-1,0),
+--	 pt(-1,1),
+--	 pt(0,-1),
+--	 pt(0,1),
+--	 pt(1,0),
+--	}
+-- res=compress_pts(eg)
+-- print(res)
+-- stop()
+--
 --to compress point lists
 --function hex(v,off)
 --  return tostr(v+off)
@@ -3802,16 +3800,11 @@ function init_data()
 	 "gem mine",
 	 "alchemist lab",
 	}
-	res_sprs={
-	 241,
-	 242,
-	 243,
-	 244,
-	 245,
-	 246,
-	 247,
-	}
+	res_sprs=num_list("1234567",240)
+
 	
+--	mine_incs=num_list("0221111",0)
+--	mine_incs[1]=100
 	mine_incs={100,2,2,1,1,1,1}
 	
 	
@@ -3841,27 +3834,18 @@ function init_data()
 	 "green dragon",
 	}
 	
- mob_ws={1,1,1,1,2,2,2}
+	mob_ws=num_list("1111222",0)
 	
-	mob_sprs={
-	 33,34,35,36,37,38,39,
-	}
+	mob_sprs=num_list("3456789",30)
 	
-	big_mob_sprs={
-	 1,2,3,4,5,7,9
-	}
+	big_mob_sprs=num_list("1234579",0)
 	
-	mob_speeds={
-	 4,4,2,4,8,6,8
-	}
+	mob_speeds=num_list("4424868",0)
 	
-	mob_attacks={
-	 4,4,2,5,8,6,8
-	}
+	mob_attacks=num_list("4425868",0)
 	
-	mob_hps={
-	 4,6,1,7,10,8,13
-	}
+	mob_hps=num_list("4617a8d",0)
+
 
 
  --other
@@ -3887,18 +3871,17 @@ function init_data()
 	 "darren",
 	}
 	
-	hero_port_sprs={
-	 74,75,76,77
-	}
-	hero_bport_sprs={
-	 74,75,76,77
-	}
-	hero_map_sprs={
-	 64,66,68,70
-	}
-	hero_battle_sprs={
-	 96,98,100,102
-	}
+	hero_port_sprs=
+	 num_list("4567",70)
+	
+	hero_bport_sprs=
+	 num_list("4567",70)
+	
+	hero_map_sprs=
+	 num_list("468a",60)
+	
+	hero_battle_sprs=
+	 num_list("68ac",90)
 	
 	
 	
