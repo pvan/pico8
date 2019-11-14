@@ -13,9 +13,11 @@ __lua__
 
 --todo:
 --slow ai move when barely in fog?
---don't block your own moves (for wide mobs)
+--mob should turn to face way they walk in battle
+--ai mob turns are messed up, remote combat, etc
 
 --big todos:
+--ranged mobs
 --player select/multiplayer support
 --castles
 --main menu/level select
@@ -2491,10 +2493,10 @@ function start_battle(l,r)
  --current_team=mob_team[activemob] 
  inc_mob_turn(0)
 
- --only need this if we need
- --mob_map in very first draw call
- --todo:comment out when done debug
- create_mob_map()
+-- --only need this if we need
+-- --mob_map in very first draw call
+-- --todo:comment out when done debug
+-- create_mob_map()
 
 end
 
@@ -2604,9 +2606,7 @@ function get_neighbors(p)
  then
   concat(
    res,
-   point_neighbors(
-    ptadd(p,pt(1,0))
-   )
+   point_neighbors(ptr1(p))
   )
  end
 	 
@@ -2625,7 +2625,7 @@ function create_mob_map()
  for m in all(moblist) do
   s(mob_map,m,m)
   if is_wide(m) then
-   s(mob_map,ptadd(m,pt(1,0)),m)
+   s(mob_map,ptr1(m),m)
   end
  end
 end
@@ -2641,7 +2641,7 @@ function adjacent_enemies(mob)
  neighbors=get_neighbors(mob)
  
  for n in all(neighbors) do
-  pot_en=mob_at_pos(n)--g(mob_map,n)
+  pot_en=mob_at_pos(n)
   if pot_en
   and has(enemy_list,pot_en)
   then
@@ -2652,11 +2652,12 @@ function adjacent_enemies(mob)
  return res
 end
 
-
+--one square right, check inline token saving?
 function ptr1(p)
  return ptadd(p,pt(1,0))
 end
 
+--can activemob stand on pos?
 function can_stand(pos)
  return 
   is_empty(pos)
@@ -2742,7 +2743,6 @@ function mob_die(mob)
  
  add(corpses,mob)
  
- --7912
  del_lists={
   aaa.mobs,
   bbb.mobs,
@@ -2754,19 +2754,6 @@ function mob_die(mob)
  for l in all(del_lists) do
   del(l,mob)
  end
-  
- --7916
--- del(aaa.mobs,mob)
--- del(bbb.mobs,mob)
--- del(moblist,mob)
--- del(mobdrawlist,mob)
--- 
--- --todo: func that does xx to
--- --both aaa and bbb ??
--- 
--- --remove from unit too
--- del(aaa.unit.army,mob)
--- del(bbb.unit.army,mob)
  
 end
 
@@ -2828,12 +2815,15 @@ function is_player_turn()
 end
 
 
+--todo check inline?
 function mob_at_pos(pos)
  return g(mob_map,pos)
 end
 
 
---todo: inline?
+--todo: inline? 
+--combine with similar checks?
+--not needed at all?
 function in_grid(p)
  return p.x>=0 and p.y>=0
     and p.x<9 and p.y<9
@@ -2919,7 +2909,15 @@ function battle_update()
  for spot in all(grid) do
   if grid_dist(spot,activemob)
      < mob_speeds[activemob.id]
-  and can_stand(spot)
+  and can_stand(spot) 
+   
+  --don't allow walking in place
+  --note wide mobs make this tricky
+  --we have to ignore activemob
+  --for pathfinding and valid moves
+  --so it can take tiny steps
+  --but we still dont want to allow standing in place
+  and not ptequ(spot,activemob) 
   then
    add(moves,spot)
   end
@@ -3760,12 +3758,14 @@ function init_data()
 
  --pretty much just for
  --checking if p is on grid?
+ --(also for drawing it)
+ --todo: combine with in_grid
 	grid={}
  do_grid(8,function(p)
   add(grid,p)
-  if not evenrow(p.y) then
-   add(grid,ptadd(p,pt(0,1)))
-  end
+--  if not evenrow(p.y) then
+--   add(grid,ptadd(p,pt(1,0)))
+--  end
 	end)
 
 
