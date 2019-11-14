@@ -146,6 +146,28 @@ end
 function _init()
 -- music(0)
  srand(2)
+ 
+-- --to compress pt lists...
+-- cls()
+--	eg={
+--	 pt(-1,-1),
+--	 pt(-1,0),
+--	 pt(-1,1),
+--	 pt(0,-1),
+--	 pt(0,1),
+--	 pt(1,0),
+--	}
+-- res=compress_pts(eg)
+-- print(res)
+-- stop()
+ 
+-- --test pt_list decompress...
+-- cls()
+-- test=pt_list("353475744565445464435363")
+-- for v in all(test) do
+--  print(v.x.." "..v.y)
+-- end
+-- stop()
 	
 	cam=pt(0,0)
 
@@ -1239,9 +1261,53 @@ function concat(a,b)
 end
 
 
+--convert string of hex vals
+--eg "12ef"
+--to list of number equiv
+--eg 1,2,14,15
+--
+--note it takes n char at time
+--and each char is half a byte
+--so 2 chars at time: 1 byte
+--offsets all numbers by +off 
+--(hacky way to get negatives)
+function hex2num(str,n,off)
+ local obj={}
+-- --half byte version eg 1 char
+-- for i=1,#str do
+--  obj[i]=("0x"..sub(str,i,i))+off
+-- end
+-- --1 byte version eg 2 chars
+-- for i=1,#str,2 do
+--  add(obj,("0x"..sub(str,i,i+1))+off)
+-- end
+ --n byte version eg 2*n chars
+ for i=1,#str,n do
+  add(obj,("0x"..sub(str,i,i+n-1))+off)
+ end
+ return obj
+end
 
+function pt_list(str)
+ local res={}
+ local vals=hex2num(str,1,-5)
+ for i=1,#vals,2 do
+  add(res,pt(vals[i],vals[i+1]))
+ end
+ return res
+end
 
-
+--to compress point lists
+--function hex(v,off)
+--  return tostr(v+off)
+--end
+--function compress_pts(list)
+-- local res=""
+-- for i=1,#list do
+--  res=res..hex(list[i].x,5)..hex(list[i].y,5)
+-- end
+-- return res
+--end
 -->8
 --overworld/pathfinding/cursor
 
@@ -3682,55 +3748,17 @@ function init_data()
 
  --default to "end turn" option
  botc=pt(4,1)
- 
- 
-	cardinal={
-		pt(-1,0),
-		pt( 1,0),
-		pt(0,-1),
-		pt(0, 1),
-	}
-	
-	diagonal={
-		pt(-1,-1),
-		pt( 1,-1),
-		pt(-1, 1),
-		pt( 1, 1),
-	}
-	
-	--create from appending?
-	eightway={
-		pt(-1,0),
-		pt( 1,0),
-		pt(0,-1),
-		pt(0, 1),
-		pt(-1,-1),
-		pt( 1,-1),
-		pt(-1, 1),
-		pt( 1, 1),
-	}
-	
-	castle_col={
-		pt(-2,0),
-		pt(-2,-1),
-		pt(2,0),
-		pt(2,-1),
-		pt(-1,0),
-		pt( 1,0),
-		pt(-1,-1),
-		pt( 0,-1),
-		pt( 1,-1),
-		pt(-1,-2),
-		pt( 0,-2),
-		pt( 1,-2),
-	}
- mine_col={
-		pt(-1,-1),
-		pt( 0,-1),
-		pt(-1,0),
-	}
-	
-	
+
+ --lists of points 
+	cardinal=pt_list("45655456")
+	diagonal=pt_list("44644666")
+	eightway=pt_list("4565545644644666") 
+	castle_col=pt_list("353475744565445464435363")
+	mine_col=pt_list("445445")
+	grid_neighbors_e=pt_list("455456646566")
+	grid_neighbors_o=pt_list("444546545665")
+
+
 	group_numbers={
 	 5,10,20,50,100,250,500,1000
 	}
@@ -3787,32 +3815,6 @@ function init_data()
 	mine_incs={100,2,2,1,1,1,1}
 	
 	
-
-	--token: probably a better way
-	-- to generate these
-	grid_neighbors_e={
---	 pt(-1,-1),
-	 pt(-1,0),
---	 pt(-1,1),
-	 pt(0,-1),
---	 pt(0,0),
-	 pt(0,1),
-	 pt(1,-1),
-	 pt(1,0),
-	 pt(1,1),
-	}
-	grid_neighbors_o={
-	 pt(-1,-1),
-	 pt(-1,0),
-	 pt(-1,1),
-	 pt(0,-1),
---	 pt(0,0),
-	 pt(0,1),
---	 pt(1,-1),
-	 pt(1,0),
---	 pt(1,1),
-	}
-
 
 
 	--cursor sprites
