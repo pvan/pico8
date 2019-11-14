@@ -1870,10 +1870,10 @@ function pathfind(start,goal,
 
 --visualize search
 if in_battle then
- circfill(bsx(c)+5,
-          bsy(c)+5,1,12)
- circfill(bsx(goal)+5,
-          bsy(goal)+5,1,8)
+ circfill(bsx(c,24),
+          bsy(c,24),1,12)
+ circfill(bsx(goal,24),
+          bsy(goal,24),1,8)
  flip()
 end
 
@@ -2704,7 +2704,7 @@ function mob_die(mob)
 --	  local m=mob
 --	  local sx,sy=bgrid2screen(m)
 	  pal(8,0)
-	  spr(60,bsx(mob),bsy(mob))
+	  spr(60,bsx(mob,19),bsy(mob,19))
 	  pal()
 	  flip()
 	 end
@@ -2747,8 +2747,8 @@ function mob_attack(pos)
  if player_battle then
 	 battle_draw(true)
 	 for i=1,20 do
-	  spr(59,bsx(mob),bsy(mob))
-	  spr(60,bsx(enemy),bsy(enemy))
+	  spr(59,bsx(mob,19),bsy(mob,19))
+	  spr(60,bsx(enemy,19),bsy(enemy,19))
 	  flip()
 	 end
  end
@@ -2983,7 +2983,7 @@ function battle_draw(hidecursor)
  --draw grid
  
  do_grid(8,function(p)
-  rect2(bsx(p),bsy(p),11,11,11)
+  rect2(bsx(p,19),bsy(p,19),11,11,11)
  end)
  
  
@@ -3003,8 +3003,8 @@ function battle_draw(hidecursor)
  if is_player_turn() then
 	 if activemob!=nil then
 		 for spot in all(options) do
-		  circfill(bsx(spot)+5,
-		           bsy(spot)+5,1,6)
+		  circfill(bsx(spot,24),
+		           bsy(spot,24),1,6)
 		 end
 	 end
  end
@@ -3013,7 +3013,7 @@ function battle_draw(hidecursor)
  --draw corpses
  for c in all(corpses) do
   pal(8,0)
-  spr(11,bsx(c)+1,bsy(c)+1)
+  spr(11,bsx(c,20),bsy(c,20))
   pal(8,8)
  end
  
@@ -3031,8 +3031,8 @@ function battle_draw(hidecursor)
 --  sx,sy=bgrid2screen(m)
 --  sx-=2
 --  sy-=10
-  draw_big_mob(m,bsx(m)-2,
-                 bsy(m)-10,
+  draw_big_mob(m,bsx(m,17),
+                 bsy(m,9),
                  m.flipx,true)
  end
  
@@ -3040,7 +3040,8 @@ function battle_draw(hidecursor)
  
  --cursor
  if not hidecursor then
-	 rect2(bsx(bcur),bsy(bcur),11,11,15)
+	 rect2(bsx(bcur,19),
+	       bsy(bcur,19),11,11,15)
 	 
 	 --draw cursor symbol
 	 if has2(options,bcur) then
@@ -3049,8 +3050,8 @@ function battle_draw(hidecursor)
 	   tspr=59
 	  end
    spr(tspr,
-       bsx(bcur)+2,
-       bsy(bcur)+1+flashamt())
+       bsx(bcur,21),
+       bsy(bcur,20)+flashamt())
 	 end
 	end
  
@@ -3096,13 +3097,17 @@ function battle_draw(hidecursor)
 end
 
 
-function bsx(p)
- local x=p.x*10+19 //+gstart.x
- if (not evenrow(p.y)) x-=5
- return x
+
+--the 19's here are gstart.x,y
+--note: now baked the 19 into
+--the caller's ofx,y args
+--(wow ugly, and barely saves tokens)
+function bsx(p,ofx)
+ if (not evenrow(p.y)) ofx-=5
+ return p.x*10+ofx
 end
-function bsy(p)
- return p.y*10+19 //+gstart.y
+function bsy(p,ofy)
+ return p.y*10+ofy
 end
 
 
