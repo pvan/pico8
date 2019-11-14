@@ -915,10 +915,8 @@ function map_draw()
 	 if path!=nil and #path>0 
 	 and not cp.ai --turn off to see ai path
 	 then
---	  lx,ly=sel.x,sel.y
 	  local l=copy(sel)
 		 for i=1,#path do
---		  nx,ny=path[i].x,path[i].y
 		  local n=copy(path[i])
 		  local dx,dy=n.x-l.x,n.y-l.y
 		  if dx==0 then
@@ -930,7 +928,6 @@ function map_draw()
 		  end
 		  if (i==#path) sprt=0
 	 	 spr(sprt,n.x*8,n.y*8,1,1,xflip,yflip)
---		  lx,ly=nx,ny
     l=copy(sel)
 		 end
 	 end
@@ -1220,7 +1217,6 @@ function do_grid(size,f)
   end
  end
 end
-
 
 
 
@@ -1550,12 +1546,25 @@ function sort_by_y(t)
 end
 
 
-function draw_flag(i,x,y,f)
-	pal(8,obj_owner(i).color)
-	spr(56,
+function sprobj(id,i,w,h,f,x,y)
+ w=w or i.sprw
+ h=h or i.sprh
+ x=x or 0
+ y=y or 0
+	spr(id,
 	   i.x*8+i.sprx+x,
 	   i.y*8+i.spry+y,
-	   1,1,f)
+	   w,h,f)
+end
+
+--8136
+function draw_flag(i,x,y,f)
+	pal(8,obj_owner(i).color)
+	sprobj(56,i,1,1,f,x,y)
+--	spr(56,
+--	   i.x*8+i.sprx+x,
+--	   i.y*8+i.spry+y,
+--	   1,1,f)
 	pal(8,8)
 end
 
@@ -1604,10 +1613,11 @@ function draw_overworld()
         tilesh*8)
   end
   
-  spr(sprt,
-      i.x*8+i.sprx,
-      i.y*8+i.spry,
-      i.sprw,i.sprh)
+  sprobj(sprt,i)
+--  spr(sprt,
+--      i.x*8+i.sprx,
+--      i.y*8+i.spry,
+--      i.sprw,i.sprh)
       
   if i.type=="mine" then
    --tokens: make {7,2} list and use has() (here and elsewhere)
@@ -1617,14 +1627,18 @@ function draw_overworld()
 --   and i.subtype!="wood"
    then
     --minecart resource
-    spr(res_sprs[i.subtype],
-      i.x*8-5,
-      i.y*8-5)
+    sprobj(res_sprs[i.subtype],
+     i,1,1,false,-5,-5)
+--    spr(res_sprs[i.subtype],
+--      i.x*8-5,
+--      i.y*8-5)
     --minecart over top resource
-    spr(214,
-      i.x*8-8,
-      i.y*8,
-      2,1)
+    sprobj(214,
+     i,2,1,false,-8)
+--    spr(214,
+--      i.x*8-8,
+--      i.y*8,
+--      2,1)
    end
    --mine owner flag
 	  if i.owner!=nil then
@@ -1645,10 +1659,11 @@ function draw_overworld()
 --   pal(1,1)
    
    --draw hero over flag
-	  spr(i.spr,
-	      i.x*8+i.sprx,
-	      i.y*8+i.spry,
-	      i.sprw,i.sprh)
+   sprobj(i.spr,i)
+--	  spr(i.spr,
+--	      i.x*8+i.sprx,
+--	      i.y*8+i.spry,
+--	      i.sprw,i.sprh)
   end
   
   if i.type=="castle" then
@@ -2747,8 +2762,6 @@ function mob_attack(pos)
 	 for i=1,20 do
 	  bspr(59,mob)
 	  bspr(60,enemy)
---	  spr(59,bsx(mob),bsy(mob))
---	  spr(60,bsx(enemy),bsy(enemy))
 	  flip()
 	 end
  end
@@ -3516,7 +3529,6 @@ function d_res_bar()
  
  for i=1,7 do --all resources
   local name=res_names[i]
---  res_spr(name)
 	 local x = 17*i-9
 	 if (i==1) x=0 --gold
 	 spr(res_sprs[i],x,0)
