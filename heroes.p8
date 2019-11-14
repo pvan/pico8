@@ -1546,25 +1546,25 @@ function sort_by_y(t)
 end
 
 
-function sprobj(id,i,w,h,f,x,y)
- w=w or i.sprw
- h=h or i.sprh
- x=x or 0
- y=y or 0
-	spr(id,
-	   i.x*8+i.sprx+x,
-	   i.y*8+i.spry+y,
-	   w,h,f)
-end
+--function sprobj(id,i,w,h,f,x,y)
+-- w=w or i.sprw
+-- h=h or i.sprh
+-- x=x or 0
+-- y=y or 0
+--	spr(id,
+--	   i.x*8+i.sprx+x,
+--	   i.y*8+i.spry+y,
+--	   w,h,f)
+--end
 
 --8136
 function draw_flag(i,x,y,f)
 	pal(8,obj_owner(i).color)
-	sprobj(56,i,1,1,f,x,y)
---	spr(56,
---	   i.x*8+i.sprx+x,
---	   i.y*8+i.spry+y,
---	   1,1,f)
+--	sprobj(56,i,1,1,f,x,y)
+	spr(56,
+	   i.x*8+i.sprx+x,
+	   i.y*8+i.spry+y,
+	   1,1,f)
 	pal(8,8)
 end
 
@@ -1613,11 +1613,11 @@ function draw_overworld()
         tilesh*8)
   end
   
-  sprobj(sprt,i)
---  spr(sprt,
---      i.x*8+i.sprx,
---      i.y*8+i.spry,
---      i.sprw,i.sprh)
+--  sprobj(sprt,i)
+  spr(sprt,
+      i.x*8+i.sprx,
+      i.y*8+i.spry,
+      i.sprw,i.sprh)
       
   if i.type=="mine" then
    --tokens: make {7,2} list and use has() (here and elsewhere)
@@ -1627,18 +1627,18 @@ function draw_overworld()
 --   and i.subtype!="wood"
    then
     --minecart resource
-    sprobj(res_sprs[i.subtype],
-     i,1,1,false,-5,-5)
---    spr(res_sprs[i.subtype],
---      i.x*8-5,
---      i.y*8-5)
+--    sprobj(res_sprs[i.subtype],
+--     i,1,1,false,-5,-5)
+    spr(res_sprs[i.subtype],
+      i.x*8-5,
+      i.y*8-5)
     --minecart over top resource
-    sprobj(214,
-     i,2,1,false,-8)
---    spr(214,
---      i.x*8-8,
---      i.y*8,
---      2,1)
+--    sprobj(214,
+--     i,2,1,false,-8)
+    spr(214,
+      i.x*8-8,
+      i.y*8,
+      2,1)
    end
    --mine owner flag
 	  if i.owner!=nil then
@@ -1659,11 +1659,11 @@ function draw_overworld()
 --   pal(1,1)
    
    --draw hero over flag
-   sprobj(i.spr,i)
---	  spr(i.spr,
---	      i.x*8+i.sprx,
---	      i.y*8+i.spry,
---	      i.sprw,i.sprh)
+--   sprobj(i.spr,i)
+	  spr(i.spr,
+	      i.x*8+i.sprx,
+	      i.y*8+i.spry,
+	      i.sprw,i.sprh)
   end
   
   if i.type=="castle" then
