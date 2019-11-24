@@ -12,6 +12,7 @@ __lua__
 ---evaluate when to pickup units and how to distribute them
 
 --todo:
+--first step of wide mob skips square? (try forcing crash to display pathfind path)
 --slow ai move when barely in fog?
 --mob move dist not matching speed when obstacles
 --(related: wide mob that's surrounded but has 1 space open, freeze on move)
@@ -2750,6 +2751,13 @@ function mob_move(p)
   local bpath=pathfind(m,p,
    b_neighbors,
    grid_dist)
+   
+  for step in all(bpath) do
+		  circfill(bsx(step)+5,
+		           bsy(step)+5,1,0)
+  end
+  stop()
+  
   for step in all(bpath) do
    --token: ptset 
  
