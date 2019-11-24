@@ -13,7 +13,6 @@ __lua__
 
 --todo:
 --slow ai move when barely in fog?
---mob should turn to face way they walk in battle
 --mob move dist not matching speed when obstacles
 --(related: wide mob that's surrounded but has 1 space open, freeze on move)
 --sort hero sprites in battle along with mobs?
@@ -2744,13 +2743,22 @@ function mob_move(p)
  local m=activemob
  dist=grid_dist(m,p)
  
+ m.flipx=bsx(p)<bsx(m)
+ 
  while dist>0 do
  
   local bpath=pathfind(m,p,
    b_neighbors,
    grid_dist)
   for step in all(bpath) do
-   --token: ptset
+   --token: ptset 
+ 
+   --flip per movement square?
+   --note this bugs out the
+   --defending mobs facing
+   --on their first step...   
+--   m.flipx=bsx(step)<bsx(m)
+
    m.x,m.y=step.x,step.y
    if player_battle then
     for i=1,3 do
@@ -2822,7 +2830,7 @@ function mob_attack(pos)
  local mob=activemob
  local enemy=mob_at_pos(pos)
  
- mob.flipx=enemy.x<mob.x --todo: use sx?
+ mob.flipx=bsx(enemy)<bsx(mob) --todo: use sx?
  
  --attack/hurt animation
  if player_battle then
@@ -2897,6 +2905,11 @@ end
 
 
 function inc_mob_turn(amt)
+
+ --reset facing for last active
+ activemob.flipx=
+  has(bbb.mobs,activemob)
+ 
  local newi=
   indexof(moblist,activemob)+amt
 
