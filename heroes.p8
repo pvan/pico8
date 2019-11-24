@@ -16,7 +16,6 @@ __lua__
 --mob should turn to face way they walk in battle
 --mob move dist not matching speed when obstacles
 --(related: wide mob that's surrounded but has 1 space open, freeze on move)
---place enemy wide mobs correcly
 --sort hero sprites in battle along with mobs?
 
 --big todos:
@@ -2598,6 +2597,12 @@ function make_battle_team(x,unit)
  
  for m in all(res.mobs) do
   m.flipx=x==8 --flip defenders at battle start
+  
+  if is_wide(m) 
+  and m.flipx
+  then
+   m.x-=1
+  end
   
 --  add(moblist,m)
   add(mobdrawlist,m)
