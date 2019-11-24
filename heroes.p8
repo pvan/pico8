@@ -2699,11 +2699,10 @@ function adjacent_enemies(mob)
  neighbors=get_neighbors(mob)
  
  for n in all(neighbors) do
-  pot_en=mob_at_pos(n)
-  if pot_en
-  and has(enemy_list,pot_en)
+  if has(enemy_list,
+         mob_at_pos(n))
   then
-   add(res,pot_en)
+   add(res,n)
   end
  end
  
