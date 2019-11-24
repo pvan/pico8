@@ -12,7 +12,6 @@ __lua__
 ---evaluate when to pickup units and how to distribute them
 
 --todo:
---first step of wide mob skips square? (try forcing crash to display pathfind path)
 --slow ai move when barely in fog?
 --mob move dist not matching speed when obstacles
 --(related: wide mob that's surrounded but has 1 space open, freeze on move)
@@ -1932,6 +1931,7 @@ function pathfind(start,goal,
  found_goal = false
  
  while #frontier>0 do
+  --token
   if #frontier>1000 then
    cls()
    stop("a* frontier explosion")
@@ -1941,13 +1941,13 @@ function pathfind(start,goal,
   local c=pop(frontier)[1]
 
 ----visualize search
---if in_battle then
+----if in_battle then
 -- circfill(bsx(c)+5,
 --          bsy(c)+5,1,12)
 -- circfill(bsx(goal)+5,
 --          bsy(goal)+5,1,8)
 -- flip()
---end
+----end
 
   if ptequ(c,goal) then
    found_goal=true
@@ -2748,15 +2748,20 @@ function mob_move(p)
  
  while dist>0 do
  
+ --temp removing mob
+ --does not seem needed?
+--  s(mob_map,m,nil)
   local bpath=pathfind(m,p,
    b_neighbors,
    grid_dist)
+--  s(mob_map,m,m)
    
-  for step in all(bpath) do
-		  circfill(bsx(step)+5,
-		           bsy(step)+5,1,0)
-  end
-  stop()
+   --debug draw path
+--  for step in all(bpath) do
+--		  circfill(bsx(step)+5,
+--		           bsy(step)+5,1,0)
+--  end
+--  stop()
   
   for step in all(bpath) do
    --token: ptset 
@@ -3206,7 +3211,7 @@ end
 --cost included {p,cost}
 function b_neighbors(p)
  local res={}
- for n in all(get_neighbors(p)) do
+ for n in all(point_neighbors(p)) do
   if (can_stand(n)) add(res,{n,1})
  end
  return res
