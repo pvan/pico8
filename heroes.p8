@@ -12,7 +12,6 @@ __lua__
 ---evaluate when to pickup units and how to distribute them
 
 --todo:
---slow ai move when barely in fog?
 --mob move dist not matching speed when obstacles
 --(related: wide mob that's surrounded but has 1 space open, freeze on move)
 --sort hero sprites in battle along with mobs?
@@ -710,6 +709,15 @@ end
 
 
 function p_can_see(p)
+
+ --check for adjacent fog too
+ for d in all(cardinal) do
+  if not g(vp.fog,ptadd(p,d))
+  then
+   return true
+  end
+ end
+ 
  return not g(vp.fog,p)
 end
 
