@@ -12,8 +12,6 @@ __lua__
 ---evaluate when to pickup units and how to distribute them
 
 --todo:
---mob move dist not matching speed when obstacles
---(related: wide mob that's surrounded but has 1 space open, freeze on move)
 --sort hero sprites in battle along with mobs?
 
 --big todos:
@@ -2945,6 +2943,35 @@ function inc_mob_turn(amt)
  
  bcur=copy(activemob)
  
+ --todo: reduce calls to this?
+ --make one central location?
+ --(here, maybe, or after move?)
+ create_mob_map()
+ 
+ 
+ --create list of valid moves
+ --limited by move speed
+ --(todo: tokens?
+ -- fold into pathfind?
+ -- seems like a pain)
+ local edge={activemob}
+ mob_moves={}
+ for i=1,mob_speeds[activemob.id]-1 do
+  lastedge=copy(edge)
+  edge={}
+  for sq in all(lastedge) do
+   for n in all(point_neighbors(sq)) do
+    if can_stand(n) 
+    and not has2(mob_moves,n) 
+    then
+     add(edge,n)
+     add(mob_moves,n)
+    end
+   end
+  end
+ end
+ 
+ 
  --5 tokens here saves us
  --2 per use
  --(1 token vs 3)
@@ -2992,27 +3019,8 @@ function battle_update()
  
  attacks=adjacent_enemies(activemob)
 
- --valid_moves
- moves={}
- do_grid(8,function(spot)
-  if grid_dist(spot,activemob)
-     < mob_speeds[activemob.id]
-  and can_stand(spot) 
-   
-  --don't allow walking in place
-  --note wide mobs make this tricky
-  --we have to ignore activemob
-  --for pathfinding and valid moves
-  --so it can take tiny steps
-  --but we still dont want to allow standing in place
-  and not ptequ(spot,activemob) 
-  then
-   add(moves,spot)
-  end
- end)
- 
 
- options=copy(moves)
+ options=copy(mob_moves)
  --if move mode, still allow 
  --attacks if there are any
  concat(options,attacks)
@@ -3026,7 +3034,7 @@ function battle_update()
   
   if btnp(❎) then
    if has2(options,bcur) then
-    if has2(moves,bcur) then
+    if has2(mob_moves,bcur) then
 	    mob_move(bcur)
     else
      mob_attack(bcur)
