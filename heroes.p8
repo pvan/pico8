@@ -1713,9 +1713,10 @@ function draw_overworld()
 	   draw_flag(i,13,3,false)
 	  end
   end
-      
+  
   --flash edge of selected
-  if ptequ(sel,i) then
+--  if ptequ(sel,i) then
+  if sel==i then
    flashcols={1,1,1,13,12,13}
    pal(1,flashcols[flash(#flashcols)])
   end
