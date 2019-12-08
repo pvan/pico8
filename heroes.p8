@@ -12,7 +12,6 @@ __lua__
 ---evaluate when to pickup units and how to distribute them
 
 --bugs:
---"none" bug, eg mob in spot 2 only
 --moving mobs into done button/castle buildings... limit cur pos if moving?
 
 --todo:
@@ -3835,9 +3834,16 @@ function draw_army_s(arm,y)
   x+=12
  end
 
- if #arm==0 or arm==nil then
-  print("none",57,y+4,1)
+ --8176
+ for _,_ in pairs(arm) do
+  return
  end
+ print("none",57,y+4,1)
+ 
+ --8177 
+ --(also bug if eg [2]=something)
+-- if #arm==0 or arm==nil then
+-- end
 
 end
 
