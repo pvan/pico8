@@ -3215,7 +3215,7 @@ function battle_draw(hidecursor)
   if m==activemob then
    flashcols={7,6,10,13,1}
    pal(1,flashcols[
-    flash(#flashcols,3)])
+    flash(#flashcols)])
   end
   --draw mob
   draw_big_mob(m,bsx(m)-2,
