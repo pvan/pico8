@@ -29,19 +29,19 @@ __lua__
 
 
 --token saving:
---append lists function?
---compress data
---switch x,y to pt (rects too?) partially done
---improve state switching? partially done
---consolidate hud rendering? tried and failed
---areas marked "token"
---spr functions, eg spr_mirx(id,x,y), spr_pal(spr,x,y,c1,c2)?
---tile spr func? (with mirror?)
---would making col into obj save? (we removed col all together)
---and make hot into pt? (other similar things? spr stats?)
---consider a 1-level deep copy for copying lists of pointers?
---maybe passing in list instead of returning one?
---change obj.type to int instead of string index
+--x append lists function?
+--x compress pt data
+--x make col into obj (col removed)
+--x make hot into pt? (hot removed)
+--s compress str data (can't save tokens)
+--s change obj.type to int instead of string index
+--/ switch x,y to pt (rects too?) partially done
+--/ improve state switching? partially done
+--. consolidate hud rendering? tried and failed
+--  consolidate all spr helper functions (bspr, etc)
+--  consider a 1-level deep copy for copying lists of pointers?
+--  maybe passing in list instead of returning one?
+--  areas marked "token"
 
 
 
