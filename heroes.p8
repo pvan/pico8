@@ -3854,11 +3854,11 @@ function draw_control(o,x)
  local y=122
  
 -- rectfill2(0,y-1,#o*4+7+2,7,6)
- rectfill2(0,y-1,#o*4+9,7,6)
+ rectfill2(0,y-1,#o*4+9,7,15)
  print("🅾️"..o,1,y,1)
  
  local xw=#x*4+7
- rectfill2(126-xw,y-1,128,7,6)
+ rectfill2(126-xw,y-1,128,7,15)
  print(x.."❎",127-xw,y,1)
 
 end
