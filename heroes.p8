@@ -333,11 +333,6 @@ function split_draw()
  --while split window open
  trade_draw()
 
- --todo: consider moving
- --split window up, so we can
- --still see armies, hmm...
- --lose hierarchy that way tho
-
 	draw_window(
 	 43,--63-16-2-2,
 	 54,--60-2-4,
@@ -358,19 +353,15 @@ function split_draw()
  spr(49,55,70,1,1,true)
  spr(49,63,70)
  
- --todo: need this still?
- --feels better tahn bottom ui
- print("❎",51,82+flashamt(),1)
- print("done",59,82,1)
+-- --todo: need this still?
+-- --feels better than bottom ui
+-- print("❎",51,82+flashamt(),1)
+-- print("done",59,82,1)
 end
 
 
---token:inline?
 function hero_trade(a,b)
- bars={a,b}
--- if b.type=="castle" then
---  add(bars,b)
--- end
+ bars={b,a}
  
  tcur=pt(1,1)
  main_update=trade_update
@@ -390,7 +381,7 @@ function trade_update()
  move_cursor(tcur, 0,5, up_limit,3)
  
  --todo: look into if limiting
- --out here is better of if
+ --out here is better or if
  --less tokens (~20?) to do
  --uneven limit in move_cursor
  
@@ -403,7 +394,6 @@ function trade_update()
  
  if tcur.y==3 then
   tcur.y=2.6
---  tcur.x=2.85
   tcur.x=2.65
  end
  
