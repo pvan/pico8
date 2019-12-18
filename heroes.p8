@@ -18,6 +18,7 @@ __lua__
 --sort hero sprites in battle along with mobs?
 
 --big todos:
+--map data pack/unpack
 --ranged mobs
 --player select/multiplayer support
 --castles
@@ -96,8 +97,8 @@ function set_player(p)
  
  hud_menu_open=false
  actl_menu_y=0
-
-  
+ 
+ 
  --a bit awkward, but we need
  --to update fog before tiles
  update_fog()
@@ -271,10 +272,14 @@ function create_player(c)
  res.gold=200
  res.wood=10
  res.ore=10
- res.gems=5
- res.sulfur=5
- res.mercury=5
- res.crystal=5
+-- res.gems=5
+-- res.sulfur=5
+-- res.mercury=5
+-- res.crystal=5
+ 
+ for i=4,7 do
+  res[res_names[i]]=5
+ end
  
  res.heroes={}
  res.castles={}
