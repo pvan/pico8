@@ -295,6 +295,13 @@ function create_player(c)
  return res
 end
 
+--doesn't save tokens
+--function adjust_count(a,b,amt)
+-- if b.count>amt then
+--	 a.count+=amt
+--	 b.count-=amt
+--	end
+--end
 
 function split_update()
 	
@@ -310,7 +317,6 @@ function split_update()
 	if btnp(➡️)
 	and splitmob.count>amt
 	then
- 	--todo: token: func here?
 	 movingmob.count+=amt
 	 splitmob.count-=amt
 	end
