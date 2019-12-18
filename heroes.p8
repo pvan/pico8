@@ -37,7 +37,7 @@ __lua__
 --s compress str data (can't save tokens)
 --s change obj.type to int instead of string index
 --/ switch x,y to pt (rects too?) partially done
---/ improve state switching? partially done
+--x improve state switching? pretty much done (combine update+draw?)
 --. consolidate hud rendering? tried and failed
 --  consolidate all spr helper functions (bspr, etc)
 --  consider a 1-level deep copy for copying lists of pointers?
@@ -146,6 +146,9 @@ end
 function _init()
 -- music(0)
  srand(2)
+ 
+ main_update=map_update
+ main_draw=map_draw
  
 	cam=pt(0,0)
 
@@ -423,8 +426,8 @@ function trade_update()
  else
 	 if tcur.y==2.6 then
 	  if btnp(❎) then
-			 main_update=nil
-			 main_draw=nil
+			 main_update=map_update
+			 main_draw=map_draw
 	  end
 	 else
 		 if btnp(❎) then
@@ -552,14 +555,18 @@ function move_hero_tick()
   local p=path[1]
   local obj=g(mapobj,p)
 	 del(path,p)
-	  
+	 
   --always move if open space
   if not tile_is_solid(p) then
 			--token:ptset()?
 			sel.x=p.x
 			sel.y=p.y
+			
+			--token: sub_clamp() ?
 			sel.move-=5
-			if (sel.move<0) sel.move=0
+			sel.move=max(sel.move,0)
+--			if (sel.move<0) sel.move=0
+
 			--lock cam to hero?
 			if p_can_see(sel) then
 				sfx(58,-1,1,1)
@@ -791,7 +798,7 @@ function p_can_see(p)
 end
 
 
-function update_map()
+function map_update()
  
  if moving then
   if p_can_see(sel) then
@@ -952,27 +959,10 @@ function _update()
  if update_dialog() then
   return
  end
- 
--- if in_battle then
---  cur_obj=nil --todo: better place for this
---  update_battle()
---  return
--- end
 
-
-
-
- if main_update!=nil then
-  main_update()
- else
-  update_map()
- end
- 
+ main_update()
  
 end
-
-
-
 
 
 
@@ -1084,25 +1074,8 @@ end
 
 
 function _draw()
- 
---	if in_battle then
---  draw_battle()
--- else
- 
-  if main_draw!=nil then
-   main_draw()
-  else
-   map_draw()
-  end
-
--- end 
- 
-	 
+ main_draw()
 	draw_dialog()
-	
-	--cpu
---	print(stat(1),0,64)
-	
 end
 
 
