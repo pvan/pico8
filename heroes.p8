@@ -537,10 +537,11 @@ function pickup(obj)
  end
  del(things,obj)
 end
-    
-function move_hero()
- moving=true
-end
+
+----tokens: inline
+--function move_hero()
+-- moving=true
+--end
 function move_hero_tick()
 
  if sel.move>0
@@ -753,7 +754,8 @@ function ai_tick()
     goto search_for_obj
    end
     
-   move_hero()
+--   move_hero()
+   moving=true
    ::skip_hero::
    
   end
@@ -911,7 +913,8 @@ function update_map_cursor()
   and path!=nil
   and ptequ(path[#path],cur)
   then
-   move_hero()
+   moving=true
+--   move_hero()
   end
  end
  update_cursor_spr()
