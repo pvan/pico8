@@ -491,9 +491,6 @@ function trade_draw()
  spr(48,
      tcur.x*18+22,
      tcur.y*25+48+flashamt())
---     tcur.y*25+#bars*-25+98+flashamt())
---     (tcur.y-#bars)*25+98+flashamt())
- 
  
  --draw instructions?
  
@@ -1047,7 +1044,7 @@ function map_draw()
 	 
 	 
 	 if not hud_menu_open then
- 	 draw_cursor()
+   spr(cur_spr,cur.x*8,cur.y*8+flashamt())
 	 end
 	 
 	 
@@ -2227,11 +2224,6 @@ end
 --end
 
 
-function draw_cursor()
- bb=flashamt()
- if (hud_menu_open) bb=0
- spr(cur_spr, cur.x*8,cur.y*8+bb)
-end
 
 
 
@@ -3565,11 +3557,10 @@ function draw_cur_popup_info()
 end
 
 
-function flashingbox(x,y,w,h)
- 
- bb=flashamt()
- rect2(x-bb,y-bb,w+bb*2,h+bb*2,15)
- 
+function flashingbox(x,y,w)
+ spr(48, 
+     x+w/2,
+     y+4+flashamt())
 end
 
 
@@ -3588,7 +3579,7 @@ function draw_hud_menu()
 	 if hudtop then
 	  local w=#ports*10
 	  local x,y=53-w/2+10*i,9
-	  flashingbox(x,y,10,10)
+	  flashingbox(x,y,10)
 	 else
 	  --todo:hardcode this w
 		 local w=0
@@ -3601,7 +3592,7 @@ function draw_hud_menu()
 	   if (j==i) break 
 	   sx+=w
 	  end
-	  flashingbox(sx,19,w,9)
+	  flashingbox(sx,19,w)
 	 end
  end
  
